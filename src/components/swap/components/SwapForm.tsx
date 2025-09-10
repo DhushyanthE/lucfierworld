@@ -3,7 +3,7 @@ import { TokenInput } from "./TokenInput";
 import { SwapSettings } from "./SwapSettings";
 import { SwapDetails } from "./SwapDetails";
 import { SwapFooter } from "./SwapFooter";
-import { tokenData } from "../hooks/useSwapLogic";
+// tokenData is now passed as prop from useSwapLogic
 
 interface SwapFormProps {
   fromAmount: string;
@@ -23,6 +23,7 @@ interface SwapFormProps {
   handleFlipTokens: () => void;
   handleSwap: (e: React.FormEvent) => Promise<boolean>;
   isConnected: boolean;
+  tokenData: any;
 }
 
 export function SwapForm({
@@ -42,7 +43,8 @@ export function SwapForm({
   isLoadingPrices,
   handleFlipTokens,
   handleSwap,
-  isConnected
+  isConnected,
+  tokenData
 }: SwapFormProps) {
   return (
     <div className="w-full max-w-md bg-black/80 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20 shadow-xl shadow-purple-500/10">

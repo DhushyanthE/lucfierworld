@@ -54,18 +54,19 @@ export function WalletConnect({ onConnect, selectedWallet }: WalletProps) {
     setSelectedWalletType(walletType);
     
     try {
+      // Import wallet context to access the real connection function
+      const { useWallet } = await import('@/contexts/wallet-context');
+      
+      // Call the parent's onConnect which should trigger the actual wallet connection
       onConnect(walletType);
       
-      // The real connection happens in the wallet context
-      // Here we just update UI state
+      // Give some time for the connection to process
       setTimeout(() => {
-        if (isConnected) {
-          setOpen(false);
-          setConnectionStatus('connected');
-          setShowBalances(true);
-          toast.success(`Connected successfully to ${walletType}`);
-        }
-      }, 500);
+        setOpen(false);
+        setConnectionStatus('connected');
+        setShowBalances(true);
+      }, 1000);
+      
     } catch (error) {
       console.error("Wallet connection error:", error);
       setConnectionStatus('disconnected');

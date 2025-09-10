@@ -29,7 +29,8 @@ export function HomeLayout() {
 
   // Create wrapper function with no parameters to match the expected signature
   const handleConnectWalletWrapper = () => {
-    handleConnectWallet(""); // Pass default empty string or appropriate default value
+    // This will open the wallet selector modal
+    handleConnectWallet("");
   };
 
   return (

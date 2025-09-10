@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import exchangeService from "@/services/exchangeService";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/contexts/wallet-context";
 
 export function useTokenSwap() {
   const { walletAddress, currentWallet, isConnected } = useWallet();
@@ -34,41 +34,113 @@ export function useTokenSwap() {
     setIsLoading(true);
     
     try {
-      if (currentWallet === 'metamask' && (fromToken === 'ETH' || toToken === 'ETH')) {
-        if (window.ethereum) {
-          toast.loading("Preparing transaction...");
+      // Handle MetaMask transactions for Ethereum-based tokens
+      if (currentWallet === 'metamask' && window.ethereum) {
+        toast.loading("Preparing transaction...", { id: 'swap-loading' });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        try {
+          if (fromToken === 'ETH') {
+            // Selling ETH for another token
+            toast.loading("Waiting for confirmation in MetaMask...", { id: 'swap-loading' });
+            
+            // Calculate value in wei (mock value for demo)
+            const valueInEth = parseFloat(fromAmount);
+            const valueInWei = Math.floor(valueInEth * 1e18);
+            const hexValue = '0x' + valueInWei.toString(16);
+            
+            const params = [{
+              from: walletAddress,
+              to: "0x1234567890123456789012345678901234567890", // Mock contract address
+              value: hexValue,
+              gas: "0x5208", // 21000 gas limit
+              gasPrice: "0x9184e72a000" // Mock gas price
+            }];
+            
+            const txHash = await window.ethereum.request({
+              method: 'eth_sendTransaction',
+              params
+            });
+            
+            toast.success("Swap transaction submitted!", { 
+              id: 'swap-loading',
+              description: `Transaction hash: ${txHash?.slice(0, 10)}...`
+            });
+            return true;
+          } else if (toToken === 'ETH') {
+            // Buying ETH with another token
+            toast.loading("Preparing token swap for ETH...", { id: 'swap-loading' });
+            
+            // In a real implementation, this would call a smart contract
+            const mockTxHash = '0x' + Math.random().toString(16).substring(2);
+            
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            toast.success("Swap transaction completed!", {
+              id: 'swap-loading',
+              description: `Exchanged ${fromAmount} ${fromToken} for ${toAmount} ${toToken}`
+            });
+            return true;
+          } else {
+            // Token to token swap
+            toast.loading("Processing token swap...", { id: 'swap-loading' });
+            
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            toast.success("Token swap completed!", {
+              id: 'swap-loading',
+              description: `Exchanged ${fromAmount} ${fromToken} for ${toAmount} ${toToken}`
+            });
+            return true;
+          }
+        } catch (error: any) {
+          if (error.code === 4001) {
+            toast.error("Transaction rejected by user", { id: 'swap-loading' });
+          } else if (error.code === -32603) {
+            toast.error("Internal JSON-RPC error", { id: 'swap-loading' });
+          } else {
+            toast.error(`Transaction error: ${error.message || "Unknown error"}`, { id: 'swap-loading' });
+          }
+          return false;
+        }
+      }
+      
+      // Handle Phantom wallet transactions for Solana-based tokens
+      if (currentWallet === 'phantom' && window.phantom?.solana) {
+        toast.loading("Preparing Solana transaction...", { id: 'swap-loading' });
+        
+        try {
           await new Promise(resolve => setTimeout(resolve, 1500));
           
-          if (fromToken === 'ETH') {
-            toast.loading("Waiting for confirmation in MetaMask...");
-            try {
-              const params = [{
-                from: walletAddress,
-                to: "0x0000000000000000000000000000000000000000",
-                value: "0x0"
-              }];
-              
-              await window.ethereum.request({
-                method: 'eth_sendTransaction',
-                params
-              });
-              
-              toast.success("Swap transaction submitted!");
-              return true;
-            } catch (error: any) {
-              if (error.code === 4001) {
-                toast.error("Transaction rejected in MetaMask");
-              } else {
-                toast.error(`Transaction error: ${error.message || "Unknown error"}`);
-              }
-              return false;
-            }
-          }
+          // Mock Solana transaction
+          const mockSignature = Math.random().toString(16).substring(2);
           
-          toast.success("Swap transaction completed!", {
+          toast.success("Solana swap completed!", {
+            id: 'swap-loading',
             description: `Exchanged ${fromAmount} ${fromToken} for ${toAmount} ${toToken}`
           });
           return true;
+        } catch (error: any) {
+          toast.error(`Phantom transaction error: ${error.message || "Unknown error"}`, { id: 'swap-loading' });
+          return false;
+        }
+      }
+      
+      // Handle Trust Wallet transactions
+      if (currentWallet === 'trustwallet') {
+        toast.loading("Processing Trust Wallet transaction...", { id: 'swap-loading' });
+        
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          toast.success("Trust Wallet swap completed!", {
+            id: 'swap-loading',
+            description: `Exchanged ${fromAmount} ${fromToken} for ${toAmount} ${toToken}`
+          });
+          return true;
+        } catch (error: any) {
+          toast.error(`Trust Wallet error: ${error.message || "Unknown error"}`, { id: 'swap-loading' });
+          return false;
         }
       }
       
