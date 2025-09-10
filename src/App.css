@@ -1,0 +1,213 @@
+
+/* Reset root container to be full width */
+#root {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Full screen layout classes */
+.full-screen-frame {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-container {
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .content-container {
+    padding: 2rem;
+  }
+}
+
+/* Quantum-themed animations and effects */
+@keyframes quantum-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes quantum-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px 2px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(139, 92, 246, 0.8);
+  }
+}
+
+@keyframes quantum-fade {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes quantum-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes quantum-shimmer {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: 300px 0;
+  }
+}
+
+/* Quantum UI element classes */
+.quantum-card {
+  @apply bg-black/70 border-purple-500/20 rounded-xl shadow-lg backdrop-blur-md overflow-hidden;
+  animation: quantum-fade 0.5s ease-out forwards;
+}
+
+.quantum-panel {
+  @apply bg-gray-900/50 border border-purple-500/30 rounded-lg p-4 relative overflow-hidden;
+}
+
+.quantum-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(45deg, transparent 0%, rgba(139, 92, 246, 0.1) 50%, transparent 100%);
+  background-size: 300% 100%;
+  animation: quantum-shimmer 3s infinite linear;
+  pointer-events: none;
+}
+
+.quantum-button {
+  @apply bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 py-2 transition-all;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.quantum-button::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(45deg);
+  z-index: -1;
+  transition: all 0.6s ease;
+  opacity: 0;
+}
+
+.quantum-button:hover::before {
+  opacity: 1;
+  transform: rotate(45deg) translate(10%, 10%);
+}
+
+.quantum-glow {
+  animation: quantum-glow 3s infinite ease-in-out;
+}
+
+.quantum-pulse {
+  animation: quantum-pulse 3s infinite ease-in-out;
+}
+
+.quantum-rotate {
+  animation: quantum-rotate 15s infinite linear;
+}
+
+/* Quantum circuit visualization enhancements */
+.circuit-wire {
+  height: 2px;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.3));
+}
+
+.quantum-gate {
+  transition: all 0.3s ease-in-out;
+}
+
+.quantum-gate:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+}
+
+/* Data flow animation */
+.data-flow {
+  position: relative;
+  overflow: hidden;
+}
+
+.data-flow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    transparent,
+    rgba(139, 92, 246, 0.2),
+    transparent,
+    transparent
+  );
+  animation: data-flow 3s infinite;
+}
+
+@keyframes data-flow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
