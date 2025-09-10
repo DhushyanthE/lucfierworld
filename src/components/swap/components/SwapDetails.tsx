@@ -41,7 +41,11 @@ export function SwapDetails({ fromToken, toToken, fromAmount, tokenData, prices 
     }
     
     // Fallback to tokenData if prices not loaded yet
-    return `1 ${fromToken} = ${(tokenData[fromToken].rate / tokenData[toToken].rate).toFixed(6)} ${toToken}`;
+    if (tokenData?.[fromToken]?.rate && tokenData?.[toToken]?.rate) {
+      return `1 ${fromToken} = ${(tokenData[fromToken].rate / tokenData[toToken].rate).toFixed(6)} ${toToken}`;
+    }
+    
+    return `1 ${fromToken} = 0 ${toToken}`;
   };
 
   return (

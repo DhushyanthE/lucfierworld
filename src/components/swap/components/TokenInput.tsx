@@ -29,7 +29,9 @@ export function TokenInput({
     <div className="bg-white/5 p-4 rounded-lg border border-white/10">
       <div className="flex justify-between mb-2">
         <label className="text-sm text-gray-300">{label}</label>
-        <span className="text-sm text-gray-300">Balance: {tokenData[token].balance}</span>
+        <span className="text-sm text-gray-300">
+          Balance: {tokenData?.[token]?.balance || "0.0000"}
+        </span>
       </div>
       <div className="flex gap-4">
         <Input
@@ -45,7 +47,7 @@ export function TokenInput({
           onChange={(e) => setToken(e.target.value)}
           className="bg-purple-900/50 text-white px-3 py-1 rounded-lg outline-none border border-purple-500/30"
         >
-          {Object.keys(tokenData).map(t => (
+          {tokenData && Object.keys(tokenData).map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
