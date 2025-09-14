@@ -7,6 +7,7 @@ import { QuantumAITraining } from "@/components/ai/QuantumAITraining";
 import { QuantumFidelityMetrics } from "@/components/ai/QuantumFidelityMetrics";
 import { QuantumDeepLearningDashboard } from "@/components/ai/QuantumDeepLearningDashboard";
 import { QuantumNeuralNetworkFlow } from "@/components/ai/neural-network/QuantumNeuralNetworkFlow";
+import { EnhancedNeuralNetworkFlow } from "@/components/ai/neural-network/EnhancedNeuralNetworkFlow";
 import { QuantumBlockchainPlatform } from "@/components/ai/quantum-blockchain/QuantumBlockchainPlatform";
 import { QuantumAITrainingAdvanced } from "@/components/ai/quantum-blockchain/QuantumAITrainingAdvanced";
 import { AutonomousAgentSystem } from "@/components/ai/quantum-blockchain/AutonomousAgentSystem";
@@ -68,7 +69,7 @@ export function QuantumAIDashboard({ activeTab, setActiveTab }: QuantumAIDashboa
       </TabsContent>
 
       <TabsContent value="flow">
-        <QuantumNeuralNetworkFlow />
+        <EnhancedNeuralNetworkFlow />
       </TabsContent>
 
       <TabsContent value="platform">
