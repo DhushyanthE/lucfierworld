@@ -9,6 +9,7 @@ import { QuantumDeepLearningDashboard } from "@/components/ai/QuantumDeepLearnin
 import { QuantumNeuralNetworkFlow } from "@/components/ai/neural-network/QuantumNeuralNetworkFlow";
 import { EnhancedNeuralNetworkFlow } from "@/components/ai/neural-network/EnhancedNeuralNetworkFlow";
 import { InteractiveWorkflowManager } from "@/components/ai/deep-learning/InteractiveWorkflowManager";
+import { EnhancedAGIDashboard } from "@/components/ai/agi/EnhancedAGIDashboard";
 import { QuantumBlockchainPlatform } from "@/components/ai/quantum-blockchain/QuantumBlockchainPlatform";
 import { QuantumAITrainingAdvanced } from "@/components/ai/quantum-blockchain/QuantumAITrainingAdvanced";
 import { AutonomousAgentSystem } from "@/components/ai/quantum-blockchain/AutonomousAgentSystem";
@@ -22,7 +23,7 @@ interface QuantumAIDashboardProps {
 export function QuantumAIDashboard({ activeTab, setActiveTab }: QuantumAIDashboardProps) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid grid-cols-4 lg:grid-cols-8 mb-4 w-full overflow-x-auto">
+      <TabsList className="grid grid-cols-4 lg:grid-cols-9 mb-4 w-full overflow-x-auto">
         <TabsTrigger value="neural" className="min-w-0">
           <Brain className="h-4 w-4 mr-1" />
           <span className="hidden sm:inline">Neural Network</span>
@@ -63,6 +64,11 @@ export function QuantumAIDashboard({ activeTab, setActiveTab }: QuantumAIDashboa
           <span className="hidden sm:inline">Deep Learning</span>
           <span className="sm:hidden">Learning</span>
         </TabsTrigger>
+        <TabsTrigger value="agi" className="min-w-0">
+          <BrainCircuit className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">Enhanced AGI</span>
+          <span className="sm:hidden">AGI</span>
+        </TabsTrigger>
       </TabsList>
       
       <TabsContent value="neural">
@@ -98,6 +104,10 @@ export function QuantumAIDashboard({ activeTab, setActiveTab }: QuantumAIDashboa
       
       <TabsContent value="learning">
         <QuantumDeepLearningDashboard />
+      </TabsContent>
+
+      <TabsContent value="agi">
+        <EnhancedAGIDashboard />
       </TabsContent>
     </Tabs>
   );
