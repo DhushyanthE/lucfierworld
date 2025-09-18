@@ -10,6 +10,7 @@ import { QuantumNeuralNetworkFlow } from "@/components/ai/neural-network/Quantum
 import { EnhancedNeuralNetworkFlow } from "@/components/ai/neural-network/EnhancedNeuralNetworkFlow";
 import { InteractiveWorkflowManager } from "@/components/ai/deep-learning/InteractiveWorkflowManager";
 import { EnhancedAGIDashboard } from "@/components/ai/agi/EnhancedAGIDashboard";
+import { ImprovedAGIDashboard } from "@/components/ai/agi/ImprovedAGIDashboard";
 import { QuantumBlockchainPlatform } from "@/components/ai/quantum-blockchain/QuantumBlockchainPlatform";
 import { QuantumAITrainingAdvanced } from "@/components/ai/quantum-blockchain/QuantumAITrainingAdvanced";
 import { AutonomousAgentSystem } from "@/components/ai/quantum-blockchain/AutonomousAgentSystem";
@@ -107,7 +108,7 @@ export function QuantumAIDashboard({ activeTab, setActiveTab }: QuantumAIDashboa
       </TabsContent>
 
       <TabsContent value="agi">
-        <EnhancedAGIDashboard />
+        <ImprovedAGIDashboard />
       </TabsContent>
     </Tabs>
   );
