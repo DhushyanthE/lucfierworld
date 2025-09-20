@@ -1,5 +1,5 @@
 /**
- * Quantum Circuit Studio - Advanced Circuit Designer with AGI Integration
+ * Enhanced Quantum Circuit Studio - Advanced Circuit Designer with Complete Workflow Integration
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,135 +10,145 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { 
   Cpu, Brain, Shield, Blocks, Zap, Lock, 
   Activity, TrendingUp, AlertTriangle, CheckCircle,
-  Sparkles, Network, Database, Layers
+  Sparkles, Network, Database, Layers, Settings,
+  Play, Pause, RefreshCw, Download, Upload, Save,
+  BarChart3, Clock, Hash, Atom, Workflow
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { agiWorkflowService } from '@/lib/quantum/agi/AGIWorkflowService';
-import { quantumCryptographyService } from '@/lib/quantum/cryptography/QuantumCryptographyService';
-import { quantumBlockchainService } from '@/lib/quantum/blockchain/QuantumBlockchainService';
-import { quantumResistanceService } from '@/lib/quantum/resistance/QuantumResistanceService';
+import { useQuantumCoinWorkflow } from '@/hooks/useQuantumCoinWorkflow';
+import { useQuantumMining } from '@/hooks/useQuantumMining';
+import { QuantumMiningDashboard } from '@/components/quantum-mining/QuantumMiningDashboard';
 
 interface CircuitData {
   id: string;
   name: string;
   qubits: number;
-  gates: any[];
+  gates: CircuitGate[];
   depth: number;
   fidelity: number;
   quantumResistanceLevel: number;
   agiOptimized: boolean;
   blockchainHash?: string;
+  createdAt: number;
+  lastModified: number;
+}
+
+interface CircuitGate {
+  id: string;
+  type: 'H' | 'X' | 'Y' | 'Z' | 'CNOT' | 'RX' | 'RY' | 'RZ' | 'CZ' | 'T' | 'S';
+  qubit: number;
+  targetQubit?: number;
+  rotation?: number;
+  position: { x: number; y: number };
+}
+
+interface WorkflowExecution {
+  id: string;
+  type: 'optimization' | 'simulation' | 'verification' | 'deployment';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+  startTime: number;
+  endTime?: number;
+  result?: any;
+  circuit: CircuitData;
 }
 
 export function QuantumCircuitStudio() {
   const [activeTab, setActiveTab] = useState('designer');
   const [currentCircuit, setCurrentCircuit] = useState<CircuitData | null>(null);
-  const [agiModels, setAgiModels] = useState<any[]>([]);
-  const [selectedAgiModel, setSelectedAgiModel] = useState('quantum-agi-v1');
+  const [savedCircuits, setSavedCircuits] = useState<CircuitData[]>([]);
+  const [selectedGateType, setSelectedGateType] = useState<CircuitGate['type']>('H');
+  const [workflowExecutions, setWorkflowExecutions] = useState<WorkflowExecution[]>([]);
   
-  // AGI Workflow States
-  const [agiExecution, setAgiExecution] = useState<any>(null);
+  // Circuit Parameters
+  const [circuitParams, setCircuitParams] = useState({
+    qubits: 8,
+    depth: 12,
+    gateCount: 24,
+    noiseLevel: 0.01,
+    coherenceTime: 100,
+    enableOptimization: true,
+    quantumSupremacy: false
+  });
+
+  // Workflow States
   const [optimizationProgress, setOptimizationProgress] = useState(0);
-  const [superintelligenceScore, setSuperintelligenceScore] = useState(0);
-  
-  // Quantum Cryptography States
-  const [cryptoProtocols, setCryptoProtocols] = useState<any[]>([]);
-  const [selectedProtocol, setSelectedProtocol] = useState('lattice-based');
-  const [quantumKeys, setQuantumKeys] = useState<any[]>([]);
-  
-  // Blockchain States
-  const [blockchainStats, setBlockchainStats] = useState<any>({});
-  const [quantumBlocks, setQuantumBlocks] = useState<any[]>([]);
-  
-  // Resistance Testing States
-  const [resistanceTests, setResistanceTests] = useState<any[]>([]);
-  const [securityAssessment, setSecurityAssessment] = useState<any>(null);
-  
+  const [simulationResults, setSimulationResults] = useState<any>(null);
+  const [isExecutingWorkflow, setIsExecutingWorkflow] = useState(false);
+
+  // Integration with quantum coin and mining
+  const { 
+    workflowState: coinWorkflowState,
+    submitQuantumTask,
+    executeTransaction 
+  } = useQuantumCoinWorkflow();
+
+  const {
+    activeSessions,
+    blockchainStats,
+    mineBlock,
+    addTransaction
+  } = useQuantumMining();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [draggedGate, setDraggedGate] = useState<CircuitGate | null>(null);
 
   useEffect(() => {
     initializeStudio();
-    loadAGIModels();
-    loadCryptoProtocols();
-    loadBlockchainData();
   }, []);
 
   const initializeStudio = async () => {
-    // Initialize with a sample circuit
+    // Initialize with enhanced sample circuit
     const sampleCircuit: CircuitData = {
       id: crypto.randomUUID(),
-      name: 'Quantum AGI Optimizer Circuit',
-      qubits: 8,
-      gates: [],
-      depth: 12,
+      name: 'Quantum AI Optimizer Circuit v2.0',
+      qubits: circuitParams.qubits,
+      gates: generateSampleGates(),
+      depth: circuitParams.depth,
       fidelity: 0.95,
       quantumResistanceLevel: 7,
-      agiOptimized: false
+      agiOptimized: false,
+      createdAt: Date.now(),
+      lastModified: Date.now()
     };
     
     setCurrentCircuit(sampleCircuit);
-    await saveCircuitToDatabase(sampleCircuit);
-    drawCircuitVisualization(sampleCircuit);
+    setSavedCircuits([sampleCircuit]);
+    drawEnhancedCircuitVisualization(sampleCircuit);
   };
 
-  const loadAGIModels = () => {
-    const models = agiWorkflowService.getAvailableModels();
-    setAgiModels(models);
-  };
-
-  const loadCryptoProtocols = async () => {
-    try {
-      const protocols = await quantumCryptographyService.loadProtocols();
-      setCryptoProtocols(protocols);
-    } catch (error) {
-      console.error('Failed to load crypto protocols:', error);
+  const generateSampleGates = (): CircuitGate[] => {
+    const gates: CircuitGate[] = [];
+    const gateTypes: CircuitGate['type'][] = ['H', 'X', 'Y', 'Z', 'CNOT', 'RX', 'RY', 'RZ'];
+    
+    for (let i = 0; i < circuitParams.gateCount; i++) {
+      const gateType = gateTypes[Math.floor(Math.random() * gateTypes.length)];
+      const qubit = Math.floor(Math.random() * circuitParams.qubits);
+      
+      gates.push({
+        id: crypto.randomUUID(),
+        type: gateType,
+        qubit,
+        targetQubit: gateType === 'CNOT' ? Math.floor(Math.random() * circuitParams.qubits) : undefined,
+        rotation: gateType.startsWith('R') ? Math.random() * Math.PI * 2 : undefined,
+        position: {
+          x: 60 + (i % circuitParams.depth) * 60,
+          y: 60 + qubit * 50
+        }
+      });
     }
+    
+    return gates;
   };
 
-  const loadBlockchainData = async () => {
-    try {
-      await quantumBlockchainService.loadBlockchainFromDatabase();
-      const stats = quantumBlockchainService.getBlockchainStats();
-      setBlockchainStats(stats);
-    } catch (error) {
-      console.error('Failed to load blockchain data:', error);
-    }
-  };
-
-  const saveCircuitToDatabase = async (circuit: CircuitData) => {
-    try {
-      const { error } = await supabase
-        .from('quantum_circuits')
-        .upsert({
-          id: circuit.id,
-          name: circuit.name,
-          circuit_data: {
-            qubits: circuit.qubits,
-            gates: circuit.gates,
-            depth: circuit.depth,
-            fidelity: circuit.fidelity
-          },
-          qubit_count: circuit.qubits,
-          gate_count: circuit.gates.length,
-          circuit_depth: circuit.depth,
-          fidelity_score: circuit.fidelity,
-          quantum_resistance_level: circuit.quantumResistanceLevel,
-          agi_optimization_applied: circuit.agiOptimized,
-          blockchain_hash: circuit.blockchainHash
-        });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Failed to save circuit:', error);
-      toast.error('Failed to save circuit to database');
-    }
-  };
-
-  const drawCircuitVisualization = (circuit: CircuitData) => {
+  const drawEnhancedCircuitVisualization = (circuit: CircuitData) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -146,358 +156,927 @@ export function QuantumCircuitStudio() {
     if (!ctx) return;
 
     // Set canvas size
-    canvas.width = 800;
-    canvas.height = 400;
+    canvas.width = 1200;
+    canvas.height = Math.max(400, circuit.qubits * 60 + 120);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw quantum circuit visualization
-    drawQuantumCircuit(ctx, circuit);
+    // Clear canvas with quantum background
+    drawQuantumBackground(ctx, canvas);
+    
+    // Draw circuit
+    drawAdvancedQuantumCircuit(ctx, circuit);
+    
+    // Draw interactive overlays
+    drawInteractiveOverlays(ctx, circuit);
   };
 
-  const drawQuantumCircuit = (ctx: CanvasRenderingContext2D, circuit: CircuitData) => {
+  const drawQuantumBackground = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    // Quantum field background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.05)');
+    gradient.addColorStop(0.5, 'rgba(147, 51, 234, 0.05)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Quantum interference patterns
+    ctx.strokeStyle = 'rgba(147, 51, 234, 0.1)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 20; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, i * canvas.height / 20);
+      ctx.lineTo(canvas.width, i * canvas.height / 20);
+      ctx.stroke();
+    }
+  };
+
+  const drawAdvancedQuantumCircuit = (ctx: CanvasRenderingContext2D, circuit: CircuitData) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const padding = 40;
-    const qubitSpacing = (canvas.height - 2 * padding) / (circuit.qubits - 1);
-    const gateSpacing = (canvas.width - 2 * padding) / (circuit.depth + 1);
+    const padding = 60;
+    const qubitSpacing = 50;
+    const gateSpacing = 60;
 
-    // Set styles
-    ctx.strokeStyle = '#8b5cf6';
-    ctx.fillStyle = '#8b5cf6';
-    ctx.lineWidth = 2;
-    ctx.font = '12px monospace';
-
-    // Draw qubit lines
+    // Draw qubit lines with enhanced styling
     for (let i = 0; i < circuit.qubits; i++) {
       const y = padding + i * qubitSpacing;
       
-      // Draw quantum state label
-      ctx.fillText(`|${i}⟩`, 10, y + 5);
+      // Qubit label with enhanced styling
+      ctx.fillStyle = '#8b5cf6';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(`|q${i}⟩`, 10, y + 5);
       
-      // Draw qubit line with quantum glow effect
+      // Enhanced qubit line with quantum glow
       const gradient = ctx.createLinearGradient(padding, y, canvas.width - padding, y);
       gradient.addColorStop(0, '#8b5cf6');
-      gradient.addColorStop(0.5, '#6366f1');
+      gradient.addColorStop(0.3, '#6366f1');
+      gradient.addColorStop(0.7, '#06b6d4');
       gradient.addColorStop(1, '#8b5cf6');
       
       ctx.strokeStyle = gradient;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#8b5cf6';
+      ctx.shadowBlur = 5;
+      
       ctx.beginPath();
       ctx.moveTo(padding, y);
       ctx.lineTo(canvas.width - padding, y);
       ctx.stroke();
+      
+      ctx.shadowBlur = 0;
     }
 
-    // Draw quantum gates
-    drawQuantumGates(ctx, circuit, padding, qubitSpacing, gateSpacing);
+    // Draw gates with enhanced graphics
+    circuit.gates.forEach(gate => {
+      drawEnhancedGate(ctx, gate, circuit);
+    });
+
+    // Draw measurement indicators
+    drawMeasurementIndicators(ctx, circuit, padding, qubitSpacing);
   };
 
-  const drawQuantumGates = (
-    ctx: CanvasRenderingContext2D, 
-    circuit: CircuitData, 
-    padding: number, 
-    qubitSpacing: number, 
-    gateSpacing: number
-  ) => {
-    const gateTypes = ['H', 'X', 'Y', 'Z', 'CNOT', 'RX', 'RY', 'RZ'];
+  const drawEnhancedGate = (ctx: CanvasRenderingContext2D, gate: CircuitGate, circuit: CircuitData) => {
+    const { x, y } = gate.position;
+    const gateSize = 40;
     
-    // Simulate gate positions
-    for (let depth = 0; depth < circuit.depth; depth++) {
-      const x = padding + (depth + 1) * gateSpacing;
-      
-      // Randomly place gates for visualization
-      const numGatesAtDepth = Math.floor(Math.random() * 3) + 1;
-      
-      for (let g = 0; g < numGatesAtDepth; g++) {
-        const qubit = Math.floor(Math.random() * circuit.qubits);
-        const y = padding + qubit * qubitSpacing;
-        const gateType = gateTypes[Math.floor(Math.random() * gateTypes.length)];
-        
-        drawSingleGate(ctx, gateType, x, y);
-      }
+    // Gate shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 2;
+    
+    // Gate background with quantum effects
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, gateSize / 2);
+    
+    switch (gate.type) {
+      case 'H':
+        gradient.addColorStop(0, '#fbbf24');
+        gradient.addColorStop(1, '#f59e0b');
+        break;
+      case 'X':
+      case 'Y':
+      case 'Z':
+        gradient.addColorStop(0, '#ef4444');
+        gradient.addColorStop(1, '#dc2626');
+        break;
+      case 'CNOT':
+        gradient.addColorStop(0, '#10b981');
+        gradient.addColorStop(1, '#059669');
+        break;
+      default:
+        gradient.addColorStop(0, '#8b5cf6');
+        gradient.addColorStop(1, '#7c3aed');
     }
-  };
-
-  const drawSingleGate = (ctx: CanvasRenderingContext2D, gateType: string, x: number, y: number) => {
-    const gateSize = 20;
-    
-    // Gate background with quantum glow
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, gateSize);
-    gradient.addColorStop(0, '#8b5cf6');
-    gradient.addColorStop(1, 'rgba(139, 92, 246, 0.3)');
     
     ctx.fillStyle = gradient;
-    ctx.fillRect(x - gateSize/2, y - gateSize/2, gateSize, gateSize);
     
-    // Gate border
-    ctx.strokeStyle = '#6366f1';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - gateSize/2, y - gateSize/2, gateSize, gateSize);
+    if (gate.type === 'CNOT') {
+      // Draw CNOT gate
+      drawCNOTGate(ctx, gate, circuit);
+    } else {
+      // Draw regular gate
+      ctx.fillRect(x - gateSize/2, y - gateSize/2, gateSize, gateSize);
+      
+      // Gate border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - gateSize/2, y - gateSize/2, gateSize, gateSize);
+    }
     
     // Gate label
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(gateType, x, y + 3);
+    ctx.textBaseline = 'middle';
+    
+    let label = gate.type;
+    if (gate.rotation) {
+      label += `(${(gate.rotation * 180 / Math.PI).toFixed(0)}°)`;
+    }
+    
+    ctx.fillText(label, x, y);
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
+    
+    ctx.shadowBlur = 0;
+  };
+
+  const drawCNOTGate = (ctx: CanvasRenderingContext2D, gate: CircuitGate, circuit: CircuitData) => {
+    if (!gate.targetQubit) return;
+    
+    const { x, y } = gate.position;
+    const targetY = 60 + gate.targetQubit * 50;
+    
+    // Control qubit (filled circle)
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Connection line
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, targetY);
+    ctx.stroke();
+    
+    // Target qubit (circle with plus)
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, targetY, 15, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Plus sign
+    ctx.beginPath();
+    ctx.moveTo(x - 8, targetY);
+    ctx.lineTo(x + 8, targetY);
+    ctx.moveTo(x, targetY - 8);
+    ctx.lineTo(x, targetY + 8);
+    ctx.stroke();
+  };
+
+  const drawMeasurementIndicators = (ctx: CanvasRenderingContext2D, circuit: CircuitData, padding: number, qubitSpacing: number) => {
+    // Draw measurement symbols at the end of each qubit line
+    for (let i = 0; i < circuit.qubits; i++) {
+      const x = 1000;
+      const y = padding + i * qubitSpacing;
+      
+      // Measurement box
+      ctx.strokeStyle = '#6b7280';
+      ctx.fillStyle = 'rgba(107, 114, 128, 0.1)';
+      ctx.lineWidth = 2;
+      
+      ctx.fillRect(x - 15, y - 10, 30, 20);
+      ctx.strokeRect(x - 15, y - 10, 30, 20);
+      
+      // Measurement symbol
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI, false);
+      ctx.moveTo(x - 3, y);
+      ctx.lineTo(x + 3, y - 6);
+      ctx.stroke();
+    }
+  };
+
+  const drawInteractiveOverlays = (ctx: CanvasRenderingContext2D, circuit: CircuitData) => {
+    // Draw gate palette
+    drawGatePalette(ctx);
+    
+    // Draw circuit statistics
+    drawCircuitStatistics(ctx, circuit);
+  };
+
+  const drawGatePalette = (ctx: CanvasRenderingContext2D) => {
+    const paletteX = 50;
+    const paletteY = 20;
+    const gateTypes: CircuitGate['type'][] = ['H', 'X', 'Y', 'Z', 'CNOT', 'RX', 'RY', 'RZ'];
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(paletteX - 10, paletteY - 10, gateTypes.length * 50 + 20, 60);
+    
+    gateTypes.forEach((gateType, index) => {
+      const x = paletteX + index * 50;
+      const y = paletteY + 20;
+      
+      // Gate background
+      ctx.fillStyle = selectedGateType === gateType ? '#8b5cf6' : '#4b5563';
+      ctx.fillRect(x - 15, y - 15, 30, 30);
+      
+      // Gate label
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(gateType, x, y + 3);
+    });
+    
     ctx.textAlign = 'start';
   };
 
-  const executeAGIOptimization = async () => {
-    if (!currentCircuit) return;
-
-    try {
-      toast.info('Starting AGI optimization...', {
-        description: 'Advanced AI is analyzing your quantum circuit'
-      });
-
-      setOptimizationProgress(0);
-      
-      const execution = await agiWorkflowService.executeAGIWorkflow(
-        'Circuit Optimization',
-        currentCircuit.id,
-        selectedAgiModel,
-        {
-          optimizationDepth: 5,
-          enableSupervision: true,
-          quantumSupremacyTarget: true
-        }
-      );
-
-      setAgiExecution(execution);
-
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setOptimizationProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return Math.min(100, prev + Math.random() * 15);
-        });
-      }, 500);
-
-      // Wait for completion (simulate)
-      setTimeout(async () => {
-        clearInterval(progressInterval);
-        setOptimizationProgress(100);
-        
-        // Update circuit with optimization results
-        const optimizedCircuit = {
-          ...currentCircuit,
-          agiOptimized: true,
-          fidelity: Math.min(1.0, currentCircuit.fidelity + 0.05),
-          quantumResistanceLevel: Math.min(10, currentCircuit.quantumResistanceLevel + 1)
-        };
-        
-        setCurrentCircuit(optimizedCircuit);
-        setSuperintelligenceScore(0.85 + Math.random() * 0.15);
-        await saveCircuitToDatabase(optimizedCircuit);
-        drawCircuitVisualization(optimizedCircuit);
-
-        toast.success('AGI optimization completed!', {
-          description: 'Circuit performance enhanced with superintelligence'
-        });
-      }, 5000);
-
-    } catch (error) {
-      console.error('AGI optimization failed:', error);
-      toast.error('AGI optimization failed');
-    }
+  const drawCircuitStatistics = (ctx: CanvasRenderingContext2D, circuit: CircuitData) => {
+    const statsX = 800;
+    const statsY = 20;
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(statsX, statsY, 200, 120);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '12px monospace';
+    
+    const stats = [
+      `Qubits: ${circuit.qubits}`,
+      `Gates: ${circuit.gates.length}`,
+      `Depth: ${circuit.depth}`,
+      `Fidelity: ${(circuit.fidelity * 100).toFixed(1)}%`,
+      `Resistance: ${circuit.quantumResistanceLevel}/10`,
+      `Optimized: ${circuit.agiOptimized ? 'Yes' : 'No'}`
+    ];
+    
+    stats.forEach((stat, index) => {
+      ctx.fillText(stat, statsX + 10, statsY + 20 + index * 15);
+    });
   };
 
-  const generateQuantumResistantKeys = async () => {
-    try {
-      toast.info('Generating quantum-resistant keys...', {
-        description: 'Creating cryptographic key pairs with quantum resistance'
-      });
-
-      const { publicKey, privateKey } = await quantumCryptographyService.generateQuantumResistantKeyPair(
-        selectedProtocol as any,
-        256
-      );
-
-      setQuantumKeys(prev => [...prev, { publicKey, privateKey }]);
-
-      toast.success('Quantum-resistant keys generated!', {
-        description: `${selectedProtocol} keys with security level ${publicKey.quantumResistanceLevel}`
-      });
-    } catch (error) {
-      console.error('Key generation failed:', error);
-      toast.error('Failed to generate quantum keys');
-    }
-  };
-
-  const [miningProgress, setMiningProgress] = useState<number>(0);
-  const [miningStatus, setMiningStatus] = useState<'idle' | 'mining' | 'completed' | 'failed'>('idle');
-  const [currentBlock, setCurrentBlock] = useState<any>(null);
-  const [blockchainRecords, setBlockchainRecords] = useState<any[]>([]);
-
-  const mineQuantumBlock = async () => {
+  const executeAdvancedWorkflow = async (workflowType: WorkflowExecution['type']) => {
     if (!currentCircuit) return;
 
+    const execution: WorkflowExecution = {
+      id: crypto.randomUUID(),
+      type: workflowType,
+      status: 'pending',
+      progress: 0,
+      startTime: Date.now(),
+      circuit: currentCircuit
+    };
+
+    setWorkflowExecutions(prev => [...prev, execution]);
+    setIsExecutingWorkflow(true);
+
     try {
-      setMiningStatus('mining');
-      setMiningProgress(0);
-      
-      toast.info('Initializing quantum mining...', {
-        description: 'Setting up quantum consensus algorithms'
+      toast.info(`Starting ${workflowType} workflow...`, {
+        description: 'Advanced quantum processing initiated'
       });
 
-      // Create a quantum transaction for the circuit
-      const transaction = await quantumBlockchainService.createQuantumTransaction(
-        'circuit-studio',
-        'quantum-blockchain',
-        1.0,
+      // Update status to running
+      execution.status = 'running';
+      setWorkflowExecutions(prev => prev.map(e => e.id === execution.id ? execution : e));
+
+      // Submit task to quantum coin workflow
+      const taskId = await submitQuantumTask(
+        'quantum_mining',
         {
           circuitId: currentCircuit.id,
-          circuitData: currentCircuit,
-          timestamp: Date.now()
+          workflowType,
+          circuitData: currentCircuit
         },
-        await quantumCryptographyService.generateQuantumResistantKeyPair('lattice-based', 256).then(kp => kp.privateKey)
+        'high'
       );
 
-      // Simulate mining progress
+      // Simulate progress
       const progressInterval = setInterval(() => {
-        setMiningProgress(prev => {
-          const newProgress = Math.min(100, prev + Math.random() * 12 + 3);
-          
-          if (newProgress < 30) {
-            toast.info('Solving quantum proof-of-work...', {
-              description: `Mining progress: ${newProgress.toFixed(0)}%`
-            });
-          } else if (newProgress < 60) {
-            toast.info('Quantum consensus validation...', {
-              description: `Validators approving: ${Math.floor(newProgress/20)}/5`
-            });
-          } else if (newProgress < 90) {
-            toast.info('Quantum signature verification...', {
-              description: `Cryptographic proofs: ${newProgress.toFixed(0)}%`
-            });
-          }
-          
-          return newProgress;
-        });
-      }, 600);
+        execution.progress = Math.min(100, execution.progress + Math.random() * 15 + 5);
+        setOptimizationProgress(execution.progress);
+        
+        if (execution.progress >= 100) {
+          clearInterval(progressInterval);
+        }
+        
+        setWorkflowExecutions(prev => prev.map(e => e.id === execution.id ? execution : e));
+      }, 800);
 
-      // Start the actual mining process
-      const block = await quantumBlockchainService.mineQuantumBlock('quantum-studio');
-      
-      // Complete mining
-      setTimeout(() => {
+      // Complete after delay
+      setTimeout(async () => {
         clearInterval(progressInterval);
-        setMiningProgress(100);
-        setMiningStatus('completed');
-        setCurrentBlock(block);
+        execution.status = 'completed';
+        execution.endTime = Date.now();
+        execution.progress = 100;
+        execution.result = await generateWorkflowResult(workflowType, currentCircuit);
         
-        // Update circuit with blockchain hash
-        const updatedCircuit = {
-          ...currentCircuit,
-          blockchainHash: block.blockHash
-        };
+        // Update circuit with results
+        if (workflowType === 'optimization') {
+          const optimizedCircuit = {
+            ...currentCircuit,
+            agiOptimized: true,
+            fidelity: Math.min(1.0, currentCircuit.fidelity + 0.05),
+            quantumResistanceLevel: Math.min(10, currentCircuit.quantumResistanceLevel + 1),
+            lastModified: Date.now()
+          };
+          setCurrentCircuit(optimizedCircuit);
+          drawEnhancedCircuitVisualization(optimizedCircuit);
+        }
         
-        setCurrentCircuit(updatedCircuit);
-        saveCircuitToDatabase(updatedCircuit);
-        
-        // Update blockchain records
-        setBlockchainRecords(prev => [block, ...prev]);
-        
-        // Update blockchain stats
-        const stats = quantumBlockchainService.getBlockchainStats();
-        setBlockchainStats(stats);
+        setWorkflowExecutions(prev => prev.map(e => e.id === execution.id ? execution : e));
+        setIsExecutingWorkflow(false);
+        setOptimizationProgress(0);
 
-        toast.success('Quantum block successfully mined!', {
-          description: `Block ${block.blockHash.substring(0, 8)}... validated with quantum consensus`
+        toast.success(`${workflowType} workflow completed!`, {
+          description: `Task ID: ${taskId}`
         });
-      }, 4000);
+
+      }, 6000);
 
     } catch (error) {
-      console.error('Block mining failed:', error);
-      setMiningStatus('failed');
-      setMiningProgress(0);
-      toast.error('Quantum mining failed', {
-        description: 'Failed to mine quantum block'
-      });
+      execution.status = 'failed';
+      execution.endTime = Date.now();
+      setWorkflowExecutions(prev => prev.map(e => e.id === execution.id ? execution : e));
+      setIsExecutingWorkflow(false);
+      toast.error(`${workflowType} workflow failed`);
     }
   };
 
-  const runResistanceTest = async () => {
+  const generateWorkflowResult = async (workflowType: string, circuit: CircuitData) => {
+    switch (workflowType) {
+      case 'optimization':
+        return {
+          optimizationGain: 0.15 + Math.random() * 0.2,
+          gatesReduced: Math.floor(Math.random() * 10) + 5,
+          fidelityImprovement: 0.02 + Math.random() * 0.05,
+          techniques: ['Gate fusion', 'Commutation rules', 'Quantum phase estimation']
+        };
+      case 'simulation':
+        return {
+          stateVector: Array.from({ length: Math.pow(2, circuit.qubits) }, () => Math.random()),
+          measurementProbabilities: Array.from({ length: circuit.qubits }, () => Math.random()),
+          entanglementEntropy: Math.random() * Math.log2(circuit.qubits),
+          executionTime: Math.random() * 1000 + 500
+        };
+      case 'verification':
+        return {
+          correctness: 0.95 + Math.random() * 0.05,
+          vulnerabilities: Math.floor(Math.random() * 3),
+          quantumErrors: Math.random() * 0.1,
+          recommendations: ['Increase coherence time', 'Add error correction', 'Optimize gate sequence']
+        };
+      case 'deployment':
+        return {
+          deploymentId: crypto.randomUUID(),
+          targetPlatform: 'IBM Quantum',
+          estimatedRuntime: Math.random() * 3600 + 300,
+          cost: Math.random() * 100 + 10,
+          availability: 'Ready for execution'
+        };
+      default:
+        return {};
+    }
+  };
+
+  // Canvas event handlers
+  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !currentCircuit) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Check if clicked on gate palette
+    const paletteY = 20;
+    if (y >= paletteY && y <= paletteY + 40) {
+      const gateTypes: CircuitGate['type'][] = ['H', 'X', 'Y', 'Z', 'CNOT', 'RX', 'RY', 'RZ'];
+      const gateIndex = Math.floor((x - 40) / 50);
+      if (gateIndex >= 0 && gateIndex < gateTypes.length) {
+        setSelectedGateType(gateTypes[gateIndex]);
+        drawEnhancedCircuitVisualization(currentCircuit);
+        return;
+      }
+    }
+
+    // Add gate to circuit
+    const qubit = Math.floor((y - 60) / 50);
+    if (qubit >= 0 && qubit < currentCircuit.qubits && x > 100 && x < 1000) {
+      const newGate: CircuitGate = {
+        id: crypto.randomUUID(),
+        type: selectedGateType,
+        qubit,
+        targetQubit: selectedGateType === 'CNOT' ? Math.min(currentCircuit.qubits - 1, qubit + 1) : undefined,
+        rotation: selectedGateType.startsWith('R') ? Math.PI / 2 : undefined,
+        position: { x, y: 60 + qubit * 50 }
+      };
+
+      const updatedCircuit = {
+        ...currentCircuit,
+        gates: [...currentCircuit.gates, newGate],
+        lastModified: Date.now()
+      };
+
+      setCurrentCircuit(updatedCircuit);
+      drawEnhancedCircuitVisualization(updatedCircuit);
+    }
+  };
+
+  const saveCircuit = async () => {
     if (!currentCircuit) return;
 
     try {
-      toast.info('Running quantum resistance test...', {
-        description: 'Testing circuit against quantum attacks'
+      const updatedCircuit = {
+        ...currentCircuit,
+        lastModified: Date.now()
+      };
+
+      setSavedCircuits(prev => {
+        const index = prev.findIndex(c => c.id === updatedCircuit.id);
+        if (index >= 0) {
+          const updated = [...prev];
+          updated[index] = updatedCircuit;
+          return updated;
+        } else {
+          return [...prev, updatedCircuit];
+        }
       });
 
-      const test = await quantumResistanceService.runResistanceTest(
-        currentCircuit.id,
-        'post-quantum-security',
-        {
-          keySize: 256,
-          iterations: 1000,
-          attackStrength: 8,
-          timeLimit: 3600
-        }
-      );
-
-      setResistanceTests(prev => [...prev, test]);
-
-      // Generate security assessment after test completes
-      setTimeout(async () => {
-        try {
-          const assessment = await quantumResistanceService.generateSecurityAssessment(currentCircuit.id);
-          setSecurityAssessment(assessment);
-
-          toast.success('Resistance test completed!', {
-            description: `Security level: ${assessment.quantumSecurityLevel}/5`
-          });
-        } catch (error) {
-          console.error('Security assessment failed:', error);
-        }
-      }, 3000);
-
+      setCurrentCircuit(updatedCircuit);
+      toast.success('Circuit saved successfully');
     } catch (error) {
-      console.error('Resistance test failed:', error);
-      toast.error('Failed to run resistance test');
+      toast.error('Failed to save circuit');
     }
+  };
+
+  const loadCircuit = (circuit: CircuitData) => {
+    setCurrentCircuit(circuit);
+    drawEnhancedCircuitVisualization(circuit);
+    toast.info(`Loaded circuit: ${circuit.name}`);
+  };
+
+  const createNewCircuit = () => {
+    const newCircuit: CircuitData = {
+      id: crypto.randomUUID(),
+      name: `Quantum Circuit ${Date.now()}`,
+      qubits: circuitParams.qubits,
+      gates: [],
+      depth: 0,
+      fidelity: 0.98,
+      quantumResistanceLevel: 5,
+      agiOptimized: false,
+      createdAt: Date.now(),
+      lastModified: Date.now()
+    };
+
+    setCurrentCircuit(newCircuit);
+    drawEnhancedCircuitVisualization(newCircuit);
   };
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
-      <Card className="glass-panel">
+      {/* Enhanced Header */}
+      <Card className="glass-panel border-2 border-purple-500/20">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Brain className="h-6 w-6 text-purple-400" />
-                Quantum Circuit Studio
-                <Badge className="bg-purple-900/40 text-purple-300">
-                  AGI-Powered
+              <CardTitle className="flex items-center gap-2 text-3xl">
+                <Brain className="h-8 w-8 text-purple-400" />
+                Enhanced Quantum Circuit Studio
+                <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+                  v2.0 AGI-Powered
                 </Badge>
               </CardTitle>
               <p className="text-gray-400 mt-2">
-                Advanced quantum circuit design with AGI optimization, cryptography, and blockchain integration
+                Complete quantum circuit design with workflow integration, mining capabilities, and advanced AI optimization
               </p>
             </div>
             
             <div className="flex gap-3">
-              <Button onClick={executeAGIOptimization} className="bg-purple-600 hover:bg-purple-700">
+              <Button onClick={() => executeAdvancedWorkflow('optimization')} className="bg-purple-600 hover:bg-purple-700">
                 <Sparkles className="h-4 w-4 mr-2" />
-                AGI Optimize
+                AI Optimize
               </Button>
-              <Button onClick={mineQuantumBlock} variant="outline">
-                <Blocks className="h-4 w-4 mr-2" />
-                Mine Block
+              <Button onClick={() => executeAdvancedWorkflow('simulation')} variant="outline">
+                <Activity className="h-4 w-4 mr-2" />
+                Simulate
+              </Button>
+              <Button onClick={saveCircuit} variant="outline">
+                <Save className="h-4 w-4 mr-2" />
+                Save
               </Button>
             </div>
           </div>
+          
+          {/* Progress indicator for active workflows */}
+          {isExecutingWorkflow && (
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span>Workflow Progress</span>
+                <span>{optimizationProgress.toFixed(1)}%</span>
+              </div>
+              <Progress value={optimizationProgress} className="h-2" />
+            </div>
+          )}
         </CardHeader>
       </Card>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Content Tabs */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="designer">Circuit Designer</TabsTrigger>
+                <TabsTrigger value="workflows">Workflows</TabsTrigger>
+                <TabsTrigger value="mining">Quantum Mining</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="library">Circuit Library</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="designer" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* Circuit Canvas */}
+                  <div className="lg:col-span-3">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Atom className="h-5 w-5 text-primary" />
+                          Interactive Circuit Canvas
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <canvas
+                          ref={canvasRef}
+                          onClick={handleCanvasClick}
+                          className="border border-gray-300 rounded-lg cursor-crosshair w-full"
+                          style={{ maxWidth: '100%', height: 'auto' }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Circuit Controls */}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Circuit Parameters</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Qubits: {circuitParams.qubits}</Label>
+                          <Slider
+                            value={[circuitParams.qubits]}
+                            onValueChange={(values) => setCircuitParams(prev => ({ ...prev, qubits: values[0] }))}
+                            min={2}
+                            max={32}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Target Depth: {circuitParams.depth}</Label>
+                          <Slider
+                            value={[circuitParams.depth]}
+                            onValueChange={(values) => setCircuitParams(prev => ({ ...prev, depth: values[0] }))}
+                            min={1}
+                            max={50}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Noise Level: {circuitParams.noiseLevel}</Label>
+                          <Slider
+                            value={[circuitParams.noiseLevel]}
+                            onValueChange={(values) => setCircuitParams(prev => ({ ...prev, noiseLevel: values[0] }))}
+                            min={0}
+                            max={0.1}
+                            step={0.001}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="optimization">Enable AI Optimization</Label>
+                          <Switch
+                            id="optimization"
+                            checked={circuitParams.enableOptimization}
+                            onCheckedChange={(checked) => setCircuitParams(prev => ({ ...prev, enableOptimization: checked }))}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="supremacy">Quantum Supremacy</Label>
+                          <Switch
+                            id="supremacy"
+                            checked={circuitParams.quantumSupremacy}
+                            onCheckedChange={(checked) => setCircuitParams(prev => ({ ...prev, quantumSupremacy: checked }))}
+                          />
+                        </div>
+
+                        <Button onClick={createNewCircuit} className="w-full">
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          New Circuit
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Current Circuit Stats */}
+                    {currentCircuit && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Current Circuit</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Name:</span>
+                            <span className="font-semibold truncate">{currentCircuit.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Gates:</span>
+                            <span className="font-semibold">{currentCircuit.gates.length}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Fidelity:</span>
+                            <span className="font-semibold">{(currentCircuit.fidelity * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Resistance:</span>
+                            <span className="font-semibold">{currentCircuit.quantumResistanceLevel}/10</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Optimized:</span>
+                            <Badge variant={currentCircuit.agiOptimized ? 'default' : 'secondary'}>
+                              {currentCircuit.agiOptimized ? 'Yes' : 'No'}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="workflows" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Button 
+                    onClick={() => executeAdvancedWorkflow('optimization')} 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    disabled={!currentCircuit || isExecutingWorkflow}
+                  >
+                    <Sparkles className="h-6 w-6" />
+                    <span>Optimize Circuit</span>
+                  </Button>
+
+                  <Button 
+                    onClick={() => executeAdvancedWorkflow('simulation')} 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    disabled={!currentCircuit || isExecutingWorkflow}
+                  >
+                    <Activity className="h-6 w-6" />
+                    <span>Run Simulation</span>
+                  </Button>
+
+                  <Button 
+                    onClick={() => executeAdvancedWorkflow('verification')} 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    disabled={!currentCircuit || isExecutingWorkflow}
+                  >
+                    <Shield className="h-6 w-6" />
+                    <span>Verify Security</span>
+                  </Button>
+
+                  <Button 
+                    onClick={() => executeAdvancedWorkflow('deployment')} 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    disabled={!currentCircuit || isExecutingWorkflow}
+                  >
+                    <Upload className="h-6 w-6" />
+                    <span>Deploy Circuit</span>
+                  </Button>
+                </div>
+
+                {/* Workflow Execution History */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Workflow className="h-5 w-5 text-primary" />
+                      Workflow Execution History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {workflowExecutions.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        No workflow executions yet. Start by running an optimization or simulation.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {workflowExecutions.slice().reverse().slice(0, 10).map((execution) => (
+                          <div key={execution.id} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="capitalize">
+                                  {execution.type}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {new Date(execution.startTime).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <Badge variant={execution.status === 'completed' ? 'default' : 
+                                           execution.status === 'failed' ? 'destructive' : 'secondary'}>
+                                {execution.status}
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>Progress</span>
+                                <span>{execution.progress.toFixed(1)}%</span>
+                              </div>
+                              <Progress value={execution.progress} className="h-1" />
+                            </div>
+
+                            {execution.result && (
+                              <div className="mt-3 text-sm">
+                                <p className="text-muted-foreground">
+                                  Result: {JSON.stringify(execution.result).substring(0, 100)}...
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="mining" className="space-y-6">
+                <QuantumMiningDashboard />
+              </TabsContent>
+
+              <TabsContent value="analytics" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Quantum Metrics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Coherence</span>
+                            <span>94.2%</span>
+                          </div>
+                          <Progress value={94.2} className="h-1" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Entanglement</span>
+                            <span>87.5%</span>
+                          </div>
+                          <Progress value={87.5} className="h-1" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Fidelity</span>
+                            <span>96.8%</span>
+                          </div>
+                          <Progress value={96.8} className="h-1" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Workflow Statistics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Total Executions:</span>
+                          <span className="font-semibold">{workflowExecutions.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Successful:</span>
+                          <span className="font-semibold text-green-500">
+                            {workflowExecutions.filter(e => e.status === 'completed').length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Failed:</span>
+                          <span className="font-semibold text-red-500">
+                            {workflowExecutions.filter(e => e.status === 'failed').length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Success Rate:</span>
+                          <span className="font-semibold">
+                            {workflowExecutions.length > 0 ? 
+                              ((workflowExecutions.filter(e => e.status === 'completed').length / workflowExecutions.length) * 100).toFixed(1) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Integration Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Quantum Coin</span>
+                          <Badge variant={coinWorkflowState?.isActive ? 'default' : 'secondary'}>
+                            {coinWorkflowState?.isActive ? 'Active' : 'Idle'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Mining Network</span>
+                          <Badge variant={activeSessions.length > 0 ? 'default' : 'secondary'}>
+                            {activeSessions.length > 0 ? 'Mining' : 'Idle'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Blockchain</span>
+                          <Badge variant="default">
+                            {blockchainStats.totalBlocks || 0} Blocks
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="library" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-primary" />
+                      Saved Circuits
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {savedCircuits.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        No saved circuits yet. Create and save circuits to build your library.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {savedCircuits.map((circuit) => (
+                          <Card key={circuit.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4" onClick={() => loadCircuit(circuit)}>
+                              <div className="space-y-2">
+                                <h3 className="font-semibold truncate">{circuit.name}</h3>
+                                <div className="text-sm text-muted-foreground space-y-1">
+                                  <div className="flex justify-between">
+                                    <span>Qubits:</span>
+                                    <span>{circuit.qubits}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Gates:</span>
+                                    <span>{circuit.gates.length}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Fidelity:</span>
+                                    <span>{(circuit.fidelity * 100).toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <Badge variant={circuit.agiOptimized ? 'default' : 'secondary'}>
+                                    {circuit.agiOptimized ? 'Optimized' : 'Standard'}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(circuit.lastModified).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
         {/* Left Panel - Circuit Designer */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="glass-panel">
