@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network } from 'lucide-react';
+import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers } from 'lucide-react';
 
 interface NavigationItem {
   label: string;
@@ -41,6 +41,11 @@ export function AppNavigation() {
       label: 'Genomic Sequencing',
       href: '/genomic',
       icon: <Dna className="h-5 w-5" />,
+    },
+    {
+      label: 'Blockchain-ANN',
+      href: '/blockchain-ann',
+      icon: <Layers className="h-5 w-5" />,
       isNew: true,
     },
   ];

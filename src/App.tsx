@@ -19,6 +19,7 @@ import QuantumIndex from './pages/quantum-index';
 import BlockchainNetwork from './pages/BlockchainNetwork';
 import QuantumComputing from './pages/QuantumComputing';
 import QuantumValley150Qubit from './pages/QuantumValley150Qubit';
+import BlockchainANN from './pages/BlockchainANN';
 import './App.css';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
             <Route path="/trading-assistant" element={<TradingAssistant />} />
             <Route path="/blockchain" element={<BlockchainNetwork />} />
             <Route path="/quantum-computing" element={<QuantumComputing />} />
+            <Route path="/blockchain-ann" element={<BlockchainANN />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
