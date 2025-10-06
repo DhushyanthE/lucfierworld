@@ -34,21 +34,11 @@ export interface MarketStats {
 }
 
 class CryptoApiService {
+  // Note: Direct API calls from frontend are disabled due to CORS restrictions
+  // Using mock data for demo purposes. In production, implement a backend proxy.
   private async fetchWithApiKey(endpoint: string, params: Record<string, any> = {}) {
-    try {
-      const response = await axios.get(`${BASE_URL}${endpoint}`, {
-        headers: {
-          'X-CMC_PRO_API_KEY': API_KEY
-        },
-        params
-      });
-      return response.data;
-    } catch (error) {
-      console.error("API error:", error);
-      toast.error("Failed to fetch crypto data");
-      // Fallback to mock data
-      return this.getMockDataForEndpoint(endpoint);
-    }
+    // Return mock data directly instead of attempting API call
+    return this.getMockDataForEndpoint(endpoint);
   }
 
   private getMockDataForEndpoint(endpoint: string) {
@@ -122,58 +112,48 @@ class CryptoApiService {
   }
 
   public async getPrices(symbols: string[] = ['BTC', 'ETH', 'SOL', 'QNTM']): Promise<CryptoPrice[]> {
-    try {
-      const response = await this.fetchWithApiKey('/cryptocurrency/quotes/latest', {
-        symbol: symbols.join(',')
-      });
-      
-      return symbols.map(symbol => {
-        const data = response.data[symbol];
-        return {
-          symbol,
-          price: data.quote.USD.price,
-          change24h: data.quote.USD.percent_change_24h,
-          volume24h: data.quote.USD.volume_24h,
-          marketCap: data.quote.USD.market_cap,
-          lastUpdated: data.quote.USD.last_updated
-        };
-      });
-    } catch (error) {
-      console.error("Error fetching prices:", error);
-      return [];
-    }
+    const response = await this.fetchWithApiKey('/cryptocurrency/quotes/latest', {
+      symbol: symbols.join(',')
+    });
+    
+    return symbols.map(symbol => {
+      const data = response.data[symbol];
+      return {
+        symbol,
+        price: data.quote.USD.price,
+        change24h: data.quote.USD.percent_change_24h,
+        volume24h: data.quote.USD.volume_24h,
+        marketCap: data.quote.USD.market_cap,
+        lastUpdated: data.quote.USD.last_updated || new Date().toISOString()
+      };
+    });
   }
 
   public async getOHLCV(symbols: string[] = ['BTC', 'ETH', 'SOL', 'QNTM'], interval: string = '1d'): Promise<CryptoOHLCV[]> {
-    try {
-      const response = await this.fetchWithApiKey('/cryptocurrency/ohlcv/latest', {
-        symbol: symbols.join(','),
-        convert: 'USD',
-        interval
-      });
-      
-      const result: CryptoOHLCV[] = [];
-      
-      symbols.forEach(symbol => {
-        if (response.data[symbol]) {
-          const ohlcv = response.data[symbol].quote.USD;
-          result.push({
-            symbol,
-            timestamp: new Date(ohlcv.last_updated).getTime(),
-            open: ohlcv.open,
-            high: ohlcv.high,
-            low: ohlcv.low,
-            close: ohlcv.close,
-            volume: ohlcv.volume
-          });
-        }
-      });
-      
-      return result;
-    } catch (error) {
-      console.error("Error fetching OHLCV data:", error);
-      return [];
-    }
+    const response = await this.fetchWithApiKey('/cryptocurrency/ohlcv/latest', {
+      symbol: symbols.join(','),
+      convert: 'USD',
+      interval
+    });
+    
+    const result: CryptoOHLCV[] = [];
+    
+    symbols.forEach(symbol => {
+      if (response.data[symbol]) {
+        const ohlcv = response.data[symbol].quote.USD;
+        result.push({
+          symbol,
+          timestamp: new Date(ohlcv.last_updated).getTime(),
+          open: ohlcv.open,
+          high: ohlcv.high,
+          low: ohlcv.low,
+          close: ohlcv.close,
+          volume: ohlcv.volume
+        });
+      }
+    });
+    
+    return result;
   }
 
   public async getHistoricalData(symbol: string, days: number = 30): Promise<MarketData[]> {
@@ -211,25 +191,13 @@ class CryptoApiService {
   }
 
   public async getMarketStats(): Promise<MarketStats> {
-    try {
-      const response = await this.fetchWithApiKey('/global-metrics/quotes/latest');
-      const data = response.data.quote.USD;
-      
-      return {
-        totalMarketCap: data.total_market_cap,
-        totalVolume24h: data.total_volume_24h,
-        btcDominance: data.btc_dominance,
-        ethDominance: data.eth_dominance
-      };
-    } catch (error) {
-      console.error("Error fetching market stats:", error);
-      return {
-        totalMarketCap: 1428000000000,
-        totalVolume24h: 78500000000,
-        btcDominance: 51.8,
-        ethDominance: 18.4
-      };
-    }
+    // Using mock data - implement backend proxy for real API calls
+    return {
+      totalMarketCap: 1428000000000,
+      totalVolume24h: 78500000000,
+      btcDominance: 51.8,
+      ethDominance: 18.4
+    };
   }
 
   // Convert API data to MarketData format
