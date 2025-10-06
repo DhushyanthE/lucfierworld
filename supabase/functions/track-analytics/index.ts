@@ -13,9 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      }
+    );
 
     const {
       event_name,
@@ -26,50 +32,24 @@ serve(async (req) => {
       user_agent,
       device_type,
       browser,
-      country,
-      city,
     } = await req.json();
 
-    // Validate required fields
-    if (!event_name || !session_id) {
-      return new Response(
-        JSON.stringify({ error: "event_name and session_id are required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Get user ID from auth if available
-    const authHeader = req.headers.get("Authorization");
-    let userId = null;
-    if (authHeader) {
-      const { data: { user } } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      userId = user?.id || null;
-    }
-
-    // Extract IP address from request
-    const ip_address = req.headers.get("x-forwarded-for")?.split(",")[0] || 
-                       req.headers.get("x-real-ip") || 
-                       null;
+    // Get user ID from session if authenticated
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
 
     // Insert analytics event
-    const { data: eventData, error: eventError } = await supabase
+    const { data: eventData, error: eventError } = await supabaseClient
       .from("analytics_events")
       .insert({
         event_name,
         event_data,
-        user_id: userId,
+        user_id: user?.id || null,
         session_id,
         page_url,
         referrer,
         user_agent,
-        ip_address,
-        country,
-        city,
         device_type,
         browser,
       })
@@ -77,60 +57,54 @@ serve(async (req) => {
       .single();
 
     if (eventError) {
-      console.error("Error inserting event:", eventError);
-      return new Response(JSON.stringify({ error: eventError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("Error inserting analytics event:", eventError);
+      throw eventError;
     }
 
     // Update or create session
-    if (event_name === "page_view") {
-      const { data: existingSession } = await supabase
+    if (session_id) {
+      const { data: existingSession } = await supabaseClient
         .from("analytics_sessions")
-        .select()
+        .select("*")
         .eq("session_id", session_id)
-        .single();
+        .maybeSingle();
 
       if (existingSession) {
         // Update existing session
-        await supabase
+        await supabaseClient
           .from("analytics_sessions")
           .update({
-            page_views: (existingSession.page_views || 0) + 1,
-            exit_page: page_url,
             ended_at: new Date().toISOString(),
+            page_views: existingSession.page_views + 1,
+            exit_page: page_url,
           })
           .eq("session_id", session_id);
       } else {
         // Create new session
-        await supabase.from("analytics_sessions").insert({
+        await supabaseClient.from("analytics_sessions").insert({
           session_id,
-          user_id: userId,
+          user_id: user?.id || null,
           entry_page: page_url,
-          exit_page: page_url,
-          page_views: 1,
           device_type,
           browser,
-          country,
         });
       }
     }
 
-    console.log("Analytics event tracked:", event_name, session_id);
+    console.log("Analytics event tracked:", event_name);
 
-    return new Response(
-      JSON.stringify({ success: true, event: eventData }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ success: true, data: eventData }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
     console.error("Error in track-analytics function:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
   }
 });
