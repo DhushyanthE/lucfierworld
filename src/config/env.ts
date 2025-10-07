@@ -36,7 +36,8 @@ export const QUANTUM_CONFIG = {
 export const TOKEN_CONFIG = {
   SYMBOL: "QNTM",
   DECIMALS: 18,
-  CONTRACT_ADDRESS: "0x3F8CB69d9c740AD82a3a3999ABd73c1aE75F5768",
+  // Use environment variable for contract address to prevent hardcoding sensitive data
+  CONTRACT_ADDRESS: import.meta.env.VITE_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000",
   TOTAL_SUPPLY: "1000000000000000000000000000"
 };
 

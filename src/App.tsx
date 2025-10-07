@@ -20,6 +20,7 @@ import BlockchainNetwork from './pages/BlockchainNetwork';
 import QuantumComputing from './pages/QuantumComputing';
 import QuantumValley150Qubit from './pages/QuantumValley150Qubit';
 import BlockchainANN from './pages/BlockchainANN';
+import Auth from './pages/Auth';
 import './App.css';
 
 function App() {
@@ -32,14 +33,15 @@ function App() {
       <WalletProvider>
         <HashRouter>
           <Routes>
+            <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Index />} />
             <Route path="/crypto-market" element={<CryptoMarket />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/quantum" element={<QuantumIndex />} />
             <Route path="/quantum-operations" element={<QuantumOperations />} />
             <Route path="/quantum-ai" element={<QuantumAI />} />
-          <Route path="/quantum-circuits" element={<QuantumCircuits />} />
-          <Route path="/quantum-valley-150" element={<QuantumValley150Qubit />} />
+            <Route path="/quantum-circuits" element={<QuantumCircuits />} />
+            <Route path="/quantum-valley-150" element={<QuantumValley150Qubit />} />
             <Route path="/quantum-workflow" element={<QuantumWorkflow />} />
             <Route path="/agi-dashboard" element={<AGIDashboard />} />
             <Route path="/genomic" element={<GenomicSequencing />} />

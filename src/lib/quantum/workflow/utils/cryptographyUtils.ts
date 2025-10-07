@@ -10,40 +10,30 @@
  * @returns Hexadecimal string of random bytes
  */
 export function generateSecureRandomness(bytes: number = 32): string {
-  // In a real implementation, this would use a secure random number generator
-  // For demo purposes, we simulate secure randomness
+  // Use Web Crypto API for cryptographically secure random number generation
+  const randomBytes = new Uint8Array(bytes);
+  crypto.getRandomValues(randomBytes);
   
-  // Generate random bytes
-  const randomBytes = Array(bytes).fill(0)
-    .map(() => Math.floor(Math.random() * 256).toString(16).padStart(2, '0'));
-  
-  return randomBytes.join('');
+  // Convert to hexadecimal string
+  return Array.from(randomBytes)
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
- * Generate a quantum-secure hash
+ * Generate a cryptographically secure hash using SHA-256
  * @param data Data to hash
- * @returns Hash result
+ * @returns Hash result as hexadecimal string
  */
-export function generateQuantumSecureHash(data: string): string {
-  // In a real implementation, this would use a quantum-resistant hash function
-  // For demo purposes, we simulate a hash
+export async function generateQuantumSecureHash(data: string): Promise<string> {
+  // Use Web Crypto API for SHA-256 hashing
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
   
-  // Simple hash function (not cryptographically secure)
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  
-  // Convert to hex string
-  const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
-  
-  // Add some random bytes to make it look like a full hash
-  const randomPart = generateSecureRandomness(24);
-  
-  return hashHex + randomPart;
+  // Convert ArrayBuffer to hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**

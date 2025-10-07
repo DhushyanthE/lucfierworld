@@ -17,15 +17,24 @@ export class WalletManager {
    */
   async generateWallet(entropy: string = ''): Promise<QuantumKeyPair> {
     const keyId = uuidv4();
-    const privateKey = generateHash(keyId + entropy + Math.random().toString());
-    const publicKey = generateHash(privateKey + entropy + Math.random().toString());
+    
+    // Generate cryptographically secure random bytes for keys
+    const privateKeyBytes = new Uint8Array(32);
+    crypto.getRandomValues(privateKeyBytes);
+    const privateKeyHex = Array.from(privateKeyBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Combine with entropy and hash
+    const privateKey = generateHash(keyId + entropy + privateKeyHex);
+    const publicKey = generateHash(privateKey + entropy);
     
     const wallet: QuantumKeyPair = {
       keyId,
       publicKey,
       privateKey,
       createdAt: Date.now(),
-      quantumResistant: true // Assume quantum resistance for simplicity
+      quantumResistant: true
     };
     
     this.wallets[keyId] = wallet;

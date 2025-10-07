@@ -4,13 +4,16 @@
  */
 
 // Generate a new key pair for encryption/decryption
+// NOTE: RSA-2048 is NOT quantum-resistant and will be vulnerable to quantum attacks
+// For production use, consider implementing post-quantum algorithms like Kyber
 export async function generateKeyPair(): Promise<CryptoKeyPair> {
   try {
-    // Generate an RSA key pair
+    // Generate an RSA key pair with 4096-bit key for better security
+    // Still vulnerable to quantum attacks but stronger against classical attacks
     const keyPair = await window.crypto.subtle.generateKey(
       {
         name: "RSA-OAEP",
-        modulusLength: 2048,
+        modulusLength: 4096, // Increased from 2048 for better classical security
         publicExponent: new Uint8Array([1, 0, 1]),
         hash: "SHA-256",
       },

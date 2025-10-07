@@ -7,7 +7,8 @@ export const createTooltip = (name: string, value: string | number, clientX: num
   tooltip.className = 'absolute bg-gray-900 text-white text-xs px-2 py-1 rounded pointer-events-none';
   tooltip.style.left = `${clientX}px`;
   tooltip.style.top = `${clientY - 30}px`;
-  tooltip.innerHTML = `${name}: ${value}`;
+  // Use textContent instead of innerHTML to prevent XSS attacks
+  tooltip.textContent = `${name}: ${value}`;
   tooltip.id = 'chart-tooltip';
   document.body.appendChild(tooltip);
 };
