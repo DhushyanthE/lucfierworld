@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.get-analytics]
 verify_jwt = true
+
+[functions.bootstrap-admin]
+verify_jwt = true

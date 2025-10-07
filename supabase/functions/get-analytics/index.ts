@@ -13,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Create client with service role to check admin status
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
@@ -24,7 +25,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
 
@@ -32,15 +33,41 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
+    // Check if user is admin
+    const { data: userRole } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isAdmin = !!userRole;
+
+    // Create client with user's auth for RLS-compliant queries
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
     const url = new URL(req.url);
     const startDate = url.searchParams.get("start_date");
     const endDate = url.searchParams.get("end_date");
     const eventName = url.searchParams.get("event_name");
+    const targetUserId = url.searchParams.get("user_id");
 
-    // Build query for events
+    // Non-admins can only query their own data
+    const queryUserId = isAdmin && targetUserId ? targetUserId : user.id;
+
+    // Build query for events - RLS will automatically filter to user's own data
     let eventsQuery = supabaseClient
       .from("analytics_events")
       .select("*")
+      .eq("user_id", queryUserId)
       .order("created_at", { ascending: false });
 
     if (startDate) {
@@ -60,10 +87,11 @@ serve(async (req) => {
       throw eventsError;
     }
 
-    // Get sessions
+    // Get sessions - RLS will automatically filter
     let sessionsQuery = supabaseClient
       .from("analytics_sessions")
       .select("*")
+      .eq("user_id", queryUserId)
       .order("started_at", { ascending: false });
 
     if (startDate) {
@@ -80,14 +108,17 @@ serve(async (req) => {
       throw sessionsError;
     }
 
-    // Get summary statistics
-    const { data: dailySummary, error: summaryError } = await supabaseClient
-      .from("analytics_daily_summary")
-      .select("*")
-      .order("date", { ascending: false })
-      .limit(30);
+    // Use the safe analytics summary function
+    const { data: summary, error: summaryError } = await supabaseClient.rpc(
+      "get_user_analytics_summary",
+      { target_user_id: queryUserId }
+    );
 
-    console.log("Analytics retrieved successfully");
+    if (summaryError) {
+      console.error("Error fetching summary:", summaryError);
+    }
+
+    console.log(`Analytics retrieved for ${isAdmin ? "admin viewing user" : "user"}: ${queryUserId}`);
 
     return new Response(
       JSON.stringify({
@@ -95,7 +126,8 @@ serve(async (req) => {
         data: {
           events,
           sessions,
-          daily_summary: dailySummary || [],
+          summary: summary?.[0] || { total_events: 0, total_sessions: 0, unique_pages: 0 },
+          is_admin: isAdmin,
         },
       }),
       {
