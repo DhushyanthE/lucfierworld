@@ -3,7 +3,6 @@
  * Quantum-resistant blockchain implementation with quantum consensus
  */
 
-import { supabase } from '@/integrations/supabase/client';
 import { quantumCryptographyService, QuantumSignature } from '../cryptography/QuantumCryptographyService';
 
 export interface QuantumBlock {
@@ -191,9 +190,6 @@ class QuantumBlockchainService {
       newBlock.validationStatus = 'validated';
       newBlock.quantumResistanceVerified = true;
       this.blockchain.push(newBlock);
-      
-      // Save to database
-      await this.saveBlockToDatabase(newBlock);
     } else {
       newBlock.validationStatus = 'rejected';
     }
@@ -411,31 +407,6 @@ class QuantumBlockchainService {
   }
 
   /**
-   * Save block to database
-   */
-  private async saveBlockToDatabase(block: QuantumBlock): Promise<void> {
-    const { error } = await supabase
-      .from('blockchain_quantum_records')
-      .insert({
-        block_hash: block.blockHash,
-        previous_block_hash: block.previousBlockHash,
-        merkle_root: block.merkleRoot,
-        quantum_signature: JSON.stringify(block.quantumSignature),
-        quantum_proof: JSON.stringify(block.quantumProof),
-        consensus_algorithm: block.consensusAlgorithm,
-        mining_difficulty: block.miningDifficulty,
-        block_timestamp: block.timestamp.toISOString(),
-        validation_status: block.validationStatus,
-        quantum_resistance_verified: block.quantumResistanceVerified,
-        circuit_id: block.circuitId
-      });
-
-    if (error) {
-      console.error('Failed to save block to database:', error);
-    }
-  }
-
-  /**
    * Get latest block
    */
   getLatestBlock(): QuantumBlock {
@@ -454,40 +425,6 @@ class QuantumBlockchainService {
    */
   getBlockByHash(hash: string): QuantumBlock | undefined {
     return this.blockchain.find(block => block.blockHash === hash);
-  }
-
-  /**
-   * Load blockchain from database
-   */
-  async loadBlockchainFromDatabase(): Promise<QuantumBlock[]> {
-    const { data, error } = await supabase
-      .from('blockchain_quantum_records')
-      .select('*')
-      .order('block_timestamp', { ascending: true });
-
-    if (error) {
-      console.error('Failed to load blockchain:', error);
-      return this.blockchain;
-    }
-
-    const loadedBlocks: QuantumBlock[] = data.map(row => ({
-      id: row.id,
-      blockHash: row.block_hash,
-      previousBlockHash: row.previous_block_hash,
-      merkleRoot: row.merkle_root,
-      quantumSignature: JSON.parse(row.quantum_signature),
-      quantumProof: JSON.parse(row.quantum_proof as string),
-      timestamp: new Date(row.block_timestamp),
-      consensusAlgorithm: row.consensus_algorithm as 'quantum-pos' | 'quantum-pow' | 'quantum-pbft',
-      miningDifficulty: row.mining_difficulty,
-      validationStatus: row.validation_status as 'pending' | 'validated' | 'rejected',
-      quantumResistanceVerified: row.quantum_resistance_verified,
-      circuitId: row.circuit_id,
-      transactions: [] // Would need separate table for transactions
-    }));
-
-    this.blockchain = [this.blockchain[0], ...loadedBlocks]; // Keep genesis block
-    return this.blockchain;
   }
 
   private async getValidatorPrivateKey(validatorAddress: string): Promise<any> {

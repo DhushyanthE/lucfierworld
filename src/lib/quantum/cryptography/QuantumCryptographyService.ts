@@ -3,8 +3,6 @@
  * Advanced quantum-resistant cryptographic protocols and key distribution
  */
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface QuantumKey {
   id: string;
   keyData: Uint8Array;
@@ -250,51 +248,6 @@ class QuantumCryptographyService {
       }
     }
     return true;
-  }
-
-  /**
-   * Save cryptographic protocol to database
-   */
-  async saveProtocol(protocol: Omit<CryptographicProtocol, 'id'>): Promise<string> {
-    const { data, error } = await supabase
-      .from('quantum_crypto_protocols')
-      .insert({
-        protocol_name: protocol.name,
-        protocol_type: protocol.type,
-        key_length: protocol.keyLength,
-        security_level: protocol.securityLevel,
-        quantum_resistance_rating: protocol.quantumResistanceRating,
-        blockchain_integration: protocol.blockchainIntegration,
-        protocol_config: protocol.config
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data.id;
-  }
-
-  /**
-   * Load cryptographic protocols from database
-   */
-  async loadProtocols(): Promise<CryptographicProtocol[]> {
-    const { data, error } = await supabase
-      .from('quantum_crypto_protocols')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data.map(row => ({
-      id: row.id,
-      name: row.protocol_name,
-      type: row.protocol_type as 'lattice-based' | 'qkd' | 'hash-based' | 'post-quantum' | 'quantum-resistant',
-      securityLevel: row.security_level,
-      keyLength: row.key_length,
-      quantumResistanceRating: row.quantum_resistance_rating,
-      blockchainIntegration: row.blockchain_integration,
-      config: row.protocol_config as Record<string, any>
-    }));
   }
 
   /**

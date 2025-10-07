@@ -3,8 +3,6 @@
  * Testing and validation of quantum-resistant algorithms and protocols
  */
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface ResistanceTest {
   id: string;
   circuitId: string;
@@ -160,7 +158,6 @@ class QuantumResistanceService {
     };
 
     this.activeTests.set(test.id, test);
-    await this.saveTestToDatabase(test);
 
     // Start asynchronous testing
     this.performResistanceTest(test);
@@ -174,7 +171,6 @@ class QuantumResistanceService {
   private async performResistanceTest(test: ResistanceTest): Promise<void> {
     try {
       test.status = 'running';
-      await this.updateTestInDatabase(test);
 
       const startTime = Date.now();
 
@@ -223,13 +219,10 @@ class QuantumResistanceService {
       test.quantumSecurityLevel = quantumSecurityLevel;
       test.testDuration = Date.now() - startTime;
 
-      await this.updateTestInDatabase(test);
-
     } catch (error) {
       console.error('Resistance test failed:', error);
       test.status = 'failed';
       test.testDuration = Date.now() - test.createdAt.getTime();
-      await this.updateTestInDatabase(test);
     }
   }
 
@@ -536,8 +529,8 @@ class QuantumResistanceService {
    * Generate comprehensive security assessment
    */
   async generateSecurityAssessment(circuitId: string): Promise<SecurityAssessment> {
-    // Load all tests for this circuit
-    const tests = await this.getTestsForCircuit(circuitId);
+    // Get all tests for this circuit from active tests
+    const tests = Array.from(this.activeTests.values()).filter(t => t.circuitId === circuitId && t.status === 'completed');
     
     if (tests.length === 0) {
       throw new Error('No resistance tests found for circuit');
@@ -571,80 +564,6 @@ class QuantumResistanceService {
         commonCriteria: overallScore >= 8
       }
     };
-  }
-
-  /**
-   * Get tests for a specific circuit
-   */
-  private async getTestsForCircuit(circuitId: string): Promise<ResistanceTest[]> {
-    const { data, error } = await supabase
-      .from('quantum_resistance_tests')
-      .select('*')
-      .eq('circuit_id', circuitId)
-      .eq('test_status', 'completed');
-
-    if (error) {
-      console.error('Failed to load resistance tests:', error);
-      return [];
-    }
-
-    return data.map(row => ({
-      id: row.id,
-      circuitId: row.circuit_id,
-      testType: row.test_type as 'shor-resistance' | 'grover-resistance' | 'post-quantum-security' | 'lattice-attack' | 'multivariate-attack',
-      testParameters: row.test_parameters as any,
-      resistanceScore: row.resistance_score,
-      vulnerabilities: row.vulnerabilities_found as any,
-      recommendations: row.recommendations as string[],
-      testDuration: row.test_duration_ms,
-      status: row.test_status as 'pending' | 'running' | 'completed' | 'failed',
-      quantumSecurityLevel: row.quantum_security_level,
-      createdAt: new Date(row.created_at)
-    }));
-  }
-
-  /**
-   * Save test to database
-   */
-  private async saveTestToDatabase(test: ResistanceTest): Promise<void> {
-    const { error } = await supabase
-      .from('quantum_resistance_tests')
-      .insert({
-        circuit_id: test.circuitId,
-        test_type: test.testType,
-        test_parameters: test.testParameters,
-        resistance_score: test.resistanceScore,
-        vulnerabilities_found: test.vulnerabilities,
-        recommendations: test.recommendations,
-        test_duration_ms: test.testDuration,
-        test_status: test.status,
-        quantum_security_level: test.quantumSecurityLevel
-      });
-
-    if (error) {
-      console.error('Failed to save resistance test:', error);
-    }
-  }
-
-  /**
-   * Update test in database
-   */
-  private async updateTestInDatabase(test: ResistanceTest): Promise<void> {
-    const { error } = await supabase
-      .from('quantum_resistance_tests')
-      .update({
-        resistance_score: test.resistanceScore,
-        vulnerabilities_found: test.vulnerabilities,
-        recommendations: test.recommendations,
-        test_duration_ms: test.testDuration,
-        test_status: test.status,
-        quantum_security_level: test.quantumSecurityLevel
-      })
-      .eq('id', test.id);
-
-    if (error) {
-      console.error('Failed to update resistance test:', error);
-    }
   }
 
   /**

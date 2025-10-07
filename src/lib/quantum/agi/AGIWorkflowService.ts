@@ -3,8 +3,6 @@
  * Advanced Artificial General Intelligence integration for quantum optimization
  */
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface AGIModel {
   id: string;
   name: string;
@@ -197,9 +195,6 @@ class AGIWorkflowService {
 
     this.activeExecutions.set(execution.id, execution);
 
-    // Save to database
-    await this.saveExecutionToDatabase(execution);
-
     // Start asynchronous processing
     this.processAGIWorkflow(execution, model, options);
 
@@ -216,7 +211,6 @@ class AGIWorkflowService {
   ): Promise<void> {
     try {
       execution.status = 'running';
-      await this.updateExecutionInDatabase(execution);
 
       const startTime = Date.now();
 
@@ -253,13 +247,10 @@ class AGIWorkflowService {
       );
       execution.completedAt = new Date();
 
-      await this.updateExecutionInDatabase(execution);
-
     } catch (error) {
       console.error('AGI workflow execution failed:', error);
       execution.status = 'failed';
       execution.completedAt = new Date();
-      await this.updateExecutionInDatabase(execution);
     }
   }
 
@@ -448,83 +439,6 @@ class AGIWorkflowService {
    */
   getExecution(executionId: string): AGIWorkflowExecution | undefined {
     return this.activeExecutions.get(executionId);
-  }
-
-  /**
-   * Save execution to database
-   */
-  private async saveExecutionToDatabase(execution: AGIWorkflowExecution): Promise<void> {
-    const { error } = await supabase
-      .from('agi_workflow_executions')
-      .insert({
-        workflow_name: execution.workflowName,
-        circuit_id: execution.circuitId,
-        execution_status: execution.status,
-        agi_model_used: execution.agiModel,
-        optimization_improvements: execution.optimizationImprovements,
-        execution_time_ms: execution.executionTime,
-        quantum_advantage_achieved: execution.quantumAdvantageAchieved,
-        superintelligence_score: execution.superintelligenceScore,
-        blockchain_verification_hash: execution.blockchainVerificationHash,
-        started_at: execution.startedAt?.toISOString(),
-        completed_at: execution.completedAt?.toISOString()
-      });
-
-    if (error) {
-      console.error('Failed to save AGI execution:', error);
-    }
-  }
-
-  /**
-   * Update execution in database
-   */
-  private async updateExecutionInDatabase(execution: AGIWorkflowExecution): Promise<void> {
-    const { error } = await supabase
-      .from('agi_workflow_executions')
-      .update({
-        execution_status: execution.status,
-        optimization_improvements: execution.optimizationImprovements,
-        execution_time_ms: execution.executionTime,
-        quantum_advantage_achieved: execution.quantumAdvantageAchieved,
-        superintelligence_score: execution.superintelligenceScore,
-        blockchain_verification_hash: execution.blockchainVerificationHash,
-        completed_at: execution.completedAt?.toISOString()
-      })
-      .eq('id', execution.id);
-
-    if (error) {
-      console.error('Failed to update AGI execution:', error);
-    }
-  }
-
-  /**
-   * Load executions from database
-   */
-  async loadExecutionsFromDatabase(): Promise<AGIWorkflowExecution[]> {
-    const { data, error } = await supabase
-      .from('agi_workflow_executions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to load AGI executions:', error);
-      return [];
-    }
-
-    return data.map(row => ({
-      id: row.id,
-      workflowName: row.workflow_name,
-      circuitId: row.circuit_id,
-      status: row.execution_status as 'pending' | 'running' | 'completed' | 'failed' | 'optimizing',
-      agiModel: row.agi_model_used,
-      optimizationImprovements: row.optimization_improvements as any,
-      executionTime: row.execution_time_ms,
-      quantumAdvantageAchieved: row.quantum_advantage_achieved,
-      superintelligenceScore: row.superintelligence_score,
-      blockchainVerificationHash: row.blockchain_verification_hash,
-      startedAt: row.started_at ? new Date(row.started_at) : undefined,
-      completedAt: row.completed_at ? new Date(row.completed_at) : undefined
-    }));
   }
 }
 
