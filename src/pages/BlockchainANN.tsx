@@ -9,12 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BlockchainANNDashboard } from '@/components/blockchain-ann/BlockchainANNDashboard';
 import { LayerConfiguration, ConfigurationData } from '@/components/blockchain-ann/LayerConfiguration';
 import { WorkflowBuilder, WorkflowData } from '@/components/blockchain-ann/WorkflowBuilder';
+import { AnomalyDetectionPanel } from '@/components/blockchain-ann/AnomalyDetectionPanel';
+import { BigDataProcessorPanel } from '@/components/blockchain-ann/BigDataProcessorPanel';
+import { GenomicProcessorPanel } from '@/components/blockchain-ann/GenomicProcessorPanel';
+import { RealtimeMonitorPanel } from '@/components/blockchain-ann/RealtimeMonitorPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -245,14 +249,26 @@ export default function BlockchainANN() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
               <TabsTrigger value="dashboard">
                 <Network className="mr-2 h-4 w-4" />
                 Dashboard
               </TabsTrigger>
-              <TabsTrigger value="configure">
-                <Settings className="mr-2 h-4 w-4" />
-                Configure
+              <TabsTrigger value="realtime">
+                <Activity className="mr-2 h-4 w-4" />
+                Real-Time
+              </TabsTrigger>
+              <TabsTrigger value="anomaly">
+                <Activity className="mr-2 h-4 w-4" />
+                Anomaly
+              </TabsTrigger>
+              <TabsTrigger value="bigdata">
+                <Database className="mr-2 h-4 w-4" />
+                Big Data
+              </TabsTrigger>
+              <TabsTrigger value="genomic">
+                <Dna className="mr-2 h-4 w-4" />
+                Genomic
               </TabsTrigger>
               <TabsTrigger value="workflow">
                 <Workflow className="mr-2 h-4 w-4" />
@@ -268,8 +284,20 @@ export default function BlockchainANN() {
               <BlockchainANNDashboard />
             </TabsContent>
 
-            <TabsContent value="configure" className="space-y-6">
-              <LayerConfiguration onSave={handleSaveConfiguration} />
+            <TabsContent value="realtime" className="space-y-6">
+              <RealtimeMonitorPanel />
+            </TabsContent>
+
+            <TabsContent value="anomaly" className="space-y-6">
+              <AnomalyDetectionPanel />
+            </TabsContent>
+
+            <TabsContent value="bigdata" className="space-y-6">
+              <BigDataProcessorPanel />
+            </TabsContent>
+
+            <TabsContent value="genomic" className="space-y-6">
+              <GenomicProcessorPanel />
             </TabsContent>
 
             <TabsContent value="workflow" className="space-y-6">

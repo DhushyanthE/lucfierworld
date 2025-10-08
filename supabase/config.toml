@@ -3,6 +3,21 @@ project_id = "lttxaakpruqqgqdlwpki"
 [functions.track-analytics]
 verify_jwt = false
 
+[functions.anomaly-detection]
+verify_jwt = false
+
+[functions.workflow-optimizer]
+verify_jwt = false
+
+[functions.big-data-processor]
+verify_jwt = false
+
+[functions.genomic-processor]
+verify_jwt = false
+
+[functions.blockchain-ann-orchestrator]
+verify_jwt = false
+
 [functions.get-analytics]
 verify_jwt = true
 
