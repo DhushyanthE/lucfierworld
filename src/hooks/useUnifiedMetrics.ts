@@ -1,8 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuantumEchoes } from './useQuantumEchoes';
 import { useAgenticAI } from './useAgenticAI';
 import { useQuantumCoinAGI } from './useQuantumCoinAGI';
 import { useAnomalyDetection } from './useAnomalyDetection';
+
+export type RefreshInterval = 5000 | 10000 | 30000 | 60000 | 0; // 0 = manual only
 import { useBigDataProcessor } from './useBigDataProcessor';
 import { useGenomicProcessor } from './useGenomicProcessor';
 
@@ -102,12 +104,15 @@ export function useUnifiedMetrics() {
   const [metrics, setMetrics] = useState<UnifiedMetrics>(DEFAULT_METRICS);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(0);
+  const [isPollingActive, setIsPollingActive] = useState(false);
   const [operationHistory, setOperationHistory] = useState<Array<{
     timestamp: Date;
     type: string;
     success: boolean;
     metrics: Partial<UnifiedMetrics>;
   }>>([]);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const { result: quantumResult, executeQuantumEchoes } = useQuantumEchoes();
   const { result: agenticResult, trainBlockchainAgent } = useAgenticAI();
@@ -230,12 +235,63 @@ export function useUnifiedMetrics() {
     }
   }, [executeQuantumEchoes, trainBlockchainAgent, getSuperintelligenceInsights, metrics]);
 
+  // Polling control functions
+  const startPolling = useCallback((interval: RefreshInterval) => {
+    if (interval === 0) return;
+    
+    setRefreshInterval(interval);
+    setIsPollingActive(true);
+    
+    // Clear existing interval
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+    }
+    
+    // Start new polling
+    pollingRef.current = setInterval(() => {
+      refreshAllMetrics();
+    }, interval);
+  }, [refreshAllMetrics]);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    setIsPollingActive(false);
+  }, []);
+
+  const updatePollingInterval = useCallback((interval: RefreshInterval) => {
+    setRefreshInterval(interval);
+    if (interval === 0) {
+      stopPolling();
+    } else if (isPollingActive) {
+      stopPolling();
+      startPolling(interval);
+    }
+  }, [isPollingActive, startPolling, stopPolling]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
   return {
     metrics,
     isLoading,
     lastUpdated,
     operationHistory,
     refreshAllMetrics,
+    // Polling controls
+    refreshInterval,
+    isPollingActive,
+    startPolling,
+    stopPolling,
+    updatePollingInterval,
   };
 }
 
