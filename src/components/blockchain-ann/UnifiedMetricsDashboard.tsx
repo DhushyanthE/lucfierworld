@@ -3,14 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useUnifiedMetrics } from '@/hooks/useUnifiedMetrics';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useUnifiedMetrics, RefreshInterval } from '@/hooks/useUnifiedMetrics';
 import { 
   Activity, RefreshCw, Waves, Bot, Coins, Brain, Database, Dna, 
-  Shield, Zap, TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart3
+  Shield, Zap, TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart3,
+  Play, Pause, Timer
 } from 'lucide-react';
 
-export function UnifiedMetricsDashboard() {
-  const { metrics, isLoading, lastUpdated, operationHistory, refreshAllMetrics } = useUnifiedMetrics();
+const INTERVAL_OPTIONS: { value: RefreshInterval; label: string }[] = [
+  { value: 0, label: 'Manual' },
+  { value: 5000, label: '5 seconds' },
+  { value: 10000, label: '10 seconds' },
+  { value: 30000, label: '30 seconds' },
+  { value: 60000, label: '1 minute' },
+];
 
   const getHealthColor = (health: number) => {
     if (health >= 90) return 'text-green-500';
@@ -24,6 +33,53 @@ export function UnifiedMetricsDashboard() {
     if (health >= 70) return 'bg-yellow-500/20';
     if (health >= 50) return 'bg-orange-500/20';
     return 'bg-red-500/20';
+  };
+
+export function UnifiedMetricsDashboard() {
+  const { 
+    metrics, 
+    isLoading, 
+    lastUpdated, 
+    operationHistory, 
+    refreshAllMetrics,
+    refreshInterval,
+    isPollingActive,
+    startPolling,
+    stopPolling,
+    updatePollingInterval,
+  } = useUnifiedMetrics();
+
+  const getHealthColor = (health: number) => {
+    if (health >= 90) return 'text-green-500';
+    if (health >= 70) return 'text-yellow-500';
+    if (health >= 50) return 'text-orange-500';
+    return 'text-red-500';
+  };
+
+  const getHealthBg = (health: number) => {
+    if (health >= 90) return 'bg-green-500/20';
+    if (health >= 70) return 'bg-yellow-500/20';
+    if (health >= 50) return 'bg-orange-500/20';
+    return 'bg-red-500/20';
+  };
+
+  const handlePollingToggle = (enabled: boolean) => {
+    if (enabled && refreshInterval !== 0) {
+      startPolling(refreshInterval);
+    } else if (enabled && refreshInterval === 0) {
+      updatePollingInterval(10000);
+      startPolling(10000);
+    } else {
+      stopPolling();
+    }
+  };
+
+  const handleIntervalChange = (value: string) => {
+    const interval = parseInt(value) as RefreshInterval;
+    updatePollingInterval(interval);
+    if (interval !== 0 && isPollingActive) {
+      startPolling(interval);
+    }
   };
 
   return (
@@ -52,6 +108,62 @@ export function UnifiedMetricsDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Polling Controls */}
+      <Card className="border-primary/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Timer className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Auto-Refresh</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="polling-toggle"
+                  checked={isPollingActive}
+                  onCheckedChange={handlePollingToggle}
+                />
+                <Label htmlFor="polling-toggle" className="text-sm text-muted-foreground">
+                  {isPollingActive ? 'Active' : 'Paused'}
+                </Label>
+              </div>
+
+              <Select 
+                value={refreshInterval.toString()} 
+                onValueChange={handleIntervalChange}
+              >
+                <SelectTrigger className="w-32 h-8">
+                  <SelectValue placeholder="Interval" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTERVAL_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value.toString()}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isPollingActive && (
+                <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                  <Play className="h-3 w-3 mr-1" />
+                  Polling every {INTERVAL_OPTIONS.find(o => o.value === refreshInterval)?.label}
+                </Badge>
+              )}
+              {!isPollingActive && refreshInterval !== 0 && (
+                <Badge variant="secondary">
+                  <Pause className="h-3 w-3 mr-1" />
+                  Paused
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overall System Health */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-purple-500/5">
