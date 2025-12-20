@@ -23,3 +23,12 @@ verify_jwt = true
 
 [functions.bootstrap-admin]
 verify_jwt = true
+
+[functions.quantum-echoes-algorithm]
+verify_jwt = false
+
+[functions.agentic-ai-ann]
+verify_jwt = false
+
+[functions.quantum-coin-agi]
+verify_jwt = false
