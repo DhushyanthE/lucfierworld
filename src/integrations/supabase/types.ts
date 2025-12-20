@@ -24,7 +24,7 @@ export type Database = {
           event_data: Json | null
           event_name: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           page_url: string | null
           referrer: string | null
           session_id: string | null
@@ -40,7 +40,7 @@ export type Database = {
           event_data?: Json | null
           event_name: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           page_url?: string | null
           referrer?: string | null
           session_id?: string | null
@@ -56,7 +56,7 @@ export type Database = {
           event_data?: Json | null
           event_name?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           page_url?: string | null
           referrer?: string | null
           session_id?: string | null
@@ -161,10 +161,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      refresh_analytics_summary: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      refresh_analytics_summary: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
