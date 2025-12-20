@@ -13,12 +13,15 @@ import { AnomalyDetectionPanel } from '@/components/blockchain-ann/AnomalyDetect
 import { BigDataProcessorPanel } from '@/components/blockchain-ann/BigDataProcessorPanel';
 import { GenomicProcessorPanel } from '@/components/blockchain-ann/GenomicProcessorPanel';
 import { RealtimeMonitorPanel } from '@/components/blockchain-ann/RealtimeMonitorPanel';
+import { QuantumEchoesPanel } from '@/components/blockchain-ann/QuantumEchoesPanel';
+import { AgenticAIPanel } from '@/components/blockchain-ann/AgenticAIPanel';
+import { QuantumCoinAGIPanel } from '@/components/blockchain-ann/QuantumCoinAGIPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -249,7 +252,7 @@ export default function BlockchainANN() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 lg:w-auto lg:inline-grid">
               <TabsTrigger value="dashboard">
                 <Network className="mr-2 h-4 w-4" />
                 Dashboard
@@ -257,6 +260,18 @@ export default function BlockchainANN() {
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
                 Real-Time
+              </TabsTrigger>
+              <TabsTrigger value="quantum-echoes">
+                <Waves className="mr-2 h-4 w-4" />
+                Quantum Echoes
+              </TabsTrigger>
+              <TabsTrigger value="agentic-ai">
+                <Bot className="mr-2 h-4 w-4" />
+                Agentic AI
+              </TabsTrigger>
+              <TabsTrigger value="quantum-coin-agi">
+                <Coins className="mr-2 h-4 w-4" />
+                QCoin AGI
               </TabsTrigger>
               <TabsTrigger value="anomaly">
                 <Activity className="mr-2 h-4 w-4" />
@@ -286,6 +301,114 @@ export default function BlockchainANN() {
 
             <TabsContent value="realtime" className="space-y-6">
               <RealtimeMonitorPanel />
+            </TabsContent>
+
+            <TabsContent value="quantum-echoes" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <QuantumEchoesPanel />
+                <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Waves className="h-5 w-5" />
+                      20 Pattern Layer Security
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      The Quantum Echoes Algorithm implements 20 distinct security pattern layers
+                      for quantum-resistant data transfer and verification.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {[
+                        'Entanglement-Init', 'Superposition-Gate', 'Phase-Encoding', 'Echo-Propagation',
+                        'Interference-Check', 'Decoherence-Guard', 'Key-Distribution', 'Bell-State-Verify',
+                        'Quantum-Signature', 'Error-Correction', 'Tomography-Scan', 'Fidelity-Assessment',
+                        'Noise-Mitigation', 'Coherence-Extension', 'Multi-Party-Sync', 'Blockchain-Anchor',
+                        'Neural-Validation', 'Consensus-Gate', 'Echo-Finalization', 'Transfer-Complete'
+                      ].map((layer, idx) => (
+                        <div key={idx} className="p-2 rounded bg-muted flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                            {idx + 1}
+                          </span>
+                          <span>{layer}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="agentic-ai" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <AgenticAIPanel />
+                <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bot className="h-5 w-5" />
+                      Q-Learning Formula
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 rounded-lg bg-muted font-mono text-center">
+                      Q(s,a) = Q(s,a) + α[r + γ max Q(s',a') - Q(s,a)]
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">α (Learning Rate)</span>
+                        <span className="font-mono">0.1</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">γ (Discount Factor)</span>
+                        <span className="font-mono">0.95</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">ε (Exploration Rate)</span>
+                        <span className="font-mono">0.2</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Autonomous agents learn optimal blockchain operations through 
+                      reinforcement learning with neural network integration.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="quantum-coin-agi" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <QuantumCoinAGIPanel />
+                <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Coins className="h-5 w-5" />
+                      AGI Workflow Stages
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      {[
+                        { name: 'Quantum State Preparation', desc: 'Initialize 128 qubits with 64 entanglement pairs' },
+                        { name: 'AGI Transaction Analysis', desc: 'AI-powered risk assessment and optimization' },
+                        { name: 'Quantum Optimization', desc: 'Apply quantum algorithms for route optimization' },
+                        { name: 'Blockchain Verification', desc: 'Immutable verification on-chain' },
+                        { name: 'Superintelligence Synthesis', desc: 'Generate advanced insights and predictions' }
+                      ].map((stage, idx) => (
+                        <div key={idx} className="p-3 rounded bg-muted">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                              {idx + 1}
+                            </span>
+                            <span className="font-medium text-sm">{stage.name}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 ml-8">{stage.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="anomaly" className="space-y-6">
