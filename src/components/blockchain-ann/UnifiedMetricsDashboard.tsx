@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,10 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useUnifiedMetrics, RefreshInterval } from '@/hooks/useUnifiedMetrics';
+import { useMetricThresholds } from '@/hooks/useMetricThresholds';
+import { useMetricHistory } from '@/hooks/useMetricHistory';
+import { MetricTrendChart } from './MetricTrendChart';
+import { ThresholdAlertsPanel } from './ThresholdAlertsPanel';
 import { 
   Activity, RefreshCw, Waves, Bot, Coins, Brain, Database, Dna, 
   Shield, Zap, TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart3,
-  Play, Pause, Timer
+  Play, Pause, Timer, Bell, BellOff
 } from 'lucide-react';
 
 const INTERVAL_OPTIONS: { value: RefreshInterval; label: string }[] = [
@@ -21,19 +25,19 @@ const INTERVAL_OPTIONS: { value: RefreshInterval; label: string }[] = [
   { value: 60000, label: '1 minute' },
 ];
 
-  const getHealthColor = (health: number) => {
-    if (health >= 90) return 'text-green-500';
-    if (health >= 70) return 'text-yellow-500';
-    if (health >= 50) return 'text-orange-500';
-    return 'text-red-500';
-  };
+const getHealthColor = (health: number) => {
+  if (health >= 90) return 'text-green-500';
+  if (health >= 70) return 'text-yellow-500';
+  if (health >= 50) return 'text-orange-500';
+  return 'text-red-500';
+};
 
-  const getHealthBg = (health: number) => {
-    if (health >= 90) return 'bg-green-500/20';
-    if (health >= 70) return 'bg-yellow-500/20';
-    if (health >= 50) return 'bg-orange-500/20';
-    return 'bg-red-500/20';
-  };
+const getHealthBg = (health: number) => {
+  if (health >= 90) return 'bg-green-500/20';
+  if (health >= 70) return 'bg-yellow-500/20';
+  if (health >= 50) return 'bg-orange-500/20';
+  return 'bg-red-500/20';
+};
 
 export function UnifiedMetricsDashboard() {
   const { 
@@ -44,24 +48,42 @@ export function UnifiedMetricsDashboard() {
     refreshAllMetrics,
     refreshInterval,
     isPollingActive,
+    refreshCount,
+    showRefreshToasts,
+    setShowRefreshToasts,
     startPolling,
     stopPolling,
     updatePollingInterval,
   } = useUnifiedMetrics();
 
-  const getHealthColor = (health: number) => {
-    if (health >= 90) return 'text-green-500';
-    if (health >= 70) return 'text-yellow-500';
-    if (health >= 50) return 'text-orange-500';
-    return 'text-red-500';
-  };
+  const {
+    thresholds,
+    alerts,
+    activeAlerts,
+    criticalAlerts,
+    alertsEnabled,
+    setAlertsEnabled,
+    evaluateThresholds,
+    acknowledgeAlert,
+    acknowledgeAllAlerts,
+    clearAcknowledgedAlerts,
+    updateThreshold,
+  } = useMetricThresholds();
 
-  const getHealthBg = (health: number) => {
-    if (health >= 90) return 'bg-green-500/20';
-    if (health >= 70) return 'bg-yellow-500/20';
-    if (health >= 50) return 'bg-orange-500/20';
-    return 'bg-red-500/20';
-  };
+  const {
+    chartData,
+    dataPointCount,
+    addDataPoint,
+    clearHistory,
+  } = useMetricHistory();
+
+  // Evaluate thresholds and add data point when metrics update
+  useEffect(() => {
+    if (lastUpdated && metrics.overall.systemHealth > 0) {
+      evaluateThresholds(metrics);
+      addDataPoint(metrics);
+    }
+  }, [lastUpdated, metrics, evaluateThresholds, addDataPoint]);
 
   const handlePollingToggle = (enabled: boolean) => {
     if (enabled && refreshInterval !== 0) {
@@ -82,6 +104,10 @@ export function UnifiedMetricsDashboard() {
     }
   };
 
+  const handleToggleThreshold = (id: string, enabled: boolean) => {
+    updateThreshold(id, { enabled });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -90,6 +116,11 @@ export function UnifiedMetricsDashboard() {
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
             Unified Metrics Dashboard
+            {criticalAlerts.length > 0 && (
+              <Badge variant="destructive" className="ml-2 animate-pulse">
+                {criticalAlerts.length} Critical
+              </Badge>
+            )}
           </h2>
           <p className="text-muted-foreground">
             Real-time aggregated metrics across all systems
@@ -100,6 +131,7 @@ export function UnifiedMetricsDashboard() {
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
               Last updated: {lastUpdated.toLocaleTimeString()}
+              {refreshCount > 0 && <span className="ml-1">(#{refreshCount})</span>}
             </div>
           )}
           <Button onClick={refreshAllMetrics} disabled={isLoading} size="sm">
@@ -145,6 +177,18 @@ export function UnifiedMetricsDashboard() {
                   ))}
                 </SelectContent>
               </Select>
+
+              <div className="flex items-center gap-2 border-l pl-4">
+                <Switch
+                  id="toast-toggle"
+                  checked={showRefreshToasts}
+                  onCheckedChange={setShowRefreshToasts}
+                />
+                <Label htmlFor="toast-toggle" className="text-xs text-muted-foreground flex items-center gap-1">
+                  {showRefreshToasts ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+                  Toasts
+                </Label>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -160,10 +204,37 @@ export function UnifiedMetricsDashboard() {
                   Paused
                 </Badge>
               )}
+              {activeAlerts.length > 0 && (
+                <Badge variant="destructive">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {activeAlerts.length} Alert(s)
+                </Badge>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Threshold Alerts Panel */}
+      <ThresholdAlertsPanel
+        alerts={alerts}
+        activeAlerts={activeAlerts}
+        criticalAlerts={criticalAlerts}
+        thresholds={thresholds}
+        alertsEnabled={alertsEnabled}
+        onToggleAlerts={setAlertsEnabled}
+        onAcknowledge={acknowledgeAlert}
+        onAcknowledgeAll={acknowledgeAllAlerts}
+        onClearAcknowledged={clearAcknowledgedAlerts}
+        onToggleThreshold={handleToggleThreshold}
+      />
+
+      {/* Live Trend Chart */}
+      <MetricTrendChart
+        chartData={chartData}
+        dataPointCount={dataPointCount}
+        onClear={clearHistory}
+      />
 
       {/* Overall System Health */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-purple-500/5">
@@ -365,6 +436,9 @@ export function UnifiedMetricsDashboard() {
                       <AlertTriangle className="h-3 w-3 text-red-500" />
                     )}
                     <span className="font-mono">{op.type}</span>
+                    {op.type === 'auto-refresh' && (
+                      <Badge variant="outline" className="text-xs h-4">auto</Badge>
+                    )}
                   </div>
                   <span className="text-muted-foreground">
                     {op.timestamp.toLocaleTimeString()}

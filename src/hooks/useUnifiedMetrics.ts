@@ -3,9 +3,10 @@ import { useQuantumEchoes } from './useQuantumEchoes';
 import { useAgenticAI } from './useAgenticAI';
 import { useQuantumCoinAGI } from './useQuantumCoinAGI';
 import { useAnomalyDetection } from './useAnomalyDetection';
+import { useBigDataProcessor } from './useBigDataProcessor';
+import { toast } from '@/hooks/use-toast';
 
 export type RefreshInterval = 5000 | 10000 | 30000 | 60000 | 0; // 0 = manual only
-import { useBigDataProcessor } from './useBigDataProcessor';
 import { useGenomicProcessor } from './useGenomicProcessor';
 
 export interface UnifiedMetrics {
@@ -106,6 +107,8 @@ export function useUnifiedMetrics() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(0);
   const [isPollingActive, setIsPollingActive] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const [showRefreshToasts, setShowRefreshToasts] = useState(true);
   const [operationHistory, setOperationHistory] = useState<Array<{
     timestamp: Date;
     type: string;
@@ -113,6 +116,7 @@ export function useUnifiedMetrics() {
     metrics: Partial<UnifiedMetrics>;
   }>>([]);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const isPollingRefreshRef = useRef(false);
 
   const { result: quantumResult, executeQuantumEchoes } = useQuantumEchoes();
   const { result: agenticResult, trainBlockchainAgent } = useAgenticAI();
@@ -207,8 +211,10 @@ export function useUnifiedMetrics() {
     }
   }, [quantumResult, agiResult, agenticResult, anomalies, anomalyStats, bigDataResults, bigDataPerformance, genomicAnalysis, genomicQuantum, operationHistory.length]);
 
-  const refreshAllMetrics = useCallback(async () => {
+  const refreshAllMetrics = useCallback(async (isPollingRefresh = false) => {
     setIsLoading(true);
+    isPollingRefreshRef.current = isPollingRefresh;
+    
     try {
       await Promise.all([
         executeQuantumEchoes('health-check', { mode: 'metrics' }, 'standard'),
@@ -218,22 +224,39 @@ export function useUnifiedMetrics() {
 
       setOperationHistory(prev => [...prev.slice(-49), {
         timestamp: new Date(),
-        type: 'full-refresh',
+        type: isPollingRefresh ? 'auto-refresh' : 'full-refresh',
         success: true,
         metrics: metrics,
       }]);
+      
+      setRefreshCount(prev => prev + 1);
+      
+      // Show toast for successful refresh
+      if (showRefreshToasts && isPollingRefresh) {
+        toast({
+          title: "Metrics Updated",
+          description: `Auto-refresh completed at ${new Date().toLocaleTimeString()}`,
+        });
+      }
     } catch (error) {
       console.error('Failed to refresh metrics:', error);
       setOperationHistory(prev => [...prev.slice(-49), {
         timestamp: new Date(),
-        type: 'full-refresh',
+        type: isPollingRefresh ? 'auto-refresh' : 'full-refresh',
         success: false,
         metrics: {},
       }]);
+      
+      // Show error toast
+      toast({
+        variant: "destructive",
+        title: "Refresh Failed",
+        description: `Error during ${isPollingRefresh ? 'auto-refresh' : 'manual refresh'}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [executeQuantumEchoes, trainBlockchainAgent, getSuperintelligenceInsights, metrics]);
+  }, [executeQuantumEchoes, trainBlockchainAgent, getSuperintelligenceInsights, metrics, showRefreshToasts]);
 
   // Polling control functions
   const startPolling = useCallback((interval: RefreshInterval) => {
@@ -249,8 +272,13 @@ export function useUnifiedMetrics() {
     
     // Start new polling
     pollingRef.current = setInterval(() => {
-      refreshAllMetrics();
+      refreshAllMetrics(true); // Mark as polling refresh
     }, interval);
+    
+    toast({
+      title: "Auto-Refresh Started",
+      description: `Polling every ${interval / 1000} seconds`,
+    });
   }, [refreshAllMetrics]);
 
   const stopPolling = useCallback(() => {
@@ -259,6 +287,11 @@ export function useUnifiedMetrics() {
       pollingRef.current = null;
     }
     setIsPollingActive(false);
+    
+    toast({
+      title: "Auto-Refresh Stopped",
+      description: "Manual refresh mode enabled",
+    });
   }, []);
 
   const updatePollingInterval = useCallback((interval: RefreshInterval) => {
@@ -285,10 +318,13 @@ export function useUnifiedMetrics() {
     isLoading,
     lastUpdated,
     operationHistory,
-    refreshAllMetrics,
+    refreshAllMetrics: () => refreshAllMetrics(false),
     // Polling controls
     refreshInterval,
     isPollingActive,
+    refreshCount,
+    showRefreshToasts,
+    setShowRefreshToasts,
     startPolling,
     stopPolling,
     updatePollingInterval,
