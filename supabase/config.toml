@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.quantum-coin-agi]
 verify_jwt = false
+
+[functions.quantum-blockchain-unified]
+verify_jwt = false

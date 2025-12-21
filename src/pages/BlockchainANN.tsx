@@ -17,12 +17,13 @@ import { QuantumEchoesPanel } from '@/components/blockchain-ann/QuantumEchoesPan
 import { AgenticAIPanel } from '@/components/blockchain-ann/AgenticAIPanel';
 import { QuantumCoinAGIPanel } from '@/components/blockchain-ann/QuantumCoinAGIPanel';
 import { UnifiedMetricsDashboard } from '@/components/blockchain-ann/UnifiedMetricsDashboard';
+import { QuantumBlockchainIntegrationPanel } from '@/components/blockchain-ann/QuantumBlockchainIntegrationPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3 } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
