@@ -16,7 +16,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.blockchain-ann-orchestrator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-analytics]
 verify_jwt = true
@@ -34,4 +34,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.quantum-blockchain-unified]
+verify_jwt = false
+
+[functions.ai-anomaly-prediction]
+verify_jwt = false
+
+[functions.realtime-metrics-ws]
+verify_jwt = false
+
+[functions.trading-bot]
 verify_jwt = false

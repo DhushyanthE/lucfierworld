@@ -254,7 +254,7 @@ export default function BlockchainANN() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:grid-cols-11 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 lg:w-auto lg:inline-grid">
               <TabsTrigger value="dashboard">
                 <Network className="mr-2 h-4 w-4" />
                 Dashboard
@@ -262,6 +262,10 @@ export default function BlockchainANN() {
               <TabsTrigger value="unified">
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Unified
+              </TabsTrigger>
+              <TabsTrigger value="integration">
+                <Cpu className="mr-2 h-4 w-4" />
+                Integration
               </TabsTrigger>
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
