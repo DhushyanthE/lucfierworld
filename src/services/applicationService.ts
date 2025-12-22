@@ -1,5 +1,4 @@
-
-import apiClient from './api';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface ApplicationData {
@@ -27,14 +26,9 @@ export const applicationService = {
   // Submit application
   submitApplication: async (data: ApplicationData): Promise<boolean> => {
     try {
-      // In a real app, this would call the actual API endpoint
-      // const response = await apiClient.post('/applications', data);
-      // return response.data.success;
-      
-      // For demonstration, simulating API call
       console.log('Submitting application data:', data);
       
-      // Simulate network delay
+      // Simulate network delay for demo purposes
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Simulate 95% success rate
@@ -57,11 +51,6 @@ export const applicationService = {
   // Get application status
   getApplicationStatus: async (email: string): Promise<string> => {
     try {
-      // This would be a real API call in production
-      // const response = await apiClient.get(`/applications/status/${email}`);
-      // return response.data.status;
-      
-      // Mock implementation for now
       console.log(`Checking application status for: ${email}`);
       
       // Simulate network delay
@@ -76,35 +65,34 @@ export const applicationService = {
     }
   },
 
-  // Login functionality
+  // Login functionality using Supabase Auth
   login: async (data: LoginData): Promise<UserData | null> => {
     try {
-      // This would be a real API call in production
-      // const response = await apiClient.post('/auth/login', data);
-      // return response.data.user;
-      
       console.log('Login attempt:', data.email);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo, accept any email with password "password"
-      if (data.password === "password") {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        toast.error('Invalid email or password');
+        return null;
+      }
+
+      if (authData.user) {
         const userData: UserData = {
-          id: `user_${Math.random().toString(36).substr(2, 9)}`,
-          name: data.email.split('@')[0],
-          email: data.email,
+          id: authData.user.id,
+          name: authData.user.email?.split('@')[0] || 'User',
+          email: authData.user.email || '',
           isAuthenticated: true
         };
-        
-        // Store user in localStorage for persistence
-        localStorage.setItem('sietkcoin_user', JSON.stringify(userData));
         
         toast.success('Login successful!');
         return userData;
       }
       
-      toast.error('Invalid email or password');
       return null;
     } catch (error) {
       toast.error('Login failed. Please try again.');
@@ -113,12 +101,18 @@ export const applicationService = {
     }
   },
 
-  // Check if user is logged in
-  getCurrentUser: (): UserData | null => {
+  // Check if user is logged in using Supabase session
+  getCurrentUser: async (): Promise<UserData | null> => {
     try {
-      const userJson = localStorage.getItem('sietkcoin_user');
-      if (userJson) {
-        return JSON.parse(userJson);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        return {
+          id: session.user.id,
+          name: session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          isAuthenticated: true
+        };
       }
       return null;
     } catch (error) {
@@ -127,10 +121,15 @@ export const applicationService = {
     }
   },
 
-  // Logout functionality
-  logout: (): void => {
+  // Logout functionality using Supabase Auth
+  logout: async (): Promise<void> => {
     try {
-      localStorage.removeItem('sietkcoin_user');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+        toast.error('Logout failed');
+        return;
+      }
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Error during logout:', error);
