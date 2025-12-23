@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.trading-bot]
 verify_jwt = false
+
+[functions.quantum-pattern-layers]
+verify_jwt = false
