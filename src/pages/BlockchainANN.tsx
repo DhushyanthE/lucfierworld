@@ -18,12 +18,14 @@ import { AgenticAIPanel } from '@/components/blockchain-ann/AgenticAIPanel';
 import { QuantumCoinAGIPanel } from '@/components/blockchain-ann/QuantumCoinAGIPanel';
 import { UnifiedMetricsDashboard } from '@/components/blockchain-ann/UnifiedMetricsDashboard';
 import { QuantumBlockchainIntegrationPanel } from '@/components/blockchain-ann/QuantumBlockchainIntegrationPanel';
+import { ComprehensiveUnifiedDashboard } from '@/components/blockchain-ann/ComprehensiveUnifiedDashboard';
+import { AIAnomalyPredictionPanel } from '@/components/blockchain-ann/AIAnomalyPredictionPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -254,7 +256,7 @@ export default function BlockchainANN() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-7 lg:grid-cols-13 lg:w-auto lg:inline-grid">
               <TabsTrigger value="dashboard">
                 <Network className="mr-2 h-4 w-4" />
                 Dashboard
@@ -266,6 +268,10 @@ export default function BlockchainANN() {
               <TabsTrigger value="integration">
                 <Cpu className="mr-2 h-4 w-4" />
                 Integration
+              </TabsTrigger>
+              <TabsTrigger value="ai-prediction">
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Predict
               </TabsTrigger>
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
@@ -310,7 +316,15 @@ export default function BlockchainANN() {
             </TabsContent>
 
             <TabsContent value="unified" className="space-y-6">
-              <UnifiedMetricsDashboard />
+              <ComprehensiveUnifiedDashboard />
+            </TabsContent>
+
+            <TabsContent value="integration" className="space-y-6">
+              <QuantumBlockchainIntegrationPanel />
+            </TabsContent>
+
+            <TabsContent value="ai-prediction" className="space-y-6">
+              <AIAnomalyPredictionPanel />
             </TabsContent>
 
             <TabsContent value="realtime" className="space-y-6">
