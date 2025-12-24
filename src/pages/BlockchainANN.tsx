@@ -20,12 +20,16 @@ import { UnifiedMetricsDashboard } from '@/components/blockchain-ann/UnifiedMetr
 import { QuantumBlockchainIntegrationPanel } from '@/components/blockchain-ann/QuantumBlockchainIntegrationPanel';
 import { ComprehensiveUnifiedDashboard } from '@/components/blockchain-ann/ComprehensiveUnifiedDashboard';
 import { AIAnomalyPredictionPanel } from '@/components/blockchain-ann/AIAnomalyPredictionPanel';
+import { QuantumPatternLayersPanel } from '@/components/blockchain-ann/QuantumPatternLayersPanel';
+import { RealtimeWebSocketDashboard } from '@/components/blockchain-ann/RealtimeWebSocketDashboard';
+import { AutomatedAnomalyAlerting } from '@/components/blockchain-ann/AutomatedAnomalyAlerting';
+import { QuantumTransferSimulation } from '@/components/blockchain-ann/QuantumTransferSimulation';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -256,7 +260,7 @@ export default function BlockchainANN() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 lg:grid-cols-13 lg:w-auto lg:inline-grid">
+            <TabsList className="flex flex-wrap gap-1 h-auto p-2">
               <TabsTrigger value="dashboard">
                 <Network className="mr-2 h-4 w-4" />
                 Dashboard
@@ -272,6 +276,22 @@ export default function BlockchainANN() {
               <TabsTrigger value="ai-prediction">
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Predict
+              </TabsTrigger>
+              <TabsTrigger value="pattern-layers">
+                <Shield className="mr-2 h-4 w-4" />
+                20 Layers
+              </TabsTrigger>
+              <TabsTrigger value="ws-metrics">
+                <Wifi className="mr-2 h-4 w-4" />
+                WebSocket
+              </TabsTrigger>
+              <TabsTrigger value="auto-alerts">
+                <Bell className="mr-2 h-4 w-4" />
+                Auto Alerts
+              </TabsTrigger>
+              <TabsTrigger value="transfer-sim">
+                <Send className="mr-2 h-4 w-4" />
+                Transfer Sim
               </TabsTrigger>
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
@@ -325,6 +345,22 @@ export default function BlockchainANN() {
 
             <TabsContent value="ai-prediction" className="space-y-6">
               <AIAnomalyPredictionPanel />
+            </TabsContent>
+
+            <TabsContent value="pattern-layers" className="space-y-6">
+              <QuantumPatternLayersPanel />
+            </TabsContent>
+
+            <TabsContent value="ws-metrics" className="space-y-6">
+              <RealtimeWebSocketDashboard />
+            </TabsContent>
+
+            <TabsContent value="auto-alerts" className="space-y-6">
+              <AutomatedAnomalyAlerting />
+            </TabsContent>
+
+            <TabsContent value="transfer-sim" className="space-y-6">
+              <QuantumTransferSimulation />
             </TabsContent>
 
             <TabsContent value="realtime" className="space-y-6">
