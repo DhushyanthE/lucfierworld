@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.quantum-pattern-layers]
 verify_jwt = false
+
+[functions.quantum-transfer-log]
+verify_jwt = false
