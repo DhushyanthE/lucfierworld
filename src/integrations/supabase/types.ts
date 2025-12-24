@@ -110,6 +110,69 @@ export type Database = {
         }
         Relationships: []
       }
+      quantum_transfer_history: {
+        Row: {
+          amount: number
+          blockchain_hash: string | null
+          completed_at: string | null
+          created_at: string
+          data_payload: string | null
+          entanglement_pairs: number | null
+          id: string
+          layer_results: Json | null
+          layers_passed: number | null
+          network_nodes: Json | null
+          quantum_fidelity: number | null
+          receiver_address: string
+          security_score: number | null
+          sender_address: string
+          session_id: string
+          started_at: string
+          total_layers: number | null
+          transfer_status: string | null
+        }
+        Insert: {
+          amount: number
+          blockchain_hash?: string | null
+          completed_at?: string | null
+          created_at?: string
+          data_payload?: string | null
+          entanglement_pairs?: number | null
+          id?: string
+          layer_results?: Json | null
+          layers_passed?: number | null
+          network_nodes?: Json | null
+          quantum_fidelity?: number | null
+          receiver_address: string
+          security_score?: number | null
+          sender_address: string
+          session_id: string
+          started_at?: string
+          total_layers?: number | null
+          transfer_status?: string | null
+        }
+        Update: {
+          amount?: number
+          blockchain_hash?: string | null
+          completed_at?: string | null
+          created_at?: string
+          data_payload?: string | null
+          entanglement_pairs?: number | null
+          id?: string
+          layer_results?: Json | null
+          layers_passed?: number | null
+          network_nodes?: Json | null
+          quantum_fidelity?: number | null
+          receiver_address?: string
+          security_score?: number | null
+          sender_address?: string
+          session_id?: string
+          started_at?: string
+          total_layers?: number | null
+          transfer_status?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

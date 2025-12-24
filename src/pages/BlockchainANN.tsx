@@ -24,12 +24,15 @@ import { QuantumPatternLayersPanel } from '@/components/blockchain-ann/QuantumPa
 import { RealtimeWebSocketDashboard } from '@/components/blockchain-ann/RealtimeWebSocketDashboard';
 import { AutomatedAnomalyAlerting } from '@/components/blockchain-ann/AutomatedAnomalyAlerting';
 import { QuantumTransferSimulation } from '@/components/blockchain-ann/QuantumTransferSimulation';
+import { QuantumNetworkVisualization } from '@/components/blockchain-ann/QuantumNetworkVisualization';
+import { QubitStateVisualization } from '@/components/blockchain-ann/QubitStateVisualization';
+import { TransactionHistoryPanel } from '@/components/blockchain-ann/TransactionHistoryPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
