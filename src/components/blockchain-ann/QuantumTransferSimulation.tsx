@@ -3,7 +3,7 @@
  * Executes all 20 pattern layers sequentially with visual progress animation
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
   Shield, Play, RotateCcw, CheckCircle, XCircle, 
-  Zap, ArrowRight, Lock, Send, Timer, Sparkles
+  Zap, ArrowRight, Lock, Send, Timer, Sparkles, Database
 } from 'lucide-react';
 import { useQuantumPatternLayers, PatternLayerResult } from '@/hooks/useQuantumPatternLayers';
+import { useQuantumTransferHistory } from '@/hooks/useQuantumTransferHistory';
 import { toast } from 'sonner';
 
 const LAYER_NAMES = [
@@ -49,6 +50,7 @@ interface TransferConfig {
 
 export function QuantumTransferSimulation() {
   const { isLoading, executeAllLayers, resetExecution } = useQuantumPatternLayers();
+  const { createTransfer, updateTransfer } = useQuantumTransferHistory();
   
   const [config, setConfig] = useState<TransferConfig>({
     sender: '0x' + Math.random().toString(16).substr(2, 40),
@@ -63,14 +65,37 @@ export function QuantumTransferSimulation() {
   const [simulationComplete, setSimulationComplete] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const layerResultsRef = useRef<PatternLayerResult[]>([]);
 
   const handleStartSimulation = useCallback(async () => {
     setIsSimulating(true);
     setCurrentLayer(0);
     setLayerResults([]);
+    layerResultsRef.current = [];
     setSimulationComplete(false);
     setStartTime(new Date());
     setEndTime(null);
+
+    // Create transfer record in database
+    const transferResult = await createTransfer({
+      sender_address: config.sender,
+      receiver_address: config.receiver,
+      amount: parseFloat(config.amount),
+      data_payload: config.dataPayload
+    });
+
+    if (!transferResult.success) {
+      toast.error('Failed to log transfer');
+      setIsSimulating(false);
+      return;
+    }
+
+    const sessionId = transferResult.sessionId!;
+    setCurrentSessionId(sessionId);
+
+    // Update status to in_progress
+    await updateTransfer(sessionId, { transfer_status: 'in_progress' });
 
     toast.info('Quantum Transfer Initiated', {
       description: 'Executing 20 security pattern layers...'
@@ -86,31 +111,54 @@ export function QuantumTransferSimulation() {
         },
         (result, index) => {
           setCurrentLayer(index + 1);
-          setLayerResults(prev => [...prev, result]);
+          setLayerResults(prev => {
+            const updated = [...prev, result];
+            layerResultsRef.current = updated;
+            return updated;
+          });
         }
       );
+
+      const finalResults = layerResultsRef.current;
+      const passedCount = finalResults.filter(r => r.passed).length;
+      const avgScore = finalResults.reduce((acc, r) => acc + r.score, 0) / finalResults.length;
+      const quantumFidelity = 0.85 + Math.random() * 0.14;
+
+      // Update transfer with final results
+      await updateTransfer(sessionId, {
+        transfer_status: passedCount >= 18 ? 'completed' : 'failed',
+        layers_passed: passedCount,
+        total_layers: 20,
+        security_score: avgScore,
+        quantum_fidelity: quantumFidelity,
+        layer_results: finalResults,
+        completed_at: new Date().toISOString()
+      });
 
       setSimulationComplete(true);
       setEndTime(new Date());
       
       toast.success('Quantum Transfer Complete', {
-        description: 'All 20 pattern layers executed successfully'
+        description: `Logged to database with ${passedCount}/20 layers passed`
       });
     } catch (error) {
+      await updateTransfer(sessionId, { transfer_status: 'failed' });
       toast.error('Transfer Failed', {
         description: 'An error occurred during simulation'
       });
     } finally {
       setIsSimulating(false);
     }
-  }, [config, executeAllLayers]);
+  }, [config, executeAllLayers, createTransfer, updateTransfer]);
 
   const handleReset = () => {
     setCurrentLayer(-1);
     setLayerResults([]);
+    layerResultsRef.current = [];
     setSimulationComplete(false);
     setStartTime(null);
     setEndTime(null);
+    setCurrentSessionId(null);
     resetExecution();
   };
 
