@@ -3,20 +3,22 @@
  * Real-time quantum transfer history with blockchain anchoring
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  History, RefreshCw, Search, ExternalLink, 
+  History, RefreshCw, Search, 
   CheckCircle, XCircle, Clock, Loader2, Shield,
-  ArrowRight, Copy, Filter
+  ArrowRight, Copy, Calendar, X
 } from 'lucide-react';
 import { useQuantumTransferHistory, QuantumTransfer } from '@/hooks/useQuantumTransferHistory';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isAfter, isBefore, parseISO, startOfDay, endOfDay } from 'date-fns';
 
 const STATUS_CONFIG = {
   pending: { color: 'bg-yellow-500', label: 'Pending', icon: Clock },
@@ -179,17 +181,44 @@ export function TransactionHistoryPanel() {
   const { transfers, isLoading, error, fetchTransfers, createTransfer } = useQuantumTransferHistory();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setAmountMin('');
+    setAmountMax('');
+  };
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || dateFrom || dateTo || amountMin || amountMax;
 
   const filteredTransfers = transfers.filter(t => {
+    // Text search
     const matchesSearch = searchQuery === '' || 
       t.session_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.sender_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.receiver_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.blockchain_hash && t.blockchain_hash.toLowerCase().includes(searchQuery.toLowerCase()));
     
+    // Status filter
     const matchesStatus = statusFilter === 'all' || t.transfer_status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Date range filter
+    const transferDate = parseISO(t.created_at);
+    const matchesDateFrom = !dateFrom || isAfter(transferDate, startOfDay(parseISO(dateFrom)));
+    const matchesDateTo = !dateTo || isBefore(transferDate, endOfDay(parseISO(dateTo)));
+    
+    // Amount range filter
+    const amount = Number(t.amount);
+    const matchesAmountMin = !amountMin || amount >= parseFloat(amountMin);
+    const matchesAmountMax = !amountMax || amount <= parseFloat(amountMax);
+    
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo && matchesAmountMin && matchesAmountMax;
   });
 
   const stats = {
@@ -270,7 +299,8 @@ export function TransactionHistoryPanel() {
 
       {/* Search & Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
+          {/* Search Bar */}
           <div className="flex gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -281,24 +311,94 @@ export function TransactionHistoryPanel() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              {['all', 'pending', 'in_progress', 'completed', 'failed'].map(status => (
-                <Button
-                  key={status}
-                  variant={statusFilter === status ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter(status)}
-                  className="capitalize"
-                >
-                  {status === 'in_progress' ? 'In Progress' : status}
-                </Button>
-              ))}
-            </div>
             <Button onClick={handleCreateTestTransfer}>
               <Shield className="h-4 w-4 mr-2" />
               Test Transfer
             </Button>
           </div>
+
+          {/* Filter Controls */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* Status Filter */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date From */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">From Date</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Date To */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">To Date</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Amount Min */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Min Amount</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={amountMin}
+                onChange={(e) => setAmountMin(e.target.value)}
+              />
+            </div>
+
+            {/* Amount Max */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Max Amount</Label>
+              <Input
+                type="number"
+                placeholder="∞"
+                value={amountMax}
+                onChange={(e) => setAmountMax(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-between pt-2 border-t">
+              <p className="text-sm text-muted-foreground">
+                {filteredTransfers.length} of {transfers.length} transfers match filters
+              </p>
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
