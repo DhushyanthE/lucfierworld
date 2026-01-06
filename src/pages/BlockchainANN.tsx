@@ -296,6 +296,18 @@ export default function BlockchainANN() {
                 <Send className="mr-2 h-4 w-4" />
                 Transfer Sim
               </TabsTrigger>
+              <TabsTrigger value="network-viz">
+                <Atom className="mr-2 h-4 w-4" />
+                Network
+              </TabsTrigger>
+              <TabsTrigger value="qubit-states">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Qubits
+              </TabsTrigger>
+              <TabsTrigger value="tx-history">
+                <History className="mr-2 h-4 w-4" />
+                History
+              </TabsTrigger>
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
                 Real-Time
@@ -364,6 +376,18 @@ export default function BlockchainANN() {
 
             <TabsContent value="transfer-sim" className="space-y-6">
               <QuantumTransferSimulation />
+            </TabsContent>
+
+            <TabsContent value="network-viz" className="space-y-6">
+              <QuantumNetworkVisualization />
+            </TabsContent>
+
+            <TabsContent value="qubit-states" className="space-y-6">
+              <QubitStateVisualization />
+            </TabsContent>
+
+            <TabsContent value="tx-history" className="space-y-6">
+              <TransactionHistoryPanel />
             </TabsContent>
 
             <TabsContent value="realtime" className="space-y-6">
