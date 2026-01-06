@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   History, RefreshCw, Search, 
   CheckCircle, XCircle, Clock, Loader2, Shield,
-  ArrowRight, Copy, Calendar, X
+  ArrowRight, Copy, Calendar, X, Download, FileJson, FileSpreadsheet,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { useQuantumTransferHistory, QuantumTransfer } from '@/hooks/useQuantumTransferHistory';
 import { toast } from 'sonner';
@@ -177,6 +178,8 @@ function TransferCard({ transfer }: { transfer: QuantumTransfer }) {
   );
 }
 
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
 export function TransactionHistoryPanel() {
   const { transfers, isLoading, error, fetchTransfers, createTransfer } = useQuantumTransferHistory();
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,6 +188,8 @@ export function TransactionHistoryPanel() {
   const [dateTo, setDateTo] = useState('');
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -193,6 +198,7 @@ export function TransactionHistoryPanel() {
     setDateTo('');
     setAmountMin('');
     setAmountMax('');
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || dateFrom || dateTo || amountMin || amountMax;
@@ -221,6 +227,17 @@ export function TransactionHistoryPanel() {
     return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo && matchesAmountMin && matchesAmountMax;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredTransfers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTransfers = filteredTransfers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (setter: (val: string) => void) => (value: string) => {
+    setter(value);
+    setCurrentPage(1);
+  };
+
   const stats = {
     total: transfers.length,
     completed: transfers.filter(t => t.transfer_status === 'completed').length,
@@ -235,6 +252,79 @@ export function TransactionHistoryPanel() {
       amount: Math.floor(Math.random() * 10000) + 100,
       data_payload: 'Test quantum transfer payload'
     });
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = [
+      'Session ID', 'Status', 'Sender', 'Receiver', 'Amount', 
+      'Security Score', 'Layers Passed', 'Total Layers', 'Quantum Fidelity',
+      'Blockchain Hash', 'Created At', 'Completed At'
+    ];
+    
+    const rows = filteredTransfers.map(t => [
+      t.session_id,
+      t.transfer_status,
+      t.sender_address,
+      t.receiver_address,
+      t.amount,
+      t.security_score || '',
+      t.layers_passed,
+      t.total_layers,
+      t.quantum_fidelity || '',
+      t.blockchain_hash || '',
+      t.created_at,
+      t.completed_at || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quantum-transfers-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Exported to CSV', { description: `${filteredTransfers.length} transfers exported` });
+  };
+
+  // Export to JSON
+  const exportToJSON = () => {
+    const data = filteredTransfers.map(t => ({
+      session_id: t.session_id,
+      transfer_status: t.transfer_status,
+      sender_address: t.sender_address,
+      receiver_address: t.receiver_address,
+      amount: t.amount,
+      security_score: t.security_score,
+      layers_passed: t.layers_passed,
+      total_layers: t.total_layers,
+      quantum_fidelity: t.quantum_fidelity,
+      entanglement_pairs: t.entanglement_pairs,
+      blockchain_hash: t.blockchain_hash,
+      data_payload: t.data_payload,
+      layer_results: t.layer_results,
+      network_nodes: t.network_nodes,
+      created_at: t.created_at,
+      started_at: t.started_at,
+      completed_at: t.completed_at
+    }));
+
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quantum-transfers-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Exported to JSON', { description: `${filteredTransfers.length} transfers exported` });
   };
 
   return (
@@ -307,10 +397,18 @@ export function TransactionHistoryPanel() {
               <Input
                 placeholder="Search by session ID, address, or hash..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleFilterChange(setSearchQuery)(e.target.value)}
                 className="pl-10"
               />
             </div>
+            <Button variant="outline" onClick={exportToCSV} disabled={filteredTransfers.length === 0}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button variant="outline" onClick={exportToJSON} disabled={filteredTransfers.length === 0}>
+              <FileJson className="h-4 w-4 mr-2" />
+              JSON
+            </Button>
             <Button onClick={handleCreateTestTransfer}>
               <Shield className="h-4 w-4 mr-2" />
               Test Transfer
@@ -322,7 +420,7 @@ export function TransactionHistoryPanel() {
             {/* Status Filter */}
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -344,7 +442,21 @@ export function TransactionHistoryPanel() {
                 <Input
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={(e) => handleFilterChange(setDateFrom)(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Date To */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">To Date</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => handleFilterChange(setDateTo)(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -371,7 +483,7 @@ export function TransactionHistoryPanel() {
                 type="number"
                 placeholder="0"
                 value={amountMin}
-                onChange={(e) => setAmountMin(e.target.value)}
+                onChange={(e) => handleFilterChange(setAmountMin)(e.target.value)}
               />
             </div>
 
@@ -382,7 +494,7 @@ export function TransactionHistoryPanel() {
                 type="number"
                 placeholder="∞"
                 value={amountMax}
-                onChange={(e) => setAmountMax(e.target.value)}
+                onChange={(e) => handleFilterChange(setAmountMax)(e.target.value)}
               />
             </div>
           </div>
@@ -405,10 +517,27 @@ export function TransactionHistoryPanel() {
       {/* Transfer List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Transfers</CardTitle>
-          <CardDescription>
-            {filteredTransfers.length} transfers found
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Recent Transfers</CardTitle>
+              <CardDescription>
+                Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredTransfers.length)} of {filteredTransfers.length} transfers
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground">Per page:</Label>
+              <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEMS_PER_PAGE_OPTIONS.map(opt => (
+                    <SelectItem key={opt} value={opt.toString()}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {error ? (
@@ -416,7 +545,7 @@ export function TransactionHistoryPanel() {
               <XCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Error loading transfers: {error}</p>
             </div>
-          ) : filteredTransfers.length === 0 ? (
+          ) : paginatedTransfers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <History className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="mb-2">No transfers found</p>
@@ -425,11 +554,82 @@ export function TransactionHistoryPanel() {
           ) : (
             <ScrollArea className="h-[500px]">
               <div className="space-y-3 pr-4">
-                {filteredTransfers.map(transfer => (
+                {paginatedTransfers.map(transfer => (
                   <TransferCard key={transfer.id} transfer={transfer} />
                 ))}
               </div>
             </ScrollArea>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1 mx-2">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-8"
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
