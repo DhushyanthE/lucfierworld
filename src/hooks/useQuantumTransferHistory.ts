@@ -121,7 +121,7 @@ export function useQuantumTransferHistory() {
     }
   }, []);
 
-  // Set up real-time subscription
+  // Set up real-time subscription with notifications
   useEffect(() => {
     fetchTransfers();
 
@@ -138,14 +138,36 @@ export function useQuantumTransferHistory() {
           console.log('Real-time update:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setTransfers(prev => [payload.new as unknown as QuantumTransfer, ...prev]);
+            const newTransfer = payload.new as unknown as QuantumTransfer;
+            setTransfers(prev => [newTransfer, ...prev]);
+            
+            toast.info('New Transfer Initiated', {
+              description: `Session: ${newTransfer.session_id.slice(0, 15)}... | Amount: ${Number(newTransfer.amount).toLocaleString()} QU`,
+              duration: 4000
+            });
           } else if (payload.eventType === 'UPDATE') {
+            const updatedTransfer = payload.new as unknown as QuantumTransfer;
             setTransfers(prev => 
-              prev.map(t => t.id === (payload.new as any).id 
-                ? payload.new as unknown as QuantumTransfer 
-                : t
-              )
+              prev.map(t => t.id === updatedTransfer.id ? updatedTransfer : t)
             );
+            
+            // Show notification for status changes
+            if (updatedTransfer.transfer_status === 'completed') {
+              toast.success('Transfer Completed', {
+                description: `${updatedTransfer.layers_passed}/${updatedTransfer.total_layers} layers passed | Score: ${updatedTransfer.security_score?.toFixed(1)}%`,
+                duration: 5000
+              });
+            } else if (updatedTransfer.transfer_status === 'failed') {
+              toast.error('Transfer Failed', {
+                description: `Session: ${updatedTransfer.session_id.slice(0, 15)}...`,
+                duration: 5000
+              });
+            } else if (updatedTransfer.transfer_status === 'in_progress') {
+              toast('Transfer In Progress', {
+                description: `Processing ${updatedTransfer.layers_passed || 0} of ${updatedTransfer.total_layers} layers...`,
+                duration: 3000
+              });
+            }
           } else if (payload.eventType === 'DELETE') {
             setTransfers(prev => prev.filter(t => t.id !== (payload.old as any).id));
           }
