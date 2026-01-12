@@ -1,11 +1,9 @@
-
-import axios from 'axios';
 import { toast } from 'sonner';
 import { MarketData } from '@/types/market';
 
-// API configuration
-const API_KEY = "0fcc0912-6c4d-426d-bcda-bb2b7d0c6b48";
-const BASE_URL = "https://pro-api.coinmarketcap.com/v1";
+// Note: This service uses mock data for cryptocurrency prices.
+// For production use with real API data, implement a backend Edge Function
+// to proxy requests securely without exposing API keys in client code.
 
 export interface CryptoPrice {
   symbol: string;
