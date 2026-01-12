@@ -3,7 +3,7 @@
  * Real-time quantum transfer history with blockchain anchoring
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +11,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   History, RefreshCw, Search, 
   CheckCircle, XCircle, Clock, Loader2, Shield,
   ArrowRight, Copy, Calendar, X, Download, FileJson, FileSpreadsheet,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  RotateCcw, CheckSquare, Square, Trash2
 } from 'lucide-react';
 import { useQuantumTransferHistory, QuantumTransfer } from '@/hooks/useQuantumTransferHistory';
 import { toast } from 'sonner';
@@ -28,7 +30,14 @@ const STATUS_CONFIG = {
   failed: { color: 'bg-red-500', label: 'Failed', icon: XCircle }
 };
 
-function TransferCard({ transfer }: { transfer: QuantumTransfer }) {
+interface TransferCardProps {
+  transfer: QuantumTransfer;
+  isSelected: boolean;
+  onSelect: (id: string, selected: boolean) => void;
+  selectionMode: boolean;
+}
+
+function TransferCard({ transfer, isSelected, onSelect, selectionMode }: TransferCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const status = STATUS_CONFIG[transfer.transfer_status];
   const StatusIcon = status.icon;
@@ -40,17 +49,32 @@ function TransferCard({ transfer }: { transfer: QuantumTransfer }) {
 
   const progress = (transfer.layers_passed / transfer.total_layers) * 100;
 
+  const handleCardClick = () => {
+    if (selectionMode) {
+      onSelect(transfer.id, !isSelected);
+    } else {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
   return (
     <Card 
       className={`transition-all cursor-pointer hover:border-primary/50 ${
         isExpanded ? 'border-primary/30' : ''
-      }`}
-      onClick={() => setIsExpanded(!isExpanded)}
+      } ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+      onClick={handleCardClick}
     >
       <CardContent className="pt-4">
         {/* Header Row */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
+            {selectionMode && (
+              <Checkbox 
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelect(transfer.id, checked as boolean)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             <div className={`p-1.5 rounded-full ${status.color}`}>
               <StatusIcon className={`h-3 w-3 text-white ${transfer.transfer_status === 'in_progress' ? 'animate-spin' : ''}`} />
             </div>
@@ -95,7 +119,7 @@ function TransferCard({ transfer }: { transfer: QuantumTransfer }) {
         </div>
 
         {/* Expanded Details */}
-        {isExpanded && (
+        {isExpanded && !selectionMode && (
           <div className="mt-4 pt-4 border-t space-y-3" onClick={e => e.stopPropagation()}>
             {/* Blockchain Hash */}
             {transfer.blockchain_hash && (
@@ -181,7 +205,7 @@ function TransferCard({ transfer }: { transfer: QuantumTransfer }) {
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 export function TransactionHistoryPanel() {
-  const { transfers, isLoading, error, fetchTransfers, createTransfer } = useQuantumTransferHistory();
+  const { transfers, isLoading, error, fetchTransfers, createTransfer, updateTransfer } = useQuantumTransferHistory();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -190,6 +214,10 @@ export function TransactionHistoryPanel() {
   const [amountMax, setAmountMax] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -252,6 +280,161 @@ export function TransactionHistoryPanel() {
       amount: Math.floor(Math.random() * 10000) + 100,
       data_payload: 'Test quantum transfer payload'
     });
+  };
+
+  // Selection handlers
+  const handleSelectTransfer = useCallback((id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(id);
+      } else {
+        newSet.delete(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedIds.size === paginatedTransfers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedTransfers.map(t => t.id)));
+    }
+  }, [paginatedTransfers, selectedIds.size]);
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(prev => !prev);
+    if (selectionMode) {
+      setSelectedIds(new Set());
+    }
+  };
+
+  // Bulk actions
+  const getSelectedTransfers = () => {
+    return transfers.filter(t => selectedIds.has(t.id));
+  };
+
+  const exportSelectedToCSV = () => {
+    const selected = getSelectedTransfers();
+    if (selected.length === 0) {
+      toast.error('No transfers selected');
+      return;
+    }
+
+    const headers = [
+      'Session ID', 'Status', 'Sender', 'Receiver', 'Amount', 
+      'Security Score', 'Layers Passed', 'Total Layers', 'Quantum Fidelity',
+      'Blockchain Hash', 'Created At', 'Completed At'
+    ];
+    
+    const rows = selected.map(t => [
+      t.session_id,
+      t.transfer_status,
+      t.sender_address,
+      t.receiver_address,
+      t.amount,
+      t.security_score || '',
+      t.layers_passed,
+      t.total_layers,
+      t.quantum_fidelity || '',
+      t.blockchain_hash || '',
+      t.created_at,
+      t.completed_at || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quantum-transfers-selected-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Exported selected to CSV', { description: `${selected.length} transfers exported` });
+  };
+
+  const exportSelectedToJSON = () => {
+    const selected = getSelectedTransfers();
+    if (selected.length === 0) {
+      toast.error('No transfers selected');
+      return;
+    }
+
+    const data = selected.map(t => ({
+      session_id: t.session_id,
+      transfer_status: t.transfer_status,
+      sender_address: t.sender_address,
+      receiver_address: t.receiver_address,
+      amount: t.amount,
+      security_score: t.security_score,
+      layers_passed: t.layers_passed,
+      total_layers: t.total_layers,
+      quantum_fidelity: t.quantum_fidelity,
+      entanglement_pairs: t.entanglement_pairs,
+      blockchain_hash: t.blockchain_hash,
+      data_payload: t.data_payload,
+      layer_results: t.layer_results,
+      network_nodes: t.network_nodes,
+      created_at: t.created_at,
+      started_at: t.started_at,
+      completed_at: t.completed_at
+    }));
+
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quantum-transfers-selected-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Exported selected to JSON', { description: `${selected.length} transfers exported` });
+  };
+
+  const retryFailedTransfers = async () => {
+    const selected = getSelectedTransfers();
+    const failedTransfers = selected.filter(t => t.transfer_status === 'failed');
+    
+    if (failedTransfers.length === 0) {
+      toast.error('No failed transfers selected', { 
+        description: 'Select failed transfers to retry' 
+      });
+      return;
+    }
+
+    toast.info('Retrying failed transfers...', { 
+      description: `${failedTransfers.length} transfers will be retried` 
+    });
+
+    // Simulate retry by resetting status to pending
+    let successCount = 0;
+    for (const transfer of failedTransfers) {
+      const result = await updateTransfer(transfer.session_id, {
+        transfer_status: 'pending',
+        layers_passed: 0,
+        security_score: null,
+        quantum_fidelity: null,
+        completed_at: null
+      });
+      if (result.success) successCount++;
+    }
+
+    toast.success('Retry initiated', { 
+      description: `${successCount} transfers reset to pending` 
+    });
+    setSelectedIds(new Set());
+    fetchTransfers();
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
   };
 
   // Export to CSV
@@ -514,6 +697,78 @@ export function TransactionHistoryPanel() {
         </CardContent>
       </Card>
 
+      {/* Bulk Actions Bar */}
+      {selectionMode && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSelectAll}
+                  className="text-xs"
+                >
+                  {selectedIds.size === paginatedTransfers.length ? (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-1" />
+                      Deselect All
+                    </>
+                  ) : (
+                    <>
+                      <Square className="h-4 w-4 mr-1" />
+                      Select All ({paginatedTransfers.length})
+                    </>
+                  )}
+                </Button>
+                <span className="text-sm font-medium">
+                  {selectedIds.size} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportSelectedToCSV}
+                  disabled={selectedIds.size === 0}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1" />
+                  Export CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportSelectedToJSON}
+                  disabled={selectedIds.size === 0}
+                >
+                  <FileJson className="h-4 w-4 mr-1" />
+                  Export JSON
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={retryFailedTransfers}
+                  disabled={selectedIds.size === 0}
+                  className="text-yellow-600 hover:text-yellow-700"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Retry Failed
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearSelection}
+                  disabled={selectedIds.size === 0}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Transfer List */}
       <Card>
         <CardHeader>
@@ -525,7 +780,15 @@ export function TransactionHistoryPanel() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-sm text-muted-foreground">Per page:</Label>
+              <Button 
+                variant={selectionMode ? "default" : "outline"} 
+                size="sm"
+                onClick={toggleSelectionMode}
+              >
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {selectionMode ? 'Exit Selection' : 'Bulk Select'}
+              </Button>
+              <Label className="text-sm text-muted-foreground ml-2">Per page:</Label>
               <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
@@ -555,7 +818,13 @@ export function TransactionHistoryPanel() {
             <ScrollArea className="h-[500px]">
               <div className="space-y-3 pr-4">
                 {paginatedTransfers.map(transfer => (
-                  <TransferCard key={transfer.id} transfer={transfer} />
+                  <TransferCard 
+                    key={transfer.id} 
+                    transfer={transfer} 
+                    isSelected={selectedIds.has(transfer.id)}
+                    onSelect={handleSelectTransfer}
+                    selectionMode={selectionMode}
+                  />
                 ))}
               </div>
             </ScrollArea>
