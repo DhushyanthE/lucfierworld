@@ -27,12 +27,13 @@ import { QuantumTransferSimulation } from '@/components/blockchain-ann/QuantumTr
 import { QuantumNetworkVisualization } from '@/components/blockchain-ann/QuantumNetworkVisualization';
 import { QubitStateVisualization } from '@/components/blockchain-ann/QubitStateVisualization';
 import { TransactionHistoryPanel } from '@/components/blockchain-ann/TransactionHistoryPanel';
+import { TransferAnalyticsDashboard } from '@/components/blockchain-ann/TransferAnalyticsDashboard';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -308,6 +309,10 @@ export default function BlockchainANN() {
                 <History className="mr-2 h-4 w-4" />
                 History
               </TabsTrigger>
+              <TabsTrigger value="analytics">
+                <PieChart className="mr-2 h-4 w-4" />
+                Analytics
+              </TabsTrigger>
               <TabsTrigger value="realtime">
                 <Activity className="mr-2 h-4 w-4" />
                 Real-Time
@@ -388,6 +393,10 @@ export default function BlockchainANN() {
 
             <TabsContent value="tx-history" className="space-y-6">
               <TransactionHistoryPanel />
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <TransferAnalyticsDashboard />
             </TabsContent>
 
             <TabsContent value="realtime" className="space-y-6">
