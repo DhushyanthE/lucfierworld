@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.coinmarketcap-proxy]
 verify_jwt = false
+
+[functions.crypto-realtime-ws]
+verify_jwt = false
