@@ -1,9 +1,6 @@
 import { toast } from 'sonner';
 import { MarketData } from '@/types/market';
-
-// Note: This service uses mock data for cryptocurrency prices.
-// For production use with real API data, implement a backend Edge Function
-// to proxy requests securely without exposing API keys in client code.
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CryptoPrice {
   symbol: string;
@@ -32,15 +29,44 @@ export interface MarketStats {
 }
 
 class CryptoApiService {
-  // Note: Direct API calls from frontend are disabled due to CORS restrictions
-  // Using mock data for demo purposes. In production, implement a backend proxy.
-  private async fetchWithApiKey(endpoint: string, params: Record<string, any> = {}) {
-    // Return mock data directly instead of attempting API call
-    return this.getMockDataForEndpoint(endpoint);
+  private useLiveData = true;
+  private lastApiCallTime = 0;
+  private minCallInterval = 5000; // 5 seconds between API calls
+
+  // Fetch live data from CoinMarketCap via Edge Function
+  private async fetchFromEdgeFunction(limit: number = 20): Promise<any> {
+    try {
+      // Rate limiting
+      const now = Date.now();
+      if (now - this.lastApiCallTime < this.minCallInterval) {
+        console.log('Rate limited, using cached/mock data');
+        return null;
+      }
+      this.lastApiCallTime = now;
+
+      const { data, error } = await supabase.functions.invoke('coinmarketcap-proxy', {
+        body: { limit }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        return null;
+      }
+
+      if (data?.success) {
+        console.log('Fetched live crypto data:', data.data?.length, 'coins');
+        return data;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch from edge function:', error);
+      return null;
+    }
   }
 
   private getMockDataForEndpoint(endpoint: string) {
-    // Mock data when API fails
+    // Mock data fallback
     if (endpoint.includes('/cryptocurrency/quotes/latest')) {
       return {
         data: {
@@ -67,8 +93,7 @@ class CryptoApiService {
 
   private generateMockOHLCVData() {
     const symbols = ['BTC', 'ETH', 'SOL', 'QNTM'];
-    const now = Date.now();
-    const data = {};
+    const data: Record<string, any> = {};
     
     symbols.forEach(symbol => {
       const basePrice = this.getBasePriceForSymbol(symbol);
@@ -110,29 +135,66 @@ class CryptoApiService {
   }
 
   public async getPrices(symbols: string[] = ['BTC', 'ETH', 'SOL', 'QNTM']): Promise<CryptoPrice[]> {
-    const response = await this.fetchWithApiKey('/cryptocurrency/quotes/latest', {
-      symbol: symbols.join(',')
-    });
+    // Try to fetch live data first
+    if (this.useLiveData) {
+      const liveData = await this.fetchFromEdgeFunction(100);
+      if (liveData?.data) {
+        const symbolSet = new Set(symbols.map(s => s.toUpperCase()));
+        const prices: CryptoPrice[] = [];
+        
+        for (const crypto of liveData.data) {
+          if (symbolSet.has(crypto.symbol.toUpperCase())) {
+            prices.push({
+              symbol: crypto.symbol,
+              price: crypto.price,
+              change24h: crypto.percentChange24h,
+              volume24h: crypto.volume24h,
+              marketCap: crypto.marketCap,
+              lastUpdated: liveData.timestamp
+            });
+          }
+        }
+        
+        // Add any missing symbols with mock data
+        for (const symbol of symbols) {
+          if (!prices.find(p => p.symbol.toUpperCase() === symbol.toUpperCase())) {
+            const mockData = this.getMockDataForEndpoint('/cryptocurrency/quotes/latest');
+            const data = mockData.data[symbol];
+            if (data) {
+              prices.push({
+                symbol,
+                price: data.quote.USD.price,
+                change24h: data.quote.USD.percent_change_24h,
+                volume24h: data.quote.USD.volume_24h,
+                marketCap: data.quote.USD.market_cap,
+                lastUpdated: new Date().toISOString()
+              });
+            }
+          }
+        }
+        
+        return prices;
+      }
+    }
+    
+    // Fallback to mock data
+    const response = this.getMockDataForEndpoint('/cryptocurrency/quotes/latest');
     
     return symbols.map(symbol => {
       const data = response.data[symbol];
       return {
         symbol,
-        price: data.quote.USD.price,
-        change24h: data.quote.USD.percent_change_24h,
-        volume24h: data.quote.USD.volume_24h,
-        marketCap: data.quote.USD.market_cap,
-        lastUpdated: data.quote.USD.last_updated || new Date().toISOString()
+        price: data?.quote.USD.price || 0,
+        change24h: data?.quote.USD.percent_change_24h || 0,
+        volume24h: data?.quote.USD.volume_24h || 0,
+        marketCap: data?.quote.USD.market_cap || 0,
+        lastUpdated: new Date().toISOString()
       };
     });
   }
 
   public async getOHLCV(symbols: string[] = ['BTC', 'ETH', 'SOL', 'QNTM'], interval: string = '1d'): Promise<CryptoOHLCV[]> {
-    const response = await this.fetchWithApiKey('/cryptocurrency/ohlcv/latest', {
-      symbol: symbols.join(','),
-      convert: 'USD',
-      interval
-    });
+    const response = this.generateMockOHLCVData();
     
     const result: CryptoOHLCV[] = [];
     
@@ -155,19 +217,16 @@ class CryptoApiService {
   }
 
   public async getHistoricalData(symbol: string, days: number = 30): Promise<MarketData[]> {
-    // In a real implementation, we would fetch historical data from the API
-    // For now, we'll generate mock data
     const data: MarketData[] = [];
     const now = Date.now();
     const basePrice = this.getBasePriceForSymbol(symbol);
-    const volatility = basePrice * 0.05; // 5% volatility
+    const volatility = basePrice * 0.05;
     
     for (let i = days; i >= 0; i--) {
       const date = new Date(now - i * 24 * 60 * 60 * 1000);
       
-      // Generate price with some random movement but with a trend
       const randomChange = (Math.random() - 0.48) * volatility;
-      const trendFactor = 1 + (days - i) * 0.005; // Slight upward trend
+      const trendFactor = 1 + (days - i) * 0.005;
       
       const price = i === days 
         ? basePrice 
@@ -189,7 +248,31 @@ class CryptoApiService {
   }
 
   public async getMarketStats(): Promise<MarketStats> {
-    // Using mock data - implement backend proxy for real API calls
+    // Try to calculate from live data
+    if (this.useLiveData) {
+      const liveData = await this.fetchFromEdgeFunction(20);
+      if (liveData?.data) {
+        let totalMarketCap = 0;
+        let totalVolume = 0;
+        let btcMarketCap = 0;
+        let ethMarketCap = 0;
+        
+        for (const crypto of liveData.data) {
+          totalMarketCap += crypto.marketCap || 0;
+          totalVolume += crypto.volume24h || 0;
+          if (crypto.symbol === 'BTC') btcMarketCap = crypto.marketCap || 0;
+          if (crypto.symbol === 'ETH') ethMarketCap = crypto.marketCap || 0;
+        }
+        
+        return {
+          totalMarketCap,
+          totalVolume24h: totalVolume,
+          btcDominance: totalMarketCap > 0 ? (btcMarketCap / totalMarketCap) * 100 : 50,
+          ethDominance: totalMarketCap > 0 ? (ethMarketCap / totalMarketCap) * 100 : 18
+        };
+      }
+    }
+    
     return {
       totalMarketCap: 1428000000000,
       totalVolume24h: 78500000000,
@@ -198,18 +281,22 @@ class CryptoApiService {
     };
   }
 
-  // Convert API data to MarketData format
   public toMarketData(cryptoPrice: CryptoPrice): MarketData {
     return {
       symbol: cryptoPrice.symbol,
       price: cryptoPrice.price,
       volume: cryptoPrice.volume24h,
       timestamp: new Date(cryptoPrice.lastUpdated).getTime(),
-      high: cryptoPrice.price * 1.02, // Approximation
-      low: cryptoPrice.price * 0.98, // Approximation
-      open: cryptoPrice.price * 0.995, // Approximation
+      high: cryptoPrice.price * 1.02,
+      low: cryptoPrice.price * 0.98,
+      open: cryptoPrice.price * 0.995,
       close: cryptoPrice.price
     };
+  }
+
+  // Enable/disable live data fetching
+  public setUseLiveData(enabled: boolean) {
+    this.useLiveData = enabled;
   }
 }
 
