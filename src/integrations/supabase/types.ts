@@ -65,6 +65,30 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_rate_limits: {
+        Row: {
+          created_at: string
+          event_count: number
+          id: string
+          identifier: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          event_count?: number
+          id?: string
+          identifier: string
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          event_count?: number
+          id?: string
+          identifier?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       analytics_sessions: {
         Row: {
           browser: string | null
@@ -209,6 +233,14 @@ export type Database = {
       }
     }
     Functions: {
+      check_analytics_rate_limit: {
+        Args: {
+          p_identifier: string
+          p_max_events?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       get_user_analytics_summary: {
         Args: { target_user_id?: string }
         Returns: {
