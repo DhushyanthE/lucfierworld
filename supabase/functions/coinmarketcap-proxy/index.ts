@@ -29,35 +29,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate authorization
+    // Check for authorization - allow both authenticated and unauthenticated access
+    // The API key is protected server-side, so unauthenticated users can still view prices
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Missing or invalid authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify the JWT token
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    let userId = 'anonymous';
     
-    if (claimsError || !claimsData?.claims) {
-      console.error('Invalid token:', claimsError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    if (authHeader?.startsWith('Bearer ')) {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
       );
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claimsData } = await supabase.auth.getClaims(token);
+      
+      // If we get valid claims with a sub, user is authenticated
+      if (claimsData?.claims?.sub) {
+        userId = claimsData.claims.sub;
+        console.log('Authenticated user:', userId);
+      } else {
+        console.log('Unauthenticated request (anon key or invalid token)');
+      }
+    } else {
+      console.log('No authorization header - anonymous request');
     }
 
-    console.log('Authenticated user:', claimsData.claims.sub);
+    console.log('Request from:', userId);
 
     // Get the API key from environment
     const apiKey = Deno.env.get('COINMARKETCAP_API_KEY');
