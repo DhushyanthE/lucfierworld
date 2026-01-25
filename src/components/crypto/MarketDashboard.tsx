@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { RealTimeCryptoChart } from "./RealTimeCryptoChart";
 import { QuantumAnalysisDashboard } from "./QuantumAnalysisDashboard";
 import { MarketOverview } from "./MarketOverview";
+import { PriceAlerts } from "./PriceAlerts";
+import { PortfolioTracker } from "./PortfolioTracker";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
-import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap } from "lucide-react";
+import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase } from "lucide-react";
 
 interface MarketDashboardProps {
   onConnectWallet?: () => void;
@@ -172,12 +174,20 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
         </div>
 
         <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-gray-800 w-full justify-start">
+          <TabsList className="bg-gray-800 w-full justify-start flex-wrap">
             <TabsTrigger value="charts" className="data-[state=active]:bg-purple-600">
               Charts
             </TabsTrigger>
             <TabsTrigger value="market" className="data-[state=active]:bg-purple-600">
               Market Overview
+            </TabsTrigger>
+            <TabsTrigger value="portfolio" className="data-[state=active]:bg-purple-600">
+              <Briefcase className="h-4 w-4 mr-1" />
+              Portfolio
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="data-[state=active]:bg-purple-600">
+              <Bell className="h-4 w-4 mr-1" />
+              Alerts
             </TabsTrigger>
             <TabsTrigger value="quantum" className="data-[state=active]:bg-purple-600">
               Quantum Analysis
@@ -227,6 +237,20 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
             
             <TabsContent value="market" className="mt-0">
               <MarketOverview tokens={tokens} />
+            </TabsContent>
+            
+            <TabsContent value="portfolio" className="mt-0">
+              <PortfolioTracker 
+                currentPrices={tokens} 
+                availableSymbols={tokens.map(t => t.symbol)} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="alerts" className="mt-0">
+              <PriceAlerts 
+                currentPrices={tokens} 
+                availableSymbols={tokens.map(t => t.symbol)} 
+              />
             </TabsContent>
             
             <TabsContent value="quantum" className="mt-0">
