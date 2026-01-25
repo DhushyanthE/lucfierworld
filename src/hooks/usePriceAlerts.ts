@@ -46,7 +46,7 @@ export function usePriceAlerts() {
 
       if (fetchError) throw fetchError;
       
-      setAlerts((data as PriceAlert[]) || []);
+      setAlerts((data as unknown as PriceAlert[]) || []);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching price alerts:', err);

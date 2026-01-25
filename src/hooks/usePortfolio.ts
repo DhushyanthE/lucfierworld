@@ -67,7 +67,7 @@ export function usePortfolio(currentPrices: CryptoPrice[] = []) {
 
       if (fetchError) throw fetchError;
       
-      setHoldings((data as PortfolioHolding[]) || []);
+      setHoldings((data as unknown as PortfolioHolding[]) || []);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching portfolio holdings:', err);

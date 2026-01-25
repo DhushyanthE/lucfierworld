@@ -134,6 +134,84 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_holdings: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          purchase_date: string
+          purchase_price: number
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          purchase_price: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          purchase_price?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      price_alerts: {
+        Row: {
+          condition: string
+          created_at: string
+          email_sent: boolean | null
+          id: string
+          is_active: boolean
+          notification_method: string
+          symbol: string
+          target_price: number
+          triggered_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          condition: string
+          created_at?: string
+          email_sent?: boolean | null
+          id?: string
+          is_active?: boolean
+          notification_method?: string
+          symbol: string
+          target_price: number
+          triggered_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          email_sent?: boolean | null
+          id?: string
+          is_active?: boolean
+          notification_method?: string
+          symbol?: string
+          target_price?: number
+          triggered_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quantum_transfer_history: {
         Row: {
           amount: number
