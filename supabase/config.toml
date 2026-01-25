@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.crypto-realtime-ws]
 verify_jwt = false
+
+[functions.check-price-alerts]
+verify_jwt = false

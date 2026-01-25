@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { RealTimeCryptoChart } from "./RealTimeCryptoChart";
 import { QuantumAnalysisDashboard } from "./QuantumAnalysisDashboard";
 import { MarketOverview } from "./MarketOverview";
-import { PriceAlerts } from "./PriceAlerts";
-import { PortfolioTracker } from "./PortfolioTracker";
+import { EnhancedPriceAlerts } from "./EnhancedPriceAlerts";
+import { EnhancedPortfolioTracker } from "./EnhancedPortfolioTracker";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase } from "lucide-react";
@@ -240,14 +240,14 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
             </TabsContent>
             
             <TabsContent value="portfolio" className="mt-0">
-              <PortfolioTracker 
+              <EnhancedPortfolioTracker 
                 currentPrices={tokens} 
                 availableSymbols={tokens.map(t => t.symbol)} 
               />
             </TabsContent>
             
             <TabsContent value="alerts" className="mt-0">
-              <PriceAlerts 
+              <EnhancedPriceAlerts 
                 currentPrices={tokens} 
                 availableSymbols={tokens.map(t => t.symbol)} 
               />
