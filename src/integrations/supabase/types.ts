@@ -170,6 +170,39 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_snapshots: {
+        Row: {
+          created_at: string
+          holdings_data: Json
+          id: string
+          snapshot_date: string
+          total_cost: number
+          total_profit_loss: number
+          total_value: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          holdings_data?: Json
+          id?: string
+          snapshot_date: string
+          total_cost?: number
+          total_profit_loss?: number
+          total_value?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          holdings_data?: Json
+          id?: string
+          snapshot_date?: string
+          total_cost?: number
+          total_profit_loss?: number
+          total_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       price_alerts: {
         Row: {
           condition: string
