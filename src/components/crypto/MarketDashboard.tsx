@@ -8,9 +8,11 @@ import { QuantumAnalysisDashboard } from "./QuantumAnalysisDashboard";
 import { MarketOverview } from "./MarketOverview";
 import { EnhancedPriceAlerts } from "./EnhancedPriceAlerts";
 import { EnhancedPortfolioTracker } from "./EnhancedPortfolioTracker";
+import { HistoricalPerformanceChart } from "./HistoricalPerformanceChart";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
-import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase } from "lucide-react";
+import { usePortfolio } from "@/hooks/usePortfolio";
+import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase, ChartLine } from "lucide-react";
 
 interface MarketDashboardProps {
   onConnectWallet?: () => void;
@@ -51,6 +53,9 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
     }
     return fallbackTokens;
   }, [wsPrices, fallbackTokens, lastUpdate]);
+
+  // Portfolio data for snapshots
+  const { portfolioSummary } = usePortfolio(tokens);
 
   // Fallback data fetch
   useEffect(() => {
@@ -189,6 +194,10 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <Bell className="h-4 w-4 mr-1" />
               Alerts
             </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-purple-600">
+              <ChartLine className="h-4 w-4 mr-1" />
+              History
+            </TabsTrigger>
             <TabsTrigger value="quantum" className="data-[state=active]:bg-purple-600">
               Quantum Analysis
             </TabsTrigger>
@@ -250,6 +259,13 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <EnhancedPriceAlerts 
                 currentPrices={tokens} 
                 availableSymbols={tokens.map(t => t.symbol)} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="history" className="mt-0">
+              <HistoricalPerformanceChart 
+                currentPrices={tokens}
+                portfolioSummary={portfolioSummary}
               />
             </TabsContent>
             
