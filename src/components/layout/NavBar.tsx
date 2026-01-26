@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Gem, ChevronDown, Menu, X, ArrowUpDown, Bot } from "lucide-react";
 import WalletConnector from "../wallet/WalletConnector";
-import { LogoIconType } from "../layout/Logo"; // Import the correct type
+import { LogoIconType } from "../layout/Logo";
 import { DeploymentStatus } from '../deployment/DeploymentStatus';
+import { AuthButton } from '../home/AuthButton';
 
 interface NavBarProps {
   logoType?: LogoIconType; // Update to use the full LogoIconType
@@ -113,8 +114,9 @@ export function NavBar({
             </button>
           </div>
 
-          {/* Wallet Connection Button */}
-          <div className="hidden md:block">
+          {/* Auth Button & Wallet Connection */}
+          <div className="hidden md:flex items-center gap-3">
+            <AuthButton />
             <WalletConnector />
           </div>
 
@@ -182,6 +184,11 @@ export function NavBar({
             {/* Mobile Deployment Status */}
             <div className="px-3 py-2">
               <DeploymentStatus />
+            </div>
+
+            {/* Mobile Auth Button */}
+            <div className="px-3 py-2">
+              <AuthButton />
             </div>
 
             {/* Mobile Wallet Connection */}
