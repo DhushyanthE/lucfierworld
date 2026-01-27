@@ -139,6 +139,33 @@ serve(async (req: Request) => {
           console.error("Error updating alert:", updateError);
         }
 
+        const conditionText = alert.condition === "above" ? "risen above" : "fallen below";
+
+        // Create in-app notification (using service role bypasses RLS)
+        if (alert.notification_method === "in_app" || alert.notification_method === "both") {
+          const { error: notifError } = await supabase
+            .from("notifications")
+            .insert({
+              user_id: alert.user_id,
+              title: `🚨 ${alert.symbol} Price Alert`,
+              message: `${alert.symbol} has ${conditionText} your target of $${alert.target_price.toLocaleString()}. Current price: $${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              type: "price_alert",
+              data: {
+                symbol: alert.symbol,
+                condition: alert.condition,
+                target_price: alert.target_price,
+                current_price: currentPrice,
+                alert_id: alert.id,
+              },
+            });
+
+          if (notifError) {
+            console.error("Error creating in-app notification:", notifError);
+          } else {
+            console.log("In-app notification created for user:", alert.user_id);
+          }
+        }
+
         // Send email notification if configured
         if (
           resend &&
@@ -156,7 +183,6 @@ serve(async (req: Request) => {
             }
 
             const userEmail = userData.user.email;
-            const conditionText = alert.condition === "above" ? "risen above" : "fallen below";
 
             const { error: emailError } = await resend.emails.send({
               from: "Crypto Alerts <alerts@resend.dev>",

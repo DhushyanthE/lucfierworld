@@ -9,10 +9,11 @@ import { MarketOverview } from "./MarketOverview";
 import { EnhancedPriceAlerts } from "./EnhancedPriceAlerts";
 import { EnhancedPortfolioTracker } from "./EnhancedPortfolioTracker";
 import { HistoricalPerformanceChart } from "./HistoricalPerformanceChart";
+import { Watchlist } from "./Watchlist";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { usePortfolio } from "@/hooks/usePortfolio";
-import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase, ChartLine } from "lucide-react";
+import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase, ChartLine, Star } from "lucide-react";
 
 interface MarketDashboardProps {
   onConnectWallet?: () => void;
@@ -198,6 +199,10 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <ChartLine className="h-4 w-4 mr-1" />
               History
             </TabsTrigger>
+            <TabsTrigger value="watchlist" className="data-[state=active]:bg-purple-600">
+              <Star className="h-4 w-4 mr-1" />
+              Watchlist
+            </TabsTrigger>
             <TabsTrigger value="quantum" className="data-[state=active]:bg-purple-600">
               Quantum Analysis
             </TabsTrigger>
@@ -266,6 +271,14 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <HistoricalPerformanceChart 
                 currentPrices={tokens}
                 portfolioSummary={portfolioSummary}
+              />
+            </TabsContent>
+            
+            <TabsContent value="watchlist" className="mt-0">
+              <Watchlist 
+                currentPrices={tokens}
+                availableSymbols={tokens.map(t => t.symbol)}
+                onSelectToken={setSelectedToken}
               />
             </TabsContent>
             
