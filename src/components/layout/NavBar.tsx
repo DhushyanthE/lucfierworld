@@ -5,6 +5,7 @@ import WalletConnector from "../wallet/WalletConnector";
 import { LogoIconType } from "../layout/Logo";
 import { DeploymentStatus } from '../deployment/DeploymentStatus';
 import { AuthButton } from '../home/AuthButton';
+import { NotificationsCenter } from '../notifications/NotificationsCenter';
 
 interface NavBarProps {
   logoType?: LogoIconType; // Update to use the full LogoIconType
@@ -114,8 +115,9 @@ export function NavBar({
             </button>
           </div>
 
-          {/* Auth Button & Wallet Connection */}
+          {/* Notifications, Auth & Wallet Connection */}
           <div className="hidden md:flex items-center gap-3">
+            <NotificationsCenter />
             <AuthButton />
             <WalletConnector />
           </div>
@@ -186,8 +188,9 @@ export function NavBar({
               <DeploymentStatus />
             </div>
 
-            {/* Mobile Auth Button */}
-            <div className="px-3 py-2">
+            {/* Mobile Notifications & Auth */}
+            <div className="px-3 py-2 flex items-center gap-2">
+              <NotificationsCenter />
               <AuthButton />
             </div>
 
