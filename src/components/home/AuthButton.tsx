@@ -52,6 +52,12 @@ export function AuthButton() {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
+          <Link to="/profile" className="flex items-center gap-2 cursor-pointer">
+            <User className="h-4 w-4" />
+            <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link to="/wallet" className="flex items-center gap-2 cursor-pointer">
             <Settings className="h-4 w-4" />
             <span>Wallet</span>
@@ -59,7 +65,7 @@ export function AuthButton() {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/crypto-market" className="flex items-center gap-2 cursor-pointer">
-            <User className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
             <span>Market Dashboard</span>
           </Link>
         </DropdownMenuItem>
