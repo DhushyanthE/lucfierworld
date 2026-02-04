@@ -21,6 +21,7 @@ import QuantumComputing from './pages/QuantumComputing';
 import QuantumValley150Qubit from './pages/QuantumValley150Qubit';
 import BlockchainANN from './pages/BlockchainANN';
 import Auth from './pages/Auth';
+import Profile from './pages/Profile';
 import './App.css';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
         <HashRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/" element={<Index />} />
             <Route path="/crypto-market" element={<CryptoMarket />} />
             <Route path="/wallet" element={<Wallet />} />
