@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Shield, Lock, Loader2 } from 'lucide-react';
 import { ForgotPassword } from '@/components/auth/ForgotPassword';
 import { GoogleSignIn } from '@/components/auth/GoogleSignIn';
+import { AppleSignIn } from '@/components/auth/AppleSignIn';
 import { Separator } from '@/components/ui/separator';
 
 const Auth = () => {
@@ -345,6 +346,7 @@ const Auth = () => {
                 </div>
                 
                 <GoogleSignIn />
+                <AppleSignIn />
               </form>
             </TabsContent>
             
@@ -406,6 +408,7 @@ const Auth = () => {
                 </div>
                 
                 <GoogleSignIn />
+                <AppleSignIn />
               </form>
             </TabsContent>
           </Tabs>
