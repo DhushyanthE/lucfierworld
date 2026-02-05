@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useTOTP } from '@/hooks/useTOTP';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +16,22 @@ import { toast } from 'sonner';
 import { ArrowLeft, Camera, Shield, Bell, User, Loader2, Copy, Check } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { SimpleNavBar } from '@/components/layout/SimpleNavBar';
+import { QRCodeSVG } from 'qrcode.react';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading, updateProfile, uploadAvatar } = useProfile();
   const { secret, loading: totpLoading, generateNewSecret, getOtpAuthUrl, enableTOTP, disableTOTP } = useTOTP();
+  const { 
+    isSupported: pushSupported, 
+    permission: pushPermission, 
+    subscription: pushSubscription, 
+    loading: pushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+    sendTestNotification
+  } = usePushNotifications();
   
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -87,9 +98,27 @@ const Profile = () => {
   };
 
   const handleNotificationChange = async (key: 'notification_email' | 'notification_push' | 'notification_in_app', value: boolean) => {
+    // If enabling push notifications, also subscribe to browser push
+    if (key === 'notification_push' && value && pushSupported && !pushSubscription) {
+      const { error } = await subscribePush();
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
+    
     const { error } = await updateProfile({ [key]: value });
     if (error) {
       toast.error('Failed to update notification settings');
+    }
+  };
+
+  const handleTestPush = async () => {
+    const { error } = await sendTestNotification();
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success('Test notification sent!');
     }
   };
 
@@ -255,13 +284,23 @@ const Profile = () => {
                     <p className="font-medium mb-2">Setup Instructions:</p>
                     <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                       <li>Install an authenticator app (Google Authenticator, Authy, etc.)</li>
-                      <li>Add a new account and enter the secret key below</li>
+                      <li>Scan the QR code or enter the secret key manually</li>
                       <li>Enter the 6-digit code from the app to verify</li>
                     </ol>
                   </div>
 
+                  {/* QR Code */}
+                  <div className="flex justify-center p-4 bg-white rounded-lg">
+                    <QRCodeSVG
+                      value={getOtpAuthUrl(secret, user.email || '')}
+                      size={180}
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Secret Key</Label>
+                    <Label>Secret Key (Manual Entry)</Label>
                     <div className="flex gap-2">
                       <Input value={secret} readOnly className="font-mono text-sm" />
                       <Button variant="outline" size="icon" onClick={copySecret}>
@@ -324,12 +363,31 @@ const Profile = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Push Notifications</p>
-                  <p className="text-sm text-muted-foreground">Receive browser push notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      {!pushSupported 
+                        ? 'Not supported in this browser' 
+                        : pushPermission === 'denied'
+                        ? 'Permission denied - enable in browser settings'
+                        : 'Receive browser push notifications'}
+                    </p>
                 </div>
-                <Switch
-                  checked={profile?.notification_push ?? true}
-                  onCheckedChange={(checked) => handleNotificationChange('notification_push', checked)}
-                />
+                  <div className="flex items-center gap-2">
+                    {pushSubscription && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleTestPush}
+                        disabled={pushLoading}
+                      >
+                        Test
+                      </Button>
+                    )}
+                    <Switch
+                      checked={profile?.notification_push ?? true}
+                      onCheckedChange={(checked) => handleNotificationChange('notification_push', checked)}
+                      disabled={!pushSupported || pushPermission === 'denied' || pushLoading}
+                    />
+                  </div>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
