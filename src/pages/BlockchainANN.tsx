@@ -28,12 +28,16 @@ import { QuantumNetworkVisualization } from '@/components/blockchain-ann/Quantum
 import { QubitStateVisualization } from '@/components/blockchain-ann/QubitStateVisualization';
 import { TransactionHistoryPanel } from '@/components/blockchain-ann/TransactionHistoryPanel';
 import { TransferAnalyticsDashboard } from '@/components/blockchain-ann/TransferAnalyticsDashboard';
+import { QuantumFirewallDashboard } from '@/components/blockchain-ann/QuantumFirewallDashboard';
+import { QuantumSubspaceVisualization } from '@/components/blockchain-ann/QuantumSubspaceVisualization';
+import { ReverseAttractorPanel } from '@/components/blockchain-ann/ReverseAttractorPanel';
+import { QuantumNeuralDefensePanel } from '@/components/blockchain-ann/QuantumNeuralDefensePanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -349,6 +353,22 @@ export default function BlockchainANN() {
                 <Brain className="mr-2 h-4 w-4" />
                 Models
               </TabsTrigger>
+              <TabsTrigger value="quantum-firewall">
+                <ShieldAlert className="mr-2 h-4 w-4" />
+                Q-Firewall
+              </TabsTrigger>
+              <TabsTrigger value="reverse-attractor">
+                <Magnet className="mr-2 h-4 w-4" />
+                Attractor
+              </TabsTrigger>
+              <TabsTrigger value="qnn-defense">
+                <Brain className="mr-2 h-4 w-4" />
+                QNN Defense
+              </TabsTrigger>
+              <TabsTrigger value="subspaces">
+                <Layers className="mr-2 h-4 w-4" />
+                Subspaces
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -573,6 +593,101 @@ export default function BlockchainANN() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="quantum-firewall" className="space-y-6">
+              <QuantumFirewallDashboard />
+            </TabsContent>
+
+            <TabsContent value="reverse-attractor" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <ReverseAttractorPanel />
+                <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Magnet className="h-5 w-5" />
+                      Reverse Attractor Technology
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Active threat hunting using quantum-enhanced honeypot networks that attract 
+                      and capture malicious actors before they can cause damage.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-lg bg-muted">
+                        <div className="text-xs font-medium text-primary mb-1">Quantum Deception</div>
+                        <p className="text-xs text-muted-foreground">
+                          Uses quantum superposition to present multiple fake targets simultaneously
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted">
+                        <div className="text-xs font-medium text-primary mb-1">Entanglement Traps</div>
+                        <p className="text-xs text-muted-foreground">
+                          Quantum-entangled honeypots detect intrusion attempts instantly
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted">
+                        <div className="text-xs font-medium text-primary mb-1">Adaptive Learning</div>
+                        <p className="text-xs text-muted-foreground">
+                          ML-powered attractor adjusts its profile based on captured threat patterns
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="qnn-defense" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <QuantumNeuralDefensePanel isActive={true} />
+                <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Subspace QNN Architecture
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Quantum Neural Networks operating in optimized subspaces for 3x faster training
+                      and 33% qubit reduction while maintaining quantum advantage.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div className="font-bold text-lg text-green-500">33%</div>
+                        <div className="text-muted-foreground">Qubit Savings</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <div className="font-bold text-lg text-blue-500">3x</div>
+                        <div className="text-muted-foreground">Faster Training</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                        <div className="font-bold text-lg text-purple-500">50%</div>
+                        <div className="text-muted-foreground">Gate Reduction</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                        <div className="font-bold text-lg text-orange-500">10x</div>
+                        <div className="text-muted-foreground">Compression</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="subspaces" className="space-y-6">
+              <QuantumSubspaceVisualization 
+                subspaces={[
+                  { id: 'subspace-threat-detection', dimension: 4, qubits: 8, compressionRatio: 2.5, securityLevel: 'enhanced', active: true, utilization: 78 },
+                  { id: 'subspace-pattern-recognition', dimension: 6, qubits: 12, compressionRatio: 1.67, securityLevel: 'maximum', active: true, utilization: 85 },
+                  { id: 'subspace-neural-processing', dimension: 8, qubits: 16, compressionRatio: 1.25, securityLevel: 'maximum', active: true, utilization: 92 },
+                  { id: 'subspace-encryption-layer', dimension: 4, qubits: 8, compressionRatio: 2.5, securityLevel: 'enhanced', active: true, utilization: 65 },
+                  { id: 'subspace-teleportation-channel', dimension: 2, qubits: 4, compressionRatio: 5, securityLevel: 'standard', active: true, utilization: 45 },
+                  { id: 'subspace-error-correction', dimension: 3, qubits: 6, compressionRatio: 3.33, securityLevel: 'standard', active: true, utilization: 55 },
+                ]}
+              />
             </TabsContent>
           </Tabs>
         )}
