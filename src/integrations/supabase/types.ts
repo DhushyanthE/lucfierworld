@@ -315,6 +315,7 @@ export type Database = {
           notification_email: boolean | null
           notification_in_app: boolean | null
           notification_push: boolean | null
+          push_subscription: Json | null
           totp_enabled: boolean | null
           totp_secret: string | null
           updated_at: string
@@ -329,6 +330,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_in_app?: boolean | null
           notification_push?: boolean | null
+          push_subscription?: Json | null
           totp_enabled?: boolean | null
           totp_secret?: string | null
           updated_at?: string
@@ -343,6 +345,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_in_app?: boolean | null
           notification_push?: boolean | null
+          push_subscription?: Json | null
           totp_enabled?: boolean | null
           totp_secret?: string | null
           updated_at?: string
