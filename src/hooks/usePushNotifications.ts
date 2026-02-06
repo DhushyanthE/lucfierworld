@@ -2,8 +2,9 @@
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from './useAuth';
  
- // This should be replaced with your actual VAPID public key
- const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// VAPID public key for web push notifications
+// Generated via generate-vapid-keys edge function
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BKbYez7X0FWHiT2jO3l7CeH6sbbtRHK1vZZuEm1gTCtF0CGmOCjwzthUlQS_zW25q7H4uorvFR7c9Hk62CluNFI';
  
 function urlBase64ToUint8Array(base64String: string): BufferSource {
    const padding = '='.repeat((4 - base64String.length % 4) % 4);
