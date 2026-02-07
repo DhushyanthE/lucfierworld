@@ -44,6 +44,9 @@ interface FirewallMetrics {
   defenseScore: number;
   quantumFidelity: number;
   subspaceEfficiency: number;
+  echoResonance?: number;
+  layersPassed?: number;
+  totalLayers?: number;
 }
 
 interface DefenseCycleResult {
@@ -184,6 +187,11 @@ export function useQuantumFirewall() {
     return result;
   }, [executeOperation]);
 
+  const runQuantumEchoesIntegration = useCallback(async (currentThreats?: ThreatPattern[]) => {
+    const result = await executeOperation('quantum-echoes-integration', { threats: currentThreats || threats });
+    return result;
+  }, [executeOperation, threats]);
+
   return {
     isLoading,
     error,
@@ -200,5 +208,6 @@ export function useQuantumFirewall() {
     runSubspaceTeleport,
     runErrorCorrection,
     runFullDefenseCycle,
+    runQuantumEchoesIntegration,
   };
 }

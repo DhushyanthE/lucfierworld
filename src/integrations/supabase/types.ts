@@ -353,6 +353,66 @@ export type Database = {
         }
         Relationships: []
       }
+      quantum_firewall_logs: {
+        Row: {
+          block_hash: string | null
+          created_at: string
+          defense_action: string | null
+          event_type: string
+          honeypot_id: string | null
+          id: string
+          merkle_root: string | null
+          metrics: Json | null
+          qnn_layer: string | null
+          quantum_fidelity: number | null
+          session_id: string
+          severity: string | null
+          subspace_id: string | null
+          success: boolean | null
+          threat_signature: string | null
+          threat_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          block_hash?: string | null
+          created_at?: string
+          defense_action?: string | null
+          event_type: string
+          honeypot_id?: string | null
+          id?: string
+          merkle_root?: string | null
+          metrics?: Json | null
+          qnn_layer?: string | null
+          quantum_fidelity?: number | null
+          session_id: string
+          severity?: string | null
+          subspace_id?: string | null
+          success?: boolean | null
+          threat_signature?: string | null
+          threat_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          block_hash?: string | null
+          created_at?: string
+          defense_action?: string | null
+          event_type?: string
+          honeypot_id?: string | null
+          id?: string
+          merkle_root?: string | null
+          metrics?: Json | null
+          qnn_layer?: string | null
+          quantum_fidelity?: number | null
+          session_id?: string
+          severity?: string | null
+          subspace_id?: string | null
+          success?: boolean | null
+          threat_signature?: string | null
+          threat_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       quantum_transfer_history: {
         Row: {
           amount: number

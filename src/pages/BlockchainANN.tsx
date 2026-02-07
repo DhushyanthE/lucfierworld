@@ -32,6 +32,7 @@ import { QuantumFirewallDashboard } from '@/components/blockchain-ann/QuantumFir
 import { QuantumSubspaceVisualization } from '@/components/blockchain-ann/QuantumSubspaceVisualization';
 import { ReverseAttractorPanel } from '@/components/blockchain-ann/ReverseAttractorPanel';
 import { QuantumNeuralDefensePanel } from '@/components/blockchain-ann/QuantumNeuralDefensePanel';
+import { QuantumFirewallRealtimePanel } from '@/components/blockchain-ann/QuantumFirewallRealtimePanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -369,6 +370,10 @@ export default function BlockchainANN() {
                 <Layers className="mr-2 h-4 w-4" />
                 Subspaces
               </TabsTrigger>
+              <TabsTrigger value="firewall-realtime">
+                <Wifi className="mr-2 h-4 w-4" />
+                Live Threats
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -688,6 +693,10 @@ export default function BlockchainANN() {
                   { id: 'subspace-error-correction', dimension: 3, qubits: 6, compressionRatio: 3.33, securityLevel: 'standard', active: true, utilization: 55 },
                 ]}
               />
+            </TabsContent>
+
+            <TabsContent value="firewall-realtime" className="space-y-6">
+              <QuantumFirewallRealtimePanel />
             </TabsContent>
           </Tabs>
         )}
