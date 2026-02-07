@@ -114,27 +114,51 @@ export function QuantumFirewallDashboard() {
 
           {/* Quick Metrics */}
           {metrics && (
-            <div className="grid grid-cols-5 gap-4">
-              <div className="p-3 rounded-lg bg-muted text-center">
-                <div className="text-2xl font-bold text-primary">{metrics.threatsDetected}</div>
-                <div className="text-xs text-muted-foreground">Threats Detected</div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-5 gap-4">
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <div className="text-2xl font-bold text-primary">{metrics.threatsDetected}</div>
+                  <div className="text-xs text-muted-foreground">Threats Detected</div>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <div className="text-2xl font-bold text-green-500">{metrics.threatsNeutralized}</div>
+                  <div className="text-xs text-muted-foreground">Neutralized</div>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <div className="text-2xl font-bold text-blue-500">{(metrics.defenseScore * 100).toFixed(1)}%</div>
+                  <div className="text-xs text-muted-foreground">Defense Score</div>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <div className="text-2xl font-bold text-purple-500">{(metrics.quantumFidelity * 100).toFixed(2)}%</div>
+                  <div className="text-xs text-muted-foreground">Quantum Fidelity</div>
+                </div>
+                <div className="p-3 rounded-lg bg-muted text-center">
+                  <div className="text-2xl font-bold text-orange-500">{(metrics.subspaceEfficiency * 100).toFixed(1)}%</div>
+                  <div className="text-xs text-muted-foreground">Subspace Efficiency</div>
+                </div>
               </div>
-              <div className="p-3 rounded-lg bg-muted text-center">
-                <div className="text-2xl font-bold text-green-500">{metrics.threatsNeutralized}</div>
-                <div className="text-xs text-muted-foreground">Neutralized</div>
-              </div>
-              <div className="p-3 rounded-lg bg-muted text-center">
-                <div className="text-2xl font-bold text-blue-500">{(metrics.defenseScore * 100).toFixed(1)}%</div>
-                <div className="text-xs text-muted-foreground">Defense Score</div>
-              </div>
-              <div className="p-3 rounded-lg bg-muted text-center">
-                <div className="text-2xl font-bold text-purple-500">{(metrics.quantumFidelity * 100).toFixed(2)}%</div>
-                <div className="text-xs text-muted-foreground">Quantum Fidelity</div>
-              </div>
-              <div className="p-3 rounded-lg bg-muted text-center">
-                <div className="text-2xl font-bold text-orange-500">{(metrics.subspaceEfficiency * 100).toFixed(1)}%</div>
-                <div className="text-xs text-muted-foreground">Subspace Efficiency</div>
-              </div>
+              
+              {/* Quantum Echoes 20-Layer Security Status */}
+              {metrics.layersPassed !== undefined && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-purple-600/10 border border-primary/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      20-Layer Quantum Echoes Security
+                    </span>
+                    <Badge variant={metrics.layersPassed >= 18 ? 'default' : 'destructive'}>
+                      {metrics.layersPassed}/{metrics.totalLayers || 20} Layers Passed
+                    </Badge>
+                  </div>
+                  <Progress value={(metrics.layersPassed / (metrics.totalLayers || 20)) * 100} className="h-2" />
+                  {metrics.echoResonance !== undefined && (
+                    <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                      <span>Echo Resonance: {(metrics.echoResonance * 100).toFixed(2)}%</span>
+                      <span>Pass Rate: {((metrics.layersPassed / (metrics.totalLayers || 20)) * 100).toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

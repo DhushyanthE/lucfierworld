@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.quantum-firewall]
 verify_jwt = false
+
+[functions.quantum-firewall-scheduler]
+verify_jwt = false
