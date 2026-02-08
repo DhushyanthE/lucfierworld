@@ -33,12 +33,13 @@ import { QuantumSubspaceVisualization } from '@/components/blockchain-ann/Quantu
 import { ReverseAttractorPanel } from '@/components/blockchain-ann/ReverseAttractorPanel';
 import { QuantumNeuralDefensePanel } from '@/components/blockchain-ann/QuantumNeuralDefensePanel';
 import { QuantumFirewallRealtimePanel } from '@/components/blockchain-ann/QuantumFirewallRealtimePanel';
+import { MNCSecurityDashboard } from '@/components/blockchain-ann/MNCSecurityDashboard';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2 } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -374,6 +375,10 @@ export default function BlockchainANN() {
                 <Wifi className="mr-2 h-4 w-4" />
                 Live Threats
               </TabsTrigger>
+              <TabsTrigger value="mnc-security">
+                <Building2 className="mr-2 h-4 w-4" />
+                MNC Security
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -697,6 +702,10 @@ export default function BlockchainANN() {
 
             <TabsContent value="firewall-realtime" className="space-y-6">
               <QuantumFirewallRealtimePanel />
+            </TabsContent>
+
+            <TabsContent value="mnc-security" className="space-y-6">
+              <MNCSecurityDashboard />
             </TabsContent>
           </Tabs>
         )}
