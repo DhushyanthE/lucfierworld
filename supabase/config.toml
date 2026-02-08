@@ -80,3 +80,9 @@ verify_jwt = false
 
 [functions.quantum-firewall-scheduler]
 verify_jwt = false
+
+[functions.critical-threat-alerter]
+verify_jwt = false
+
+[functions.threat-pattern-learning]
+verify_jwt = false

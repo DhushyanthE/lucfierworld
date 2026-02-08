@@ -179,6 +179,46 @@ export function useQuantumFirewall() {
     const result = await executeOperation('full-defense-cycle', {});
     if (result.cycle) {
       setThreats(result.cycle.threats);
+      
+      // Send critical threat alerts
+      const criticalThreats = result.cycle.threats.filter(
+        (t: ThreatPattern) => t.severity === 'critical' || t.severity === 'high'
+      );
+      
+      if (criticalThreats.length > 0 && result.metrics) {
+        try {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/critical-threat-alerter`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({
+                threats: criticalThreats.map((t: ThreatPattern) => ({
+                  id: t.id,
+                  type: t.type,
+                  severity: t.severity,
+                  signature: t.signature,
+                  detectedAt: t.detectedAt,
+                  defenseAction: t.neutralized ? 'neutralized' : 'pending',
+                  layersPassed: result.metrics.layersPassed || 0,
+                  quantumFidelity: result.metrics.quantumFidelity || 0,
+                })),
+                sessionId: `defense-${Date.now()}`,
+                metrics: {
+                  defenseScore: result.metrics.defenseScore,
+                  threatsNeutralized: result.metrics.threatsNeutralized,
+                  echoResonance: result.metrics.echoResonance || 0,
+                },
+              }),
+            }
+          );
+        } catch (alertError) {
+          console.error('Failed to send threat alerts:', alertError);
+        }
+      }
     }
     if (result.metrics) {
       setMetrics(result.metrics);
@@ -191,6 +231,26 @@ export function useQuantumFirewall() {
     const result = await executeOperation('quantum-echoes-integration', { threats: currentThreats || threats });
     return result;
   }, [executeOperation, threats]);
+
+  const runPatternLearning = useCallback(async (timeRange: '1d' | '7d' | '30d' = '7d') => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/threat-pattern-learning`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ operation: 'analyze', timeRange }),
+        }
+      );
+      return await response.json();
+    } catch (err) {
+      console.error('Pattern learning failed:', err);
+      throw err;
+    }
+  }, []);
 
   return {
     isLoading,
@@ -209,5 +269,6 @@ export function useQuantumFirewall() {
     runErrorCorrection,
     runFullDefenseCycle,
     runQuantumEchoesIntegration,
+    runPatternLearning,
   };
 }
