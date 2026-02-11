@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.threat-pattern-learning]
 verify_jwt = false
+
+[functions.threat-intelligence-feed]
+verify_jwt = false
