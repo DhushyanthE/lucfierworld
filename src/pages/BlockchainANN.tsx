@@ -34,12 +34,15 @@ import { ReverseAttractorPanel } from '@/components/blockchain-ann/ReverseAttrac
 import { QuantumNeuralDefensePanel } from '@/components/blockchain-ann/QuantumNeuralDefensePanel';
 import { QuantumFirewallRealtimePanel } from '@/components/blockchain-ann/QuantumFirewallRealtimePanel';
 import { MNCSecurityDashboard } from '@/components/blockchain-ann/MNCSecurityDashboard';
+import { ThreatIntelligenceFeed } from '@/components/blockchain-ann/ThreatIntelligenceFeed';
+import { SOARPlaybookBuilder } from '@/components/blockchain-ann/SOARPlaybookBuilder';
+import { ZeroTrustPanel } from '@/components/blockchain-ann/ZeroTrustPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2 } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2, Globe, Zap, Fingerprint } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -379,6 +382,18 @@ export default function BlockchainANN() {
                 <Building2 className="mr-2 h-4 w-4" />
                 MNC Security
               </TabsTrigger>
+              <TabsTrigger value="threat-intel">
+                <Globe className="mr-2 h-4 w-4" />
+                Threat Intel
+              </TabsTrigger>
+              <TabsTrigger value="soar-playbooks">
+                <Zap className="mr-2 h-4 w-4" />
+                SOAR
+              </TabsTrigger>
+              <TabsTrigger value="zero-trust">
+                <Fingerprint className="mr-2 h-4 w-4" />
+                Zero Trust
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -706,6 +721,18 @@ export default function BlockchainANN() {
 
             <TabsContent value="mnc-security" className="space-y-6">
               <MNCSecurityDashboard />
+            </TabsContent>
+
+            <TabsContent value="threat-intel" className="space-y-6">
+              <ThreatIntelligenceFeed />
+            </TabsContent>
+
+            <TabsContent value="soar-playbooks" className="space-y-6">
+              <SOARPlaybookBuilder />
+            </TabsContent>
+
+            <TabsContent value="zero-trust" className="space-y-6">
+              <ZeroTrustPanel />
             </TabsContent>
           </Tabs>
         )}
