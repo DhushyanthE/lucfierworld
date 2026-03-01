@@ -40,12 +40,13 @@ import { ZeroTrustPanel } from '@/components/blockchain-ann/ZeroTrustPanel';
 import { ThreatMapVisualization } from '@/components/blockchain-ann/ThreatMapVisualization';
 import { NFTMarketplace } from '@/components/blockchain-ann/NFTMarketplace';
 import { DAOGovernance } from '@/components/blockchain-ann/DAOGovernance';
+import { CryptoMiningPanel } from '@/components/blockchain-ann/CryptoMiningPanel';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2, Globe, Zap, Fingerprint, Map, Image, Vote } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2, Globe, Zap, Fingerprint, Map, Image, Vote, Pickaxe } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -409,6 +410,10 @@ export default function BlockchainANN() {
                 <Vote className="mr-2 h-4 w-4" />
                 DAO
               </TabsTrigger>
+              <TabsTrigger value="crypto-mining">
+                <Pickaxe className="mr-2 h-4 w-4" />
+                Mining
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -539,35 +544,61 @@ export default function BlockchainANN() {
             <TabsContent value="quantum-coin-agi" className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <QuantumCoinAGIPanel />
-                <Card className="border-primary/20 bg-card/50 backdrop-blur">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Coins className="h-5 w-5" />
-                      AGI Workflow Stages
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {[
-                        { name: 'Quantum State Preparation', desc: 'Initialize 128 qubits with 64 entanglement pairs' },
-                        { name: 'AGI Transaction Analysis', desc: 'AI-powered risk assessment and optimization' },
-                        { name: 'Quantum Optimization', desc: 'Apply quantum algorithms for route optimization' },
-                        { name: 'Blockchain Verification', desc: 'Immutable verification on-chain' },
-                        { name: 'Superintelligence Synthesis', desc: 'Generate advanced insights and predictions' }
-                      ].map((stage, idx) => (
-                        <div key={idx} className="p-3 rounded bg-muted">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                              {idx + 1}
-                            </span>
-                            <span className="font-medium text-sm">{stage.name}</span>
+                <div className="space-y-6">
+                  <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Coins className="h-5 w-5" />
+                        AGI Workflow Stages
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {[
+                          { name: 'Quantum State Preparation', desc: 'Initialize 128 qubits with 64 entanglement pairs' },
+                          { name: 'AGI Transaction Analysis', desc: 'AI-powered risk assessment and optimization' },
+                          { name: 'NFT Minting & DAO Voting', desc: 'Mint quantum-secured NFTs and execute governance votes' },
+                          { name: 'Mining Pool Optimization', desc: 'Quantum-enhanced hash computation for block rewards' },
+                          { name: 'Blockchain Verification', desc: 'Immutable verification on-chain with PQC signatures' },
+                        ].map((stage, idx) => (
+                          <div key={idx} className="p-3 rounded bg-muted">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                                {idx + 1}
+                              </span>
+                              <span className="font-medium text-sm">{stage.name}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 ml-8">{stage.desc}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 ml-8">{stage.desc}</p>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                    <CardHeader>
+                      <CardTitle className="text-base">Ecosystem Integration</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="p-3 rounded-lg bg-muted text-center">
+                          <Image className="h-5 w-5 mx-auto mb-1 text-pink-500" />
+                          <div className="font-medium">NFT Market</div>
+                          <div className="text-muted-foreground">Quantum-secured</div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                        <div className="p-3 rounded-lg bg-muted text-center">
+                          <Vote className="h-5 w-5 mx-auto mb-1 text-indigo-500" />
+                          <div className="font-medium">DAO Gov</div>
+                          <div className="text-muted-foreground">On-chain voting</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted text-center">
+                          <Pickaxe className="h-5 w-5 mx-auto mb-1 text-amber-500" />
+                          <div className="font-medium">Mining</div>
+                          <div className="text-muted-foreground">Quantum boost</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </TabsContent>
 
@@ -760,6 +791,10 @@ export default function BlockchainANN() {
 
             <TabsContent value="dao-governance" className="space-y-6">
               <DAOGovernance />
+            </TabsContent>
+
+            <TabsContent value="crypto-mining" className="space-y-6">
+              <CryptoMiningPanel />
             </TabsContent>
           </Tabs>
         )}
