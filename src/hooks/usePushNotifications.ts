@@ -42,7 +42,7 @@ function urlBase64ToUint8Array(base64String: string): BufferSource {
    const checkExistingSubscription = async () => {
      try {
        const registration = await navigator.serviceWorker.ready;
-       const existingSub = await registration.pushManager.getSubscription();
+       const existingSub = await (registration as any).pushManager.getSubscription();
        setSubscription(existingSub);
      } catch (error) {
        console.error('Error checking subscription:', error);
@@ -88,7 +88,7 @@ function urlBase64ToUint8Array(base64String: string): BufferSource {
        }
  
        // Subscribe to push
-       const pushSubscription = await registration.pushManager.subscribe({
+       const pushSubscription = await (registration as any).pushManager.subscribe({
          userVisibleOnly: true,
          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
        });

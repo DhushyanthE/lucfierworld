@@ -37,12 +37,15 @@ import { MNCSecurityDashboard } from '@/components/blockchain-ann/MNCSecurityDas
 import { ThreatIntelligenceFeed } from '@/components/blockchain-ann/ThreatIntelligenceFeed';
 import { SOARPlaybookBuilder } from '@/components/blockchain-ann/SOARPlaybookBuilder';
 import { ZeroTrustPanel } from '@/components/blockchain-ann/ZeroTrustPanel';
+import { ThreatMapVisualization } from '@/components/blockchain-ann/ThreatMapVisualization';
+import { NFTMarketplace } from '@/components/blockchain-ann/NFTMarketplace';
+import { DAOGovernance } from '@/components/blockchain-ann/DAOGovernance';
 import { useBlockchainANN } from '@/hooks/useBlockchainANN';
 import { useWorkflowExecution } from '@/hooks/useWorkflowExecution';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2, Globe, Zap, Fingerprint } from 'lucide-react';
+import { Network, Brain, Workflow, Settings, Play, Activity, Database, Dna, Waves, Bot, Coins, BarChart3, Cpu, Sparkles, Shield, Wifi, Bell, Send, Atom, History, PieChart, ShieldAlert, Magnet, Layers, Building2, Globe, Zap, Fingerprint, Map, Image, Vote } from 'lucide-react';
 
 export default function BlockchainANN() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -394,6 +397,18 @@ export default function BlockchainANN() {
                 <Fingerprint className="mr-2 h-4 w-4" />
                 Zero Trust
               </TabsTrigger>
+              <TabsTrigger value="threat-map">
+                <Map className="mr-2 h-4 w-4" />
+                Threat Map
+              </TabsTrigger>
+              <TabsTrigger value="nft-marketplace">
+                <Image className="mr-2 h-4 w-4" />
+                NFTs
+              </TabsTrigger>
+              <TabsTrigger value="dao-governance">
+                <Vote className="mr-2 h-4 w-4" />
+                DAO
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -733,6 +748,18 @@ export default function BlockchainANN() {
 
             <TabsContent value="zero-trust" className="space-y-6">
               <ZeroTrustPanel />
+            </TabsContent>
+
+            <TabsContent value="threat-map" className="space-y-6">
+              <ThreatMapVisualization />
+            </TabsContent>
+
+            <TabsContent value="nft-marketplace" className="space-y-6">
+              <NFTMarketplace />
+            </TabsContent>
+
+            <TabsContent value="dao-governance" className="space-y-6">
+              <DAOGovernance />
             </TabsContent>
           </Tabs>
         )}
