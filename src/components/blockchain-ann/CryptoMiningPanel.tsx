@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Pickaxe, Cpu, Zap, TrendingUp, Users, Battery, RefreshCw } from 'lucide-react';
 
 interface MiningResult {
@@ -53,6 +54,16 @@ export function CryptoMiningPanel() {
       if (data.success) {
         setLastBlock(data.result);
         setTotalMined(prev => prev + data.result.reward);
+        // Persist to DB
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('mining_history').insert({
+            user_id: user.id, block_hash: data.result.blockHash, nonce: data.result.nonce,
+            difficulty: data.result.difficulty, reward: data.result.reward,
+            mining_time: data.result.miningTime, hash_rate: data.result.hashRate,
+            energy_used: data.result.energyUsed, quantum_boost: data.result.quantumBoost, pool_size: 1,
+          });
+        }
         toast({ title: 'Block Mined! ⛏️', description: `Reward: ${data.result.reward.toFixed(4)} QCoin | Hash Rate: ${(data.result.hashRate / 1e6).toFixed(2)} MH/s` });
       }
     } catch (error) {

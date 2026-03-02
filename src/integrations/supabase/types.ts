@@ -134,6 +134,191 @@ export type Database = {
         }
         Relationships: []
       }
+      dao_proposals: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          ends_at: string
+          id: string
+          proposer: string
+          quorum: number
+          status: string
+          title: string
+          total_voters: number
+          updated_at: string
+          user_id: string
+          votes_against: number
+          votes_for: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description: string
+          ends_at?: string
+          id?: string
+          proposer: string
+          quorum?: number
+          status?: string
+          title: string
+          total_voters?: number
+          updated_at?: string
+          user_id: string
+          votes_against?: number
+          votes_for?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          ends_at?: string
+          id?: string
+          proposer?: string
+          quorum?: number
+          status?: string
+          title?: string
+          total_voters?: number
+          updated_at?: string
+          user_id?: string
+          votes_against?: number
+          votes_for?: number
+        }
+        Relationships: []
+      }
+      dao_votes: {
+        Row: {
+          created_at: string
+          id: string
+          proposal_id: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proposal_id: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposal_id?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dao_votes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "dao_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mining_history: {
+        Row: {
+          block_hash: string
+          created_at: string
+          difficulty: number
+          energy_used: number
+          hash_rate: number
+          id: string
+          mining_time: number
+          nonce: number
+          pool_size: number | null
+          quantum_boost: number
+          reward: number
+          user_id: string
+        }
+        Insert: {
+          block_hash: string
+          created_at?: string
+          difficulty?: number
+          energy_used?: number
+          hash_rate?: number
+          id?: string
+          mining_time?: number
+          nonce?: number
+          pool_size?: number | null
+          quantum_boost?: number
+          reward?: number
+          user_id: string
+        }
+        Update: {
+          block_hash?: string
+          created_at?: string
+          difficulty?: number
+          energy_used?: number
+          hash_rate?: number
+          id?: string
+          mining_time?: number
+          nonce?: number
+          pool_size?: number | null
+          quantum_boost?: number
+          reward?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nfts: {
+        Row: {
+          attributes: Json
+          blockchain_hash: string | null
+          collection: string
+          created_at: string
+          creator: string
+          currency: string
+          id: string
+          image: string
+          likes: number
+          listed: boolean
+          name: string
+          owner: string
+          price: number
+          rarity: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attributes?: Json
+          blockchain_hash?: string | null
+          collection?: string
+          created_at?: string
+          creator: string
+          currency?: string
+          id?: string
+          image?: string
+          likes?: number
+          listed?: boolean
+          name: string
+          owner: string
+          price?: number
+          rarity?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attributes?: Json
+          blockchain_hash?: string | null
+          collection?: string
+          created_at?: string
+          creator?: string
+          currency?: string
+          id?: string
+          image?: string
+          likes?: number
+          listed?: boolean
+          name?: string
+          owner?: string
+          price?: number
+          rarity?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
