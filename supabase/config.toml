@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.threat-intelligence-feed]
 verify_jwt = false
+
+[functions.crypto-mining-engine]
+verify_jwt = false
