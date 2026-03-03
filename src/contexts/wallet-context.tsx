@@ -1,9 +1,10 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { PeraWalletConnect } from '@perawallet/connect';
 import { walletService } from '@/services/walletService';
 import { toast } from 'sonner';
 
-export type WalletType = 'metamask' | 'walletconnect' | 'phantom' | 'trustwallet';
+export type WalletType = 'metamask' | 'walletconnect' | 'phantom' | 'trustwallet' | 'pera';
 
 interface WalletContextProps {
   isConnected: boolean;
@@ -36,6 +37,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [currentWallet, setCurrentWallet] = useState<WalletType | null>(null);
   const [balance, setBalance] = useState('0');
   const [chainId, setChainId] = useState(1);
+  const peraWalletRef = useRef<PeraWalletConnect | null>(null);
+
+  // Initialize Pera Wallet instance
+  useEffect(() => {
+    peraWalletRef.current = new PeraWalletConnect({ shouldShowSignTxnToast: false });
+    return () => {
+      peraWalletRef.current?.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     // Try to reconnect on component mount
@@ -43,6 +53,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (savedWallet === 'metamask' || savedWallet === 'walletconnect' || 
         savedWallet === 'phantom' || savedWallet === 'trustwallet') {
       connectWallet(savedWallet as WalletType).catch(console.error);
+    } else if (savedWallet === 'pera') {
+      // Try Pera reconnect
+      peraWalletRef.current?.reconnectSession()
+        .then((accounts) => {
+          if (accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+            setIsConnected(true);
+            setCurrentWallet('pera');
+            setChainId(4160); // Algorand mainnet
+            toast.success('Pera Wallet reconnected');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('currentWallet');
+        });
     }
   }, []);
 
@@ -193,9 +218,40 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return false;
         }
       }
+      else if (walletType === 'pera') {
+        if (!peraWalletRef.current) {
+          peraWalletRef.current = new PeraWalletConnect({ shouldShowSignTxnToast: false });
+        }
+        
+        try {
+          const accounts = await peraWalletRef.current.connect();
+          
+          if (accounts && accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+            setBalance('0'); // Algorand balance requires indexer API
+            setChainId(4160); // Algorand mainnet
+            setIsConnected(true);
+            setCurrentWallet(walletType);
+            
+            // Listen for disconnect
+            peraWalletRef.current.connector?.on('disconnect', () => {
+              disconnectWallet();
+            });
+            
+            localStorage.setItem('currentWallet', walletType);
+            return true;
+          }
+        } catch (error: any) {
+          if (error?.data?.type === 'CONNECT_MODAL_CLOSED') {
+            toast.error("Connection cancelled");
+          } else {
+            toast.error(`Error connecting to Pera Wallet: ${error.message || "Unknown error"}`);
+          }
+          return false;
+        }
+      }
       else {
         // For demo or other wallet types
-        // Simulate a connection
         const mockAddress = '0x' + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
         const mockBalance = (Math.random() * 10).toFixed(4);
         
@@ -203,7 +259,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setWalletAddress(mockAddress);
         setCurrentWallet(walletType);
         setBalance(mockBalance);
-        setChainId(1); // Ethereum mainnet
+        setChainId(1);
         
         localStorage.setItem('currentWallet', walletType);
         return true;
@@ -225,6 +281,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         window.phantom.solana.disconnect();
       } catch (error) {
         console.error("Error disconnecting Phantom wallet:", error);
+      }
+    }
+    
+    if (currentWallet === 'pera' && peraWalletRef.current) {
+      try {
+        peraWalletRef.current.disconnect();
+      } catch (error) {
+        console.error("Error disconnecting Pera wallet:", error);
       }
     }
     
