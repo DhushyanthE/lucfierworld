@@ -18,4 +18,5 @@ interface Window {
       disconnect: () => Promise<void>;
     }
   };
+  algorand?: any;
 }
