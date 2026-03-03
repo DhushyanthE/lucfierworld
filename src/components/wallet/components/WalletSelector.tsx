@@ -37,14 +37,6 @@ const wallets = [
     description: "Multi-chain wallet",
     network: "multi-chain",
     iconComponent: <div className="bg-blue-500 p-2 rounded-full mr-3"><Layers className="h-5 w-5 text-white" /></div>
-  },
-  { 
-    id: "pera", 
-    name: "Pera Wallet", 
-    icon: "yellow", 
-    description: "Connect to Algorand",
-    network: "algorand",
-    iconComponent: <div className="bg-yellow-500 p-2 rounded-full mr-3"><Wallet className="h-5 w-5 text-white" /></div>
   }
 ];
 
