@@ -315,19 +315,35 @@ export function QuantumErrorCorrection() {
                 Surface Code ({GRID_SIZE}×{GRID_SIZE})
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Select value={errorRate} onValueChange={setErrorRate}>
-                  <SelectTrigger className="w-[120px]">
+                <Select value={noiseModel} onValueChange={(v) => setNoiseModel(v as NoiseModel)}>
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0.01">1% Error</SelectItem>
-                    <SelectItem value="0.05">5% Error</SelectItem>
-                    <SelectItem value="0.1">10% Error</SelectItem>
-                    <SelectItem value="0.2">20% Error</SelectItem>
+                    <SelectItem value="simple">Simple Noise</SelectItem>
+                    <SelectItem value="depolarizing">Depolarizing</SelectItem>
+                    <SelectItem value="amplitude-damping">Amplitude Damping</SelectItem>
+                    <SelectItem value="phase-damping">Phase Damping</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={errorRate} onValueChange={setErrorRate}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.01">1%</SelectItem>
+                    <SelectItem value="0.05">5%</SelectItem>
+                    <SelectItem value="0.1">10%</SelectItem>
+                    <SelectItem value="0.2">20%</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            {/* Noise Model Info */}
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              {NOISE_MODEL_INFO[noiseModel].description}
+            </p>
           </CardHeader>
           <CardContent>
             <canvas ref={canvasRef} width={500} height={500} className="w-full rounded-lg border border-border bg-card" style={{ maxHeight: 400 }} />
