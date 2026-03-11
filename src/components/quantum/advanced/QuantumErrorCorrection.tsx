@@ -112,6 +112,7 @@ export function QuantumErrorCorrection() {
   const [rounds, setRounds] = useState<CorrectionRound[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [errorRate, setErrorRate] = useState('0.05');
+  const [noiseModel, setNoiseModel] = useState<NoiseModel>('simple');
   const [currentRound, setCurrentRound] = useState(0);
   const [autoCorrect, setAutoCorrect] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -119,15 +120,12 @@ export function QuantumErrorCorrection() {
   const injectErrors = useCallback(() => {
     const rate = parseFloat(errorRate);
     setGrid(prev => prev.map(row => row.map(q => {
-      if (q.type !== 'data') return { ...q, error: 'none' as ErrorType, measured: false, syndrome: false, corrected: false };
-      const rand = Math.random();
-      let error: ErrorType = 'none';
-      if (rand < rate) error = 'bit-flip';
-      else if (rand < rate * 1.5) error = 'phase-flip';
-      else if (rand < rate * 1.8) error = 'both';
-      return { ...q, error, measured: false, syndrome: false, corrected: false };
+      if (q.type !== 'data') return { ...q, error: 'none' as ErrorType, measured: false, syndrome: false, corrected: false, dampingProb: 0 };
+      const error = applyNoiseModel(noiseModel, rate);
+      const dampingProb = noiseModel === 'amplitude-damping' ? rate * 1.5 * Math.random() : 0;
+      return { ...q, error, measured: false, syndrome: false, corrected: false, dampingProb };
     })));
-  }, [errorRate]);
+  }, [errorRate, noiseModel]);
 
   const measureStabilizers = useCallback(() => {
     const newStabilizers: StabilizerResult[] = [];
