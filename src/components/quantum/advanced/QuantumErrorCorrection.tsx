@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Shield, AlertTriangle, CheckCircle, Play, RotateCcw, Grid3X3, Zap } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Play, RotateCcw, Grid3X3, Zap, Activity } from 'lucide-react';
 
+type NoiseModel = 'simple' | 'depolarizing' | 'amplitude-damping' | 'phase-damping';
 type QubitType = 'data' | 'x-stabilizer' | 'z-stabilizer';
 type ErrorType = 'none' | 'bit-flip' | 'phase-flip' | 'both';
 
@@ -21,7 +22,15 @@ interface SurfaceQubit {
   measured: boolean;
   syndrome: boolean;
   corrected: boolean;
+  dampingProb: number; // amplitude damping probability for this qubit
 }
+
+const NOISE_MODEL_INFO: Record<NoiseModel, { name: string; description: string }> = {
+  'simple': { name: 'Simple', description: 'Independent bit/phase flips with fixed probabilities' },
+  'depolarizing': { name: 'Depolarizing', description: 'Equal probability of X, Y, Z errors (p/3 each)' },
+  'amplitude-damping': { name: 'Amplitude Damping', description: 'Models energy dissipation (T1 decay), biased toward |0⟩' },
+  'phase-damping': { name: 'Phase Damping', description: 'Models dephasing (T2 decay), destroys superposition coherence' },
+};
 
 interface StabilizerResult {
   id: string;
@@ -54,11 +63,47 @@ function initSurfaceCode(size: number): SurfaceQubit[][] {
         row: r, col: c,
         type: isDataQubit ? 'data' : isXStab ? 'x-stabilizer' : 'z-stabilizer',
         error: 'none', measured: false, syndrome: false, corrected: false,
+        dampingProb: 0,
       });
     }
     grid.push(row);
   }
   return grid;
+}
+
+function applyNoiseModel(noiseModel: NoiseModel, rate: number): ErrorType {
+  const rand = Math.random();
+  switch (noiseModel) {
+    case 'simple':
+      if (rand < rate) return 'bit-flip';
+      if (rand < rate * 1.5) return 'phase-flip';
+      if (rand < rate * 1.8) return 'both';
+      return 'none';
+    case 'depolarizing': {
+      // Depolarizing channel: p/3 chance each of X, Y, Z error
+      const pEach = rate / 3;
+      if (rand < pEach) return 'bit-flip';
+      if (rand < pEach * 2) return 'phase-flip';
+      if (rand < pEach * 3) return 'both'; // Y = XZ
+      return 'none';
+    }
+    case 'amplitude-damping': {
+      // Amplitude damping: probability of decay |1⟩→|0⟩, modeled as bit-flip bias
+      const gamma = rate * 1.5; // damping parameter
+      if (rand < gamma) return 'bit-flip'; // decay event
+      if (rand < gamma * 0.1) return 'phase-flip'; // small dephasing from damping
+      return 'none';
+    }
+    case 'phase-damping': {
+      // Phase damping: only phase errors, no bit flips
+      const lambda = rate * 2; // dephasing parameter
+      if (rand < lambda) return 'phase-flip';
+      if (rand < lambda * 0.05) return 'both'; // rare correlated error
+      return 'none';
+    }
+    default:
+      return 'none';
+  }
 }
 
 export function QuantumErrorCorrection() {
@@ -67,6 +112,7 @@ export function QuantumErrorCorrection() {
   const [rounds, setRounds] = useState<CorrectionRound[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [errorRate, setErrorRate] = useState('0.05');
+  const [noiseModel, setNoiseModel] = useState<NoiseModel>('simple');
   const [currentRound, setCurrentRound] = useState(0);
   const [autoCorrect, setAutoCorrect] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,15 +120,12 @@ export function QuantumErrorCorrection() {
   const injectErrors = useCallback(() => {
     const rate = parseFloat(errorRate);
     setGrid(prev => prev.map(row => row.map(q => {
-      if (q.type !== 'data') return { ...q, error: 'none' as ErrorType, measured: false, syndrome: false, corrected: false };
-      const rand = Math.random();
-      let error: ErrorType = 'none';
-      if (rand < rate) error = 'bit-flip';
-      else if (rand < rate * 1.5) error = 'phase-flip';
-      else if (rand < rate * 1.8) error = 'both';
-      return { ...q, error, measured: false, syndrome: false, corrected: false };
+      if (q.type !== 'data') return { ...q, error: 'none' as ErrorType, measured: false, syndrome: false, corrected: false, dampingProb: 0 };
+      const error = applyNoiseModel(noiseModel, rate);
+      const dampingProb = noiseModel === 'amplitude-damping' ? rate * 1.5 * Math.random() : 0;
+      return { ...q, error, measured: false, syndrome: false, corrected: false, dampingProb };
     })));
-  }, [errorRate]);
+  }, [errorRate, noiseModel]);
 
   const measureStabilizers = useCallback(() => {
     const newStabilizers: StabilizerResult[] = [];
@@ -272,19 +315,35 @@ export function QuantumErrorCorrection() {
                 Surface Code ({GRID_SIZE}×{GRID_SIZE})
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Select value={errorRate} onValueChange={setErrorRate}>
-                  <SelectTrigger className="w-[120px]">
+                <Select value={noiseModel} onValueChange={(v) => setNoiseModel(v as NoiseModel)}>
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0.01">1% Error</SelectItem>
-                    <SelectItem value="0.05">5% Error</SelectItem>
-                    <SelectItem value="0.1">10% Error</SelectItem>
-                    <SelectItem value="0.2">20% Error</SelectItem>
+                    <SelectItem value="simple">Simple Noise</SelectItem>
+                    <SelectItem value="depolarizing">Depolarizing</SelectItem>
+                    <SelectItem value="amplitude-damping">Amplitude Damping</SelectItem>
+                    <SelectItem value="phase-damping">Phase Damping</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={errorRate} onValueChange={setErrorRate}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.01">1%</SelectItem>
+                    <SelectItem value="0.05">5%</SelectItem>
+                    <SelectItem value="0.1">10%</SelectItem>
+                    <SelectItem value="0.2">20%</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            {/* Noise Model Info */}
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              {NOISE_MODEL_INFO[noiseModel].description}
+            </p>
           </CardHeader>
           <CardContent>
             <canvas ref={canvasRef} width={500} height={500} className="w-full rounded-lg border border-border bg-card" style={{ maxHeight: 400 }} />
