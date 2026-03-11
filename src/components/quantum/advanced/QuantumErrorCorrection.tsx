@@ -63,11 +63,47 @@ function initSurfaceCode(size: number): SurfaceQubit[][] {
         row: r, col: c,
         type: isDataQubit ? 'data' : isXStab ? 'x-stabilizer' : 'z-stabilizer',
         error: 'none', measured: false, syndrome: false, corrected: false,
+        dampingProb: 0,
       });
     }
     grid.push(row);
   }
   return grid;
+}
+
+function applyNoiseModel(noiseModel: NoiseModel, rate: number): ErrorType {
+  const rand = Math.random();
+  switch (noiseModel) {
+    case 'simple':
+      if (rand < rate) return 'bit-flip';
+      if (rand < rate * 1.5) return 'phase-flip';
+      if (rand < rate * 1.8) return 'both';
+      return 'none';
+    case 'depolarizing': {
+      // Depolarizing channel: p/3 chance each of X, Y, Z error
+      const pEach = rate / 3;
+      if (rand < pEach) return 'bit-flip';
+      if (rand < pEach * 2) return 'phase-flip';
+      if (rand < pEach * 3) return 'both'; // Y = XZ
+      return 'none';
+    }
+    case 'amplitude-damping': {
+      // Amplitude damping: probability of decay |1⟩→|0⟩, modeled as bit-flip bias
+      const gamma = rate * 1.5; // damping parameter
+      if (rand < gamma) return 'bit-flip'; // decay event
+      if (rand < gamma * 0.1) return 'phase-flip'; // small dephasing from damping
+      return 'none';
+    }
+    case 'phase-damping': {
+      // Phase damping: only phase errors, no bit flips
+      const lambda = rate * 2; // dephasing parameter
+      if (rand < lambda) return 'phase-flip';
+      if (rand < lambda * 0.05) return 'both'; // rare correlated error
+      return 'none';
+    }
+    default:
+      return 'none';
+  }
 }
 
 export function QuantumErrorCorrection() {
