@@ -236,6 +236,8 @@ export function CryptoMiningPanel() {
           </CardContent>
         </Card>
       )}
+
+      <MiningLeaderboard />
     </div>
   );
 }
