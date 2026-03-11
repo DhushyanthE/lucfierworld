@@ -22,7 +22,15 @@ interface SurfaceQubit {
   measured: boolean;
   syndrome: boolean;
   corrected: boolean;
+  dampingProb: number; // amplitude damping probability for this qubit
 }
+
+const NOISE_MODEL_INFO: Record<NoiseModel, { name: string; description: string }> = {
+  'simple': { name: 'Simple', description: 'Independent bit/phase flips with fixed probabilities' },
+  'depolarizing': { name: 'Depolarizing', description: 'Equal probability of X, Y, Z errors (p/3 each)' },
+  'amplitude-damping': { name: 'Amplitude Damping', description: 'Models energy dissipation (T1 decay), biased toward |0⟩' },
+  'phase-damping': { name: 'Phase Damping', description: 'Models dephasing (T2 decay), destroys superposition coherence' },
+};
 
 interface StabilizerResult {
   id: string;
