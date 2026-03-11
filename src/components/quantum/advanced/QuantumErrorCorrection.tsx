@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Shield, AlertTriangle, CheckCircle, Play, RotateCcw, Grid3X3, Zap } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Play, RotateCcw, Grid3X3, Zap, Activity } from 'lucide-react';
 
+type NoiseModel = 'simple' | 'depolarizing' | 'amplitude-damping' | 'phase-damping';
 type QubitType = 'data' | 'x-stabilizer' | 'z-stabilizer';
 type ErrorType = 'none' | 'bit-flip' | 'phase-flip' | 'both';
 
