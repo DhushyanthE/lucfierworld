@@ -238,6 +238,7 @@ export function CryptoMiningPanel() {
         </Card>
       )}
 
+      <MiningHistoryChart />
       <MiningLeaderboard />
     </div>
   );

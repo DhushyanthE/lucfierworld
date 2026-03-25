@@ -27,6 +27,9 @@ export default function QuantumCircuits() {
           <TabsContent value="error-correction">
             <QuantumErrorCorrection />
           </TabsContent>
+          <TabsContent value="decoherence">
+            <DecoherenceSimulation />
+          </TabsContent>
         </Tabs>
       </div>
     </Layout>
