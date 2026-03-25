@@ -18,6 +18,7 @@ export default function QuantumCircuits() {
             <TabsTrigger value="entanglement" className="gap-2"><Link2 className="h-4 w-4" />Entanglement Lab</TabsTrigger>
             <TabsTrigger value="error-correction" className="gap-2"><Shield className="h-4 w-4" />Error Correction</TabsTrigger>
             <TabsTrigger value="decoherence" className="gap-2"><Atom className="h-4 w-4" />Decoherence Lab</TabsTrigger>
+            <TabsTrigger value="benchmark" className="gap-2"><Gauge className="h-4 w-4" />Gate Benchmark</TabsTrigger>
           </TabsList>
           <TabsContent value="circuits">
             <QuantumCircuitStudio />
