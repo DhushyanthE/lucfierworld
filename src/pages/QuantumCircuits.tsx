@@ -3,8 +3,9 @@ import Layout from '@/components/Layout';
 import { QuantumCircuitStudio } from '@/components/quantum/advanced/QuantumCircuitStudio';
 import { EntanglementVisualization } from '@/components/quantum/advanced/EntanglementVisualization';
 import { QuantumErrorCorrection } from '@/components/quantum/advanced/QuantumErrorCorrection';
+import { DecoherenceSimulation } from '@/components/quantum/advanced/DecoherenceSimulation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cpu, Link2, Shield } from 'lucide-react';
+import { Cpu, Link2, Shield, Atom } from 'lucide-react';
 
 export default function QuantumCircuits() {
   return (
