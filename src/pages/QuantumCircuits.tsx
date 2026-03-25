@@ -32,6 +32,9 @@ export default function QuantumCircuits() {
           <TabsContent value="decoherence">
             <DecoherenceSimulation />
           </TabsContent>
+          <TabsContent value="benchmark">
+            <GateFidelityBenchmark />
+          </TabsContent>
         </Tabs>
       </div>
     </Layout>
