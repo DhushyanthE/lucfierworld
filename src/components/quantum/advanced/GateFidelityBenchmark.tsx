@@ -65,7 +65,7 @@ const ARCHITECTURES: Record<Architecture, ArchitectureSpec> = {
     singleGateError: 0.001, twoGateError: 0.006,
     readoutError: 0.015,
     connectivity: 'Nearest-neighbor grid',
-    color: 'hsl(var(--primary))',
+    color: 'hsl(250, 80%, 60%)',
   },
   'trapped-ion': {
     name: 'Trapped Ion (Yb+)',
