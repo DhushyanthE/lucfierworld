@@ -6,8 +6,9 @@ import { QuantumErrorCorrection } from '@/components/quantum/advanced/QuantumErr
 import { DecoherenceSimulation } from '@/components/quantum/advanced/DecoherenceSimulation';
 import { GateFidelityBenchmark } from '@/components/quantum/advanced/GateFidelityBenchmark';
 import { QuantumAlgorithmSimulator } from '@/components/quantum/advanced/QuantumAlgorithmSimulator';
+import { QuantumVQESimulator } from '@/components/quantum/advanced/QuantumVQESimulator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cpu, Link2, Shield, Atom, Gauge, Zap } from 'lucide-react';
+import { Cpu, Link2, Shield, Atom, Gauge, Zap, FlaskConical } from 'lucide-react';
 
 export default function QuantumCircuits() {
   return (
@@ -17,6 +18,7 @@ export default function QuantumCircuits() {
           <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="circuits" className="gap-2"><Cpu className="h-4 w-4" />Circuit Studio</TabsTrigger>
             <TabsTrigger value="algorithms" className="gap-2"><Zap className="h-4 w-4" />Algorithms</TabsTrigger>
+            <TabsTrigger value="vqe" className="gap-2"><FlaskConical className="h-4 w-4" />VQE</TabsTrigger>
             <TabsTrigger value="entanglement" className="gap-2"><Link2 className="h-4 w-4" />Entanglement Lab</TabsTrigger>
             <TabsTrigger value="error-correction" className="gap-2"><Shield className="h-4 w-4" />Error Correction</TabsTrigger>
             <TabsTrigger value="decoherence" className="gap-2"><Atom className="h-4 w-4" />Decoherence Lab</TabsTrigger>
@@ -27,6 +29,9 @@ export default function QuantumCircuits() {
           </TabsContent>
           <TabsContent value="algorithms">
             <QuantumAlgorithmSimulator />
+          </TabsContent>
+          <TabsContent value="vqe">
+            <QuantumVQESimulator />
           </TabsContent>
           <TabsContent value="entanglement">
             <EntanglementVisualization />
