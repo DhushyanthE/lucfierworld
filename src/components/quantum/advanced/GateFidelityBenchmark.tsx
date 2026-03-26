@@ -215,6 +215,15 @@ export function GateFidelityBenchmark() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Resolve CSS colors for canvas usage
+    const styles = getComputedStyle(canvas);
+    const borderColor = styles.getPropertyValue('--border').trim();
+    const fgColor = styles.getPropertyValue('--foreground').trim();
+    const mutedFgColor = styles.getPropertyValue('--muted-foreground').trim();
+    const resolvedBorder = borderColor ? `hsl(${borderColor})` : '#444';
+    const resolvedFg = fgColor ? `hsl(${fgColor})` : '#fff';
+    const resolvedMutedFg = mutedFgColor ? `hsl(${mutedFgColor})` : '#888';
+
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
@@ -227,7 +236,7 @@ export function GateFidelityBenchmark() {
     const barW = Math.min(groupW / (archCount + 1), 30);
 
     // Y axis
-    ctx.strokeStyle = 'hsl(var(--border))';
+    ctx.strokeStyle = resolvedBorder;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padding.left, padding.top);
@@ -236,7 +245,7 @@ export function GateFidelityBenchmark() {
     ctx.stroke();
 
     // Y labels
-    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.fillStyle = resolvedMutedFg;
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
     for (let i = 0; i <= 5; i++) {
@@ -246,7 +255,7 @@ export function GateFidelityBenchmark() {
       ctx.beginPath();
       ctx.moveTo(padding.left, y);
       ctx.lineTo(w - padding.right, y);
-      ctx.strokeStyle = 'hsl(var(--border) / 0.3)';
+      ctx.strokeStyle = 'rgba(128,128,128,0.2)';
       ctx.setLineDash([2, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -275,10 +284,12 @@ export function GateFidelityBenchmark() {
         const barH = ((fidelityClamped - 0.95) / 0.05) * chartH;
         const y = h - padding.bottom - barH;
 
-        // Bar
+        // Bar with gradient
         const gradient = ctx.createLinearGradient(x, y, x, h - padding.bottom);
         gradient.addColorStop(0, arch.color);
-        gradient.addColorStop(1, arch.color.replace(')', ' / 0.3)').replace('hsl(', 'hsla('));
+        // Create semi-transparent version
+        const alphaColor = arch.color.replace('hsl(', 'hsla(').replace(')', ', 0.3)');
+        gradient.addColorStop(1, alphaColor);
         ctx.fillStyle = gradient;
         ctx.fillRect(x, y, barW - 2, barH);
 
@@ -288,7 +299,7 @@ export function GateFidelityBenchmark() {
         ctx.strokeRect(x, y, barW - 2, barH);
 
         // Value on top
-        ctx.fillStyle = 'hsl(var(--foreground))';
+        ctx.fillStyle = resolvedFg;
         ctx.font = '8px monospace';
         ctx.textAlign = 'center';
         if (barH > 15) {
@@ -298,7 +309,7 @@ export function GateFidelityBenchmark() {
     });
 
     // X labels (gate names)
-    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.fillStyle = resolvedMutedFg;
     ctx.font = '11px monospace';
     ctx.textAlign = 'center';
     selectedGates.forEach((gate, gi) => {
@@ -312,7 +323,7 @@ export function GateFidelityBenchmark() {
       const lx = padding.left + si * 160;
       ctx.fillStyle = arch.color;
       ctx.fillRect(lx, h - 20, 12, 12);
-      ctx.fillStyle = 'hsl(var(--foreground))';
+      ctx.fillStyle = resolvedFg;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(arch.name, lx + 16, h - 10);
