@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Play, Pause, RotateCcw, TrendingDown, Atom, Layers, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, TrendingDown, Atom, Layers, Zap, LineChart } from 'lucide-react';
 
 type Molecule = 'H2' | 'LiH' | 'HeH+' | 'H2O';
 type Optimizer = 'COBYLA' | 'SPSA' | 'L-BFGS-B' | 'Nelder-Mead';
