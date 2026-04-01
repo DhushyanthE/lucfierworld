@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Play, Pause, RotateCcw, TrendingDown, Atom, Layers, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, TrendingDown, Atom, Layers, Zap, LineChart } from 'lucide-react';
 
 type Molecule = 'H2' | 'LiH' | 'HeH+' | 'H2O';
 type Optimizer = 'COBYLA' | 'SPSA' | 'L-BFGS-B' | 'Nelder-Mead';
@@ -331,6 +331,69 @@ function AnsatzCircuit({ molecule, ansatz }: { molecule: Molecule; ansatz: Ansat
   return <canvas ref={canvasRef} width={500} height={Math.max(120, MOLECULES[molecule].numQubits * 35 + 30)} className="w-full rounded border border-border bg-card" />;
 }
 
+// ── Bond Scan PES Chart ──
+function BondScanChart({ data, moleculeName }: { data: { distances: number[]; energies: number[]; exact: number[] }; moleculeName: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const pad = { top: 20, right: 20, bottom: 35, left: 65 };
+    const cW = w - pad.left - pad.right, cH = h - pad.top - pad.bottom;
+    const allE = [...data.energies, ...data.exact];
+    const minE = Math.min(...allE) - 0.02, maxE = Math.max(...allE) + 0.02;
+    const rng = maxE - minE;
+    const minD = data.distances[0], maxD = data.distances[data.distances.length - 1];
+    const dRng = maxD - minD;
+
+    // Grid
+    ctx.strokeStyle = 'rgba(128,128,128,0.15)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (i / 4) * cH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+      ctx.fillStyle = '#888'; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+      ctx.fillText((maxE - (i / 4) * rng).toFixed(3), pad.left - 5, y + 3);
+    }
+
+    // Exact curve
+    ctx.beginPath();
+    data.distances.forEach((d, i) => {
+      const x = pad.left + ((d - minD) / dRng) * cW;
+      const y = pad.top + ((maxE - data.exact[i]) / rng) * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = 'hsl(142, 71%, 45%)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // VQE points
+    data.distances.forEach((d, i) => {
+      const x = pad.left + ((d - minD) / dRng) * cW;
+      const y = pad.top + ((maxE - data.energies[i]) / rng) * cH;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'hsl(250, 80%, 60%)'; ctx.fill();
+    });
+
+    // Labels
+    ctx.fillStyle = '#888'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Bond Length (Å)', w / 2, h - 5);
+    [0, 0.5, 1].forEach(f => {
+      const d = minD + f * dRng;
+      const x = pad.left + f * cW;
+      ctx.fillText(d.toFixed(1), x, h - pad.bottom + 14);
+    });
+
+    // Legend
+    ctx.font = '9px sans-serif';
+    ctx.fillStyle = 'hsl(142, 71%, 45%)'; ctx.fillText('— Exact', w - 80, 14);
+    ctx.fillStyle = 'hsl(250, 80%, 60%)'; ctx.fillText('● VQE', w - 30, 14);
+  }, [data, moleculeName]);
+
+  return <canvas ref={canvasRef} width={600} height={220} className="w-full rounded-lg border border-border bg-card" />;
+}
+
 // ── Main Component ──
 export function QuantumVQESimulator() {
   const [molecule, setMolecule] = useState<Molecule>('H2');
@@ -342,6 +405,9 @@ export function QuantumVQESimulator() {
   const [isRunning, setIsRunning] = useState(false);
   const [animStep, setAnimStep] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showBondScan, setShowBondScan] = useState(false);
+  const [bondScanResult, setBondScanResult] = useState<{ distances: number[]; energies: number[]; exact: number[] } | null>(null);
+  const [isBondScanning, setIsBondScanning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const mol = MOLECULES[molecule];
@@ -364,6 +430,30 @@ export function QuantumVQESimulator() {
         : `VQE completed in ${res.totalIterations} iterations (not at chemical accuracy)`
     );
   }, [molecule, optimizer, ansatz, maxIter, shotNoise]);
+
+  const runBondScan = useCallback(async () => {
+    setIsBondScanning(true);
+    setBondScanResult(null);
+    await new Promise(r => setTimeout(r, 100));
+    const baseE = mol.exactEnergy;
+    const distances: number[] = [];
+    const energies: number[] = [];
+    const exact: number[] = [];
+    for (let d = 0.3; d <= 3.0; d += 0.1) {
+      distances.push(parseFloat(d.toFixed(1)));
+      const eqDist = parseFloat(mol.bondLength);
+      const De = Math.abs(baseE) * 0.15;
+      const a = 1.8;
+      const exactE = baseE + De * (1 - Math.exp(-a * (d - eqDist))) ** 2 - De;
+      exact.push(exactE);
+      const vqeE = exactE + (Math.random() * 0.01 + 0.002) * (1 + Math.abs(d - eqDist) * 0.5);
+      energies.push(vqeE);
+    }
+    setBondScanResult({ distances, energies, exact });
+    setIsBondScanning(false);
+    setShowBondScan(true);
+    toast.success('Bond length scan complete — potential energy surface generated');
+  }, [molecule, mol]);
 
   // Animate steps
   useEffect(() => {
@@ -395,10 +485,16 @@ export function QuantumVQESimulator() {
                 <Atom className="h-5 w-5 text-primary" />
                 Variational Quantum Eigensolver
               </CardTitle>
-              <Button onClick={runVQE} disabled={isRunning}>
-                {isRunning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                {isRunning ? 'Computing...' : 'Run VQE'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={runVQE} disabled={isRunning || isBondScanning}>
+                  {isRunning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                  {isRunning ? 'Computing...' : 'Run VQE'}
+                </Button>
+                <Button variant="outline" onClick={runBondScan} disabled={isRunning || isBondScanning}>
+                  {isBondScanning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <LineChart className="h-4 w-4 mr-2" />}
+                  {isBondScanning ? 'Scanning...' : 'Bond Scan'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -469,6 +565,16 @@ export function QuantumVQESimulator() {
             ) : (
               <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
                 Configure molecule and optimizer, then click Run VQE
+              </div>
+            )}
+
+            {/* Bond Length Scan PES */}
+            {bondScanResult && showBondScan && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <LineChart className="h-3 w-3" /> Potential Energy Surface — Bond Length Scan
+                </div>
+                <BondScanChart data={bondScanResult} moleculeName={mol.name} />
               </div>
             )}
           </CardContent>
