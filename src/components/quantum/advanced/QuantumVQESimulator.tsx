@@ -368,6 +368,30 @@ export function QuantumVQESimulator() {
     );
   }, [molecule, optimizer, ansatz, maxIter, shotNoise]);
 
+  const runBondScan = useCallback(async () => {
+    setIsBondScanning(true);
+    setBondScanResult(null);
+    await new Promise(r => setTimeout(r, 100));
+    const baseE = mol.exactEnergy;
+    const distances: number[] = [];
+    const energies: number[] = [];
+    const exact: number[] = [];
+    for (let d = 0.3; d <= 3.0; d += 0.1) {
+      distances.push(parseFloat(d.toFixed(1)));
+      const eqDist = parseFloat(mol.bondLength);
+      const De = Math.abs(baseE) * 0.15;
+      const a = 1.8;
+      const exactE = baseE + De * (1 - Math.exp(-a * (d - eqDist))) ** 2 - De;
+      exact.push(exactE);
+      const vqeE = exactE + (Math.random() * 0.01 + 0.002) * (1 + Math.abs(d - eqDist) * 0.5);
+      energies.push(vqeE);
+    }
+    setBondScanResult({ distances, energies, exact });
+    setIsBondScanning(false);
+    setShowBondScan(true);
+    toast.success('Bond length scan complete — potential energy surface generated');
+  }, [molecule, mol]);
+
   // Animate steps
   useEffect(() => {
     if (isAnimating && result) {
