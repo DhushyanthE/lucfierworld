@@ -342,6 +342,9 @@ export function QuantumVQESimulator() {
   const [isRunning, setIsRunning] = useState(false);
   const [animStep, setAnimStep] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showBondScan, setShowBondScan] = useState(false);
+  const [bondScanResult, setBondScanResult] = useState<{ distances: number[]; energies: number[]; exact: number[] } | null>(null);
+  const [isBondScanning, setIsBondScanning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const mol = MOLECULES[molecule];
