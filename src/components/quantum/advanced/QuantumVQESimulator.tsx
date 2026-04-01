@@ -498,6 +498,16 @@ export function QuantumVQESimulator() {
                 Configure molecule and optimizer, then click Run VQE
               </div>
             )}
+
+            {/* Bond Length Scan PES */}
+            {bondScanResult && showBondScan && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <LineChart className="h-3 w-3" /> Potential Energy Surface — Bond Length Scan
+                </div>
+                <BondScanChart data={bondScanResult} moleculeName={mol.name} />
+              </div>
+            )}
           </CardContent>
         </Card>
 
