@@ -485,10 +485,16 @@ export function QuantumVQESimulator() {
                 <Atom className="h-5 w-5 text-primary" />
                 Variational Quantum Eigensolver
               </CardTitle>
-              <Button onClick={runVQE} disabled={isRunning}>
-                {isRunning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                {isRunning ? 'Computing...' : 'Run VQE'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={runVQE} disabled={isRunning || isBondScanning}>
+                  {isRunning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                  {isRunning ? 'Computing...' : 'Run VQE'}
+                </Button>
+                <Button variant="outline" onClick={runBondScan} disabled={isRunning || isBondScanning}>
+                  {isBondScanning ? <RotateCcw className="h-4 w-4 animate-spin mr-2" /> : <LineChart className="h-4 w-4 mr-2" />}
+                  {isBondScanning ? 'Scanning...' : 'Bond Scan'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
