@@ -234,7 +234,7 @@ export function DecoherenceSimulation() {
     // Origin dot
     ctx.beginPath();
     ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'hsl(var(--muted-foreground) / 0.5)';
+    ctx.fillStyle = 'hsla(220, 10%, 50%, 0.5)';
     ctx.fill();
 
   }, [state, history]);
