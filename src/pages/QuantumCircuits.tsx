@@ -54,6 +54,12 @@ export default function QuantumCircuits() {
           <TabsContent value="benchmark">
             <GateFidelityBenchmark />
           </TabsContent>
+          <TabsContent value="process-tomo">
+            <QuantumProcessTomography />
+          </TabsContent>
+          <TabsContent value="compiler">
+            <QuantumCompiler />
+          </TabsContent>
         </Tabs>
       </div>
     </Layout>
