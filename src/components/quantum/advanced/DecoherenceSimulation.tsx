@@ -164,7 +164,7 @@ export function DecoherenceSimulation() {
     // Equator ellipse
     ctx.beginPath();
     ctx.ellipse(cx, cy, R, R * 0.3, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.3)';
+    ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.3)';
     ctx.lineWidth = 0.8;
     ctx.setLineDash([4, 4]);
     ctx.stroke();
