@@ -221,16 +221,13 @@ export function DecoherenceSimulation() {
     // Tip
     ctx.beginPath();
     ctx.arc(bx, by, 6, 0, Math.PI * 2);
-    const gradient = ctx.createRadialGradient(bx, by, 0, bx, by, 6);
-    gradient.addColorStop(0, 'hsl(var(--primary))');
-    gradient.addColorStop(1, `hsla(var(--primary) / ${state.r})`);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = `hsla(200, 80%, 60%, ${0.4 + state.r * 0.6})`;
     ctx.fill();
 
     // Purity ring
     ctx.beginPath();
     ctx.arc(bx, by, 8, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(var(--primary) / ${state.r * 0.6})`;
+    ctx.strokeStyle = `hsla(200, 80%, 60%, ${state.r * 0.6})`;
     ctx.lineWidth = 1;
     ctx.stroke();
 
