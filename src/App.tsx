@@ -20,6 +20,7 @@ import BlockchainNetwork from './pages/BlockchainNetwork';
 import QuantumComputing from './pages/QuantumComputing';
 import QuantumValley150Qubit from './pages/QuantumValley150Qubit';
 import BlockchainANN from './pages/BlockchainANN';
+import NetworkExplorer from './pages/NetworkExplorer';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import './App.css';
