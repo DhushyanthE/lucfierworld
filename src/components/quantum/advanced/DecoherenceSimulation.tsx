@@ -175,10 +175,10 @@ export function DecoherenceSimulation() {
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
-      ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.4)';
+      ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.4)';
       ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.fillStyle = 'hsl(var(--muted-foreground))';
+      ctx.fillStyle = 'hsl(220, 10%, 50%)';
       ctx.font = '12px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(label, x2 + (x2 > cx ? 12 : x2 < cx ? -12 : 0), y2 + (y2 > cy ? 14 : -8));
