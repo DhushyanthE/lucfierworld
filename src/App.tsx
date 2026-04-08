@@ -23,6 +23,7 @@ import BlockchainANN from './pages/BlockchainANN';
 import NetworkExplorer from './pages/NetworkExplorer';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
+import DataScientist from './pages/DataScientist';
 import './App.css';
 
 function App() {
@@ -53,6 +54,7 @@ function App() {
             <Route path="/quantum-computing" element={<QuantumComputing />} />
             <Route path="/blockchain-ann" element={<BlockchainANN />} />
             <Route path="/network-explorer" element={<NetworkExplorer />} />
+            <Route path="/data-scientist" element={<DataScientist />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

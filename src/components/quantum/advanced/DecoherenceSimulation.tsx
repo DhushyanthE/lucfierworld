@@ -157,14 +157,14 @@ export function DecoherenceSimulation() {
     // Sphere outline
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.strokeStyle = 'hsl(var(--border))';
+    ctx.strokeStyle = 'hsla(220, 15%, 40%, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // Equator ellipse
     ctx.beginPath();
     ctx.ellipse(cx, cy, R, R * 0.3, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.3)';
+    ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.3)';
     ctx.lineWidth = 0.8;
     ctx.setLineDash([4, 4]);
     ctx.stroke();
@@ -175,10 +175,10 @@ export function DecoherenceSimulation() {
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
-      ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.4)';
+      ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.4)';
       ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.fillStyle = 'hsl(var(--muted-foreground))';
+      ctx.fillStyle = 'hsl(220, 10%, 50%)';
       ctx.font = '12px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(label, x2 + (x2 > cx ? 12 : x2 < cx ? -12 : 0), y2 + (y2 > cy ? 14 : -8));
@@ -188,7 +188,7 @@ export function DecoherenceSimulation() {
     drawAxis(cx, cy + R + 5, cx, cy + R + 5, '|1⟩');
     // Z axis
     ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
-    ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.3)'; ctx.lineWidth = 1; ctx.stroke();
     // X axis
     ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
     ctx.stroke();
@@ -202,7 +202,7 @@ export function DecoherenceSimulation() {
         const py = cy - s.r * R * Math.cos(s.theta);
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
-      ctx.strokeStyle = 'hsl(var(--primary) / 0.3)';
+      ctx.strokeStyle = 'hsla(200, 80%, 60%, 0.3)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
@@ -214,30 +214,27 @@ export function DecoherenceSimulation() {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(bx, by);
-    ctx.strokeStyle = 'hsl(var(--primary))';
+    ctx.strokeStyle = 'hsl(200, 80%, 60%)';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
     // Tip
     ctx.beginPath();
     ctx.arc(bx, by, 6, 0, Math.PI * 2);
-    const gradient = ctx.createRadialGradient(bx, by, 0, bx, by, 6);
-    gradient.addColorStop(0, 'hsl(var(--primary))');
-    gradient.addColorStop(1, `hsla(var(--primary) / ${state.r})`);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = `hsla(200, 80%, 60%, ${0.4 + state.r * 0.6})`;
     ctx.fill();
 
     // Purity ring
     ctx.beginPath();
     ctx.arc(bx, by, 8, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(var(--primary) / ${state.r * 0.6})`;
+    ctx.strokeStyle = `hsla(200, 80%, 60%, ${state.r * 0.6})`;
     ctx.lineWidth = 1;
     ctx.stroke();
 
     // Origin dot
     ctx.beginPath();
     ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'hsl(var(--muted-foreground) / 0.5)';
+    ctx.fillStyle = 'hsla(220, 10%, 50%, 0.5)';
     ctx.fill();
 
   }, [state, history]);
