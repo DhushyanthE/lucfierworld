@@ -27,6 +27,8 @@ export default function QuantumCircuits() {
             <TabsTrigger value="error-correction" className="gap-2"><Shield className="h-4 w-4" />Error Correction</TabsTrigger>
             <TabsTrigger value="decoherence" className="gap-2"><Atom className="h-4 w-4" />Decoherence Lab</TabsTrigger>
             <TabsTrigger value="benchmark" className="gap-2"><Gauge className="h-4 w-4" />Gate Benchmark</TabsTrigger>
+            <TabsTrigger value="process-tomo" className="gap-2"><Activity className="h-4 w-4" />Process Tomo</TabsTrigger>
+            <TabsTrigger value="compiler" className="gap-2"><Settings2 className="h-4 w-4" />Compiler</TabsTrigger>
           </TabsList>
           <TabsContent value="circuits">
             <QuantumCircuitStudio />
