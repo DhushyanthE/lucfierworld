@@ -188,7 +188,7 @@ export function DecoherenceSimulation() {
     drawAxis(cx, cy + R + 5, cx, cy + R + 5, '|1⟩');
     // Z axis
     ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
-    ctx.strokeStyle = 'hsl(var(--muted-foreground) / 0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = 'hsla(220, 10%, 50%, 0.3)'; ctx.lineWidth = 1; ctx.stroke();
     // X axis
     ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
     ctx.stroke();
