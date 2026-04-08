@@ -8,8 +8,10 @@ import { GateFidelityBenchmark } from '@/components/quantum/advanced/GateFidelit
 import { QuantumAlgorithmSimulator } from '@/components/quantum/advanced/QuantumAlgorithmSimulator';
 import { QuantumVQESimulator } from '@/components/quantum/advanced/QuantumVQESimulator';
 import { QuantumStateTomography } from '@/components/quantum/advanced/QuantumStateTomography';
+import { QuantumProcessTomography } from '@/components/quantum/advanced/QuantumProcessTomography';
+import { QuantumCompiler } from '@/components/quantum/advanced/QuantumCompiler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cpu, Link2, Shield, Atom, Gauge, Zap, FlaskConical, Eye } from 'lucide-react';
+import { Cpu, Link2, Shield, Atom, Gauge, Zap, FlaskConical, Eye, Activity, Settings2 } from 'lucide-react';
 
 export default function QuantumCircuits() {
   return (
