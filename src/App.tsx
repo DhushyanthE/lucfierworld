@@ -54,6 +54,7 @@ function App() {
             <Route path="/quantum-computing" element={<QuantumComputing />} />
             <Route path="/blockchain-ann" element={<BlockchainANN />} />
             <Route path="/network-explorer" element={<NetworkExplorer />} />
+            <Route path="/data-scientist" element={<DataScientist />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
