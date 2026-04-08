@@ -214,7 +214,7 @@ export function DecoherenceSimulation() {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(bx, by);
-    ctx.strokeStyle = 'hsl(var(--primary))';
+    ctx.strokeStyle = 'hsl(200, 80%, 60%)';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
