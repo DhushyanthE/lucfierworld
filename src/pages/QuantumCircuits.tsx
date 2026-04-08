@@ -8,8 +8,10 @@ import { GateFidelityBenchmark } from '@/components/quantum/advanced/GateFidelit
 import { QuantumAlgorithmSimulator } from '@/components/quantum/advanced/QuantumAlgorithmSimulator';
 import { QuantumVQESimulator } from '@/components/quantum/advanced/QuantumVQESimulator';
 import { QuantumStateTomography } from '@/components/quantum/advanced/QuantumStateTomography';
+import { QuantumProcessTomography } from '@/components/quantum/advanced/QuantumProcessTomography';
+import { QuantumCompiler } from '@/components/quantum/advanced/QuantumCompiler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cpu, Link2, Shield, Atom, Gauge, Zap, FlaskConical, Eye } from 'lucide-react';
+import { Cpu, Link2, Shield, Atom, Gauge, Zap, FlaskConical, Eye, Activity, Settings2 } from 'lucide-react';
 
 export default function QuantumCircuits() {
   return (
@@ -25,6 +27,8 @@ export default function QuantumCircuits() {
             <TabsTrigger value="error-correction" className="gap-2"><Shield className="h-4 w-4" />Error Correction</TabsTrigger>
             <TabsTrigger value="decoherence" className="gap-2"><Atom className="h-4 w-4" />Decoherence Lab</TabsTrigger>
             <TabsTrigger value="benchmark" className="gap-2"><Gauge className="h-4 w-4" />Gate Benchmark</TabsTrigger>
+            <TabsTrigger value="process-tomo" className="gap-2"><Activity className="h-4 w-4" />Process Tomo</TabsTrigger>
+            <TabsTrigger value="compiler" className="gap-2"><Settings2 className="h-4 w-4" />Compiler</TabsTrigger>
           </TabsList>
           <TabsContent value="circuits">
             <QuantumCircuitStudio />
@@ -49,6 +53,12 @@ export default function QuantumCircuits() {
           </TabsContent>
           <TabsContent value="benchmark">
             <GateFidelityBenchmark />
+          </TabsContent>
+          <TabsContent value="process-tomo">
+            <QuantumProcessTomography />
+          </TabsContent>
+          <TabsContent value="compiler">
+            <QuantumCompiler />
           </TabsContent>
         </Tabs>
       </div>

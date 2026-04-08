@@ -20,6 +20,7 @@ import BlockchainNetwork from './pages/BlockchainNetwork';
 import QuantumComputing from './pages/QuantumComputing';
 import QuantumValley150Qubit from './pages/QuantumValley150Qubit';
 import BlockchainANN from './pages/BlockchainANN';
+import NetworkExplorer from './pages/NetworkExplorer';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import './App.css';
@@ -51,6 +52,7 @@ function App() {
             <Route path="/blockchain" element={<BlockchainNetwork />} />
             <Route path="/quantum-computing" element={<QuantumComputing />} />
             <Route path="/blockchain-ann" element={<BlockchainANN />} />
+            <Route path="/network-explorer" element={<NetworkExplorer />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
