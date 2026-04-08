@@ -202,7 +202,7 @@ export function DecoherenceSimulation() {
         const py = cy - s.r * R * Math.cos(s.theta);
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
-      ctx.strokeStyle = 'hsl(var(--primary) / 0.3)';
+      ctx.strokeStyle = 'hsla(200, 80%, 60%, 0.3)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
