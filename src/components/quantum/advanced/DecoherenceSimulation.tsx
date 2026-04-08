@@ -157,7 +157,7 @@ export function DecoherenceSimulation() {
     // Sphere outline
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.strokeStyle = 'hsl(var(--border))';
+    ctx.strokeStyle = 'hsla(220, 15%, 40%, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
