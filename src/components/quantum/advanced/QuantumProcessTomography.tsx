@@ -32,37 +32,30 @@ function complexMag(c: ComplexNum): number {
   return Math.sqrt(c.re * c.re + c.im * c.im);
 }
 
+function complexConj(a: ComplexNum): ComplexNum {
+  return { re: a.re, im: -a.im };
+}
+
 function computeChiMatrix(gateKey: string, noiseLevel: number): ChiMatrix {
   const gate = GATES[gateKey].matrix;
-  const chi: ChiMatrix = Array.from({ length: 4 }, () =>
-    Array.from({ length: 4 }, () => ({ re: 0, im: 0 }))
-  );
-
-  // Pauli basis decomposition of the process
   const paulis = [GATES['I'].matrix, GATES['X'].matrix, GATES['Y'].matrix, GATES['Z'].matrix];
 
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      let trace: ComplexNum = { re: 0, im: 0 };
-      // Tr(σ_i · U · σ_j · U†) / 2
-      for (let r = 0; r < 2; r++) {
-        for (let s = 0; s < 2; s++) {
-          let val: ComplexNum = { re: 0, im: 0 };
-          for (let k = 0; k < 2; k++) {
-            for (let l = 0; l < 2; l++) {
-              const p1 = paulis[i][r][k];
-              const g = gate[k][l];
-              const p2 = paulis[j][l][s];
-              const gDag: ComplexNum = { re: gate[s][r].re, im: -gate[s][r].im };
-              val = complexAdd(val, complexMul(complexMul(p1, g), complexMul(p2, gDag)));
-            }
-          }
-          if (r === s) trace = complexAdd(trace, val);
-        }
+  // Decompose U in Pauli basis: a_m = Tr(σ_m · U) / 2
+  const coeffs: ComplexNum[] = [];
+  for (let m = 0; m < 4; m++) {
+    let tr: ComplexNum = { re: 0, im: 0 };
+    for (let r = 0; r < 2; r++) {
+      for (let k = 0; k < 2; k++) {
+        tr = complexAdd(tr, complexMul(paulis[m][r][k], gate[k][r]));
       }
-      chi[i][j] = { re: trace.re / 4, im: trace.im / 4 };
     }
+    coeffs.push({ re: tr.re / 2, im: tr.im / 2 });
   }
+
+  // χ_{mn} = a_m · a_n*
+  const chi: ChiMatrix = Array.from({ length: 4 }, (_, i) =>
+    Array.from({ length: 4 }, (_, j) => complexMul(coeffs[i], complexConj(coeffs[j])))
+  );
 
   // Add depolarizing noise
   if (noiseLevel > 0) {
