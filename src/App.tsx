@@ -24,6 +24,7 @@ import NetworkExplorer from './pages/NetworkExplorer';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import DataScientist from './pages/DataScientist';
+import PitchDeck from './pages/PitchDeck';
 import './App.css';
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
             <Route path="/blockchain-ann" element={<BlockchainANN />} />
             <Route path="/network-explorer" element={<NetworkExplorer />} />
             <Route path="/data-scientist" element={<DataScientist />} />
+            <Route path="/pitch-deck" element={<PitchDeck />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
