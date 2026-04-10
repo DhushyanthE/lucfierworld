@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Maximize2, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Slide {
   id: number;
   title: string;
+  speakerNotes: string;
   content: React.ReactNode;
 }
 
@@ -14,6 +15,7 @@ const SLIDES: Slide[] = [
   {
     id: 1,
     title: 'Title',
+    speakerNotes: "Hi everyone, I'm the architect behind Kontour Coin. We are building the world's first self-optimizing, quantum-resistant Layer-1 blockchain. Today, I'm not just going to show you a new consensus mechanism; I am going to show you how we are solving the most severe existential threat facing the trillion-dollar digital asset industry.",
     content: (
       <div className="flex flex-col items-center justify-center h-full text-center px-16 bg-gradient-to-br from-[hsl(var(--primary)/0.15)] via-background to-background">
         <div className="space-y-6">
@@ -36,6 +38,7 @@ const SLIDES: Slide[] = [
   {
     id: 2,
     title: 'The Problem',
+    speakerNotes: "Every major blockchain today—Bitcoin, Ethereum, Solana—relies on Elliptic Curve Cryptography. It is the foundation of digital ownership. But it has an expiration date.\n\nWe are rapidly approaching 'Q-Day'—the point where maturing quantum hardware running Shor's algorithm will be able to derive private keys directly from public addresses. When that happens, legacy chains are mathematically defenseless.\n\nFurthermore, current networks are stagnant. Proof-of-Work burns thermodynamic energy on useless math, and Proof-of-Stake relies on rigid, hardcoded routing that bottlenecks under scale. The Web3 infrastructure of tomorrow cannot be built on the fragile, static cryptography of yesterday.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <div>
@@ -63,6 +66,7 @@ const SLIDES: Slide[] = [
   {
     id: 3,
     title: 'The Solution',
+    speakerNotes: "That is why we built Kontour Coin. We aren't trying to patch a leaky ship; we built a submarine. Kontour is a three-tier architecture that is natively post-quantum from Genesis Block Zero.\n\nAt the base ledger, we completely rip out legacy cryptography and replace it with NIST-standard Module Learning With Errors—specifically ML-KEM and ML-DSA. This guarantees permanent mathematical immunity to quantum decryption.\n\nBut security is only half the equation. To achieve massive scalability, we threw out traditional mining entirely.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <div>
@@ -94,6 +98,7 @@ const SLIDES: Slide[] = [
   {
     id: 4,
     title: 'How It Works',
+    speakerNotes: "Instead of wasting electricity guessing random hashes, Kontour uses Proof-of-Neural-Work.\n\nWe replace ASIC miners with verifiable deep learning inference. To mint a block, our validators must dynamically optimize the network's routing topology to satisfy a simulated quantum Bell Inequality test. They use AI to find the most efficient paths through the network, and we use zero-knowledge rollups—specifically RISC Zero—to mathematically prove that optimization is correct in sub-second finality.\n\nOur network actually gets faster and smarter the more traffic it handles.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <h2 className="text-4xl font-bold text-foreground">Transaction Lifecycle</h2>
@@ -117,6 +122,7 @@ const SLIDES: Slide[] = [
   {
     id: 5,
     title: 'Tokenomics',
+    speakerNotes: "You might ask, 'Who builds these AI models?' That brings us to our economic moat.\n\nKontour features a decentralized 'Cloud Syndicate'. We financially incentivize the world's top machine learning engineers with on-chain Epoch Royalties. If a data scientist in the cloud trains a superior PyTorch model that routes transactions better than the current network standard, the blockchain automatically adopts their weights and routes 5% of the block rewards directly to their wallet. We have crowdsourced the optimization of our own Layer-1.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <h2 className="text-4xl font-bold text-foreground">$KTR Tokenomics</h2>
@@ -162,6 +168,7 @@ const SLIDES: Slide[] = [
   {
     id: 6,
     title: 'Traction',
+    speakerNotes: "This is not vaporware. We have a working prototype that demonstrates every layer of our architecture. Our Quantum Circuit Studio executes 12-gate quantum simulations. Our Network Explorer renders live shard topologies with PoNW block inspection. And our Data Scientist Dashboard already accepts model submissions with Bell score validation, enforcing the Tsirelson bound of 2.828. We have built the engine. Now we need the fuel.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <h2 className="text-4xl font-bold text-foreground">Built, Not Promised</h2>
@@ -199,6 +206,7 @@ const SLIDES: Slide[] = [
   {
     id: 7,
     title: 'Roadmap',
+    speakerNotes: "Our roadmap is aggressive but realistic. This Seed round gets us to Testnet Alpha by Q3 2026—that's the moment our network successfully rejects a block for failing the quantum Bell test with S less than 2.0. By Q1 2027, we integrate RISC Zero for full ZK compression and onboard the first Cloud Syndicate data scientists. Mainnet targets Q3 2027 with the Token Generation Event.",
     content: (
       <div className="flex flex-col justify-center h-full px-16 space-y-8">
         <h2 className="text-4xl font-bold text-foreground">Development Roadmap</h2>
@@ -233,6 +241,7 @@ const SLIDES: Slide[] = [
   {
     id: 8,
     title: 'The Ask',
+    speakerNotes: "The Ask: We are raising a $3 Million Seed Round.\n\nThis capital is hyper-focused: 60% goes to hiring elite Rust and cryptography engineers, and 40% covers our initial cloud AI infrastructure and formal cryptographic audits. This round gets us directly to Testnet Alpha—the moment we verify our first ZK-compressed Quantum Echo receipt on the live internet.\n\nThe quantum horizon isn't waiting for Web3 to catch up. We are building the infrastructure that survives it. Thank you.",
     content: (
       <div className="flex flex-col items-center justify-center h-full px-16 text-center space-y-8">
         <Badge className="text-lg px-4 py-1 bg-primary/20 text-primary border-primary/30">SEED ROUND</Badge>
@@ -266,15 +275,37 @@ const SLIDES: Slide[] = [
 export default function PitchDeck() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showNotes, setShowNotes] = useState(true);
+  const [transitionDir, setTransitionDir] = useState<'left' | 'right' | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const slideRef = useRef<HTMLDivElement>(null);
 
-  const next = useCallback(() => setCurrentSlide(i => Math.min(i + 1, SLIDES.length - 1)), []);
-  const prev = useCallback(() => setCurrentSlide(i => Math.max(i - 1, 0)), []);
+  const animateTransition = useCallback((dir: 'left' | 'right', cb: () => void) => {
+    setTransitionDir(dir);
+    setIsAnimating(true);
+    setTimeout(() => {
+      cb();
+      setTransitionDir(null);
+      setTimeout(() => setIsAnimating(false), 50);
+    }, 250);
+  }, []);
+
+  const next = useCallback(() => {
+    if (isAnimating || currentSlide >= SLIDES.length - 1) return;
+    animateTransition('left', () => setCurrentSlide(i => Math.min(i + 1, SLIDES.length - 1)));
+  }, [isAnimating, currentSlide, animateTransition]);
+
+  const prev = useCallback(() => {
+    if (isAnimating || currentSlide <= 0) return;
+    animateTransition('right', () => setCurrentSlide(i => Math.max(i - 1, 0)));
+  }, [isAnimating, currentSlide, animateTransition]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') next();
-      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
       if (e.key === 'Escape') setIsFullscreen(false);
+      if (e.key === 'n' || e.key === 'N') setShowNotes(v => !v);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -296,27 +327,44 @@ export default function PitchDeck() {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  const transitionStyle: React.CSSProperties = transitionDir
+    ? {
+        transform: transitionDir === 'left' ? 'translateX(-100%)' : 'translateX(100%)',
+        opacity: 0,
+        transition: 'transform 250ms ease-in-out, opacity 250ms ease-in-out',
+      }
+    : {
+        transform: 'translateX(0)',
+        opacity: 1,
+        transition: 'transform 250ms ease-in-out, opacity 250ms ease-in-out',
+      };
+
   const slideContent = (
     <div className={`relative w-full ${isFullscreen ? 'h-screen' : 'aspect-[16/9]'} bg-background overflow-hidden rounded-lg border border-border`}>
-      <div className="absolute inset-0">
-        {SLIDES[currentSlide].content}
+      <div className="absolute inset-0 overflow-hidden">
+        <div ref={slideRef} style={transitionStyle}>
+          {SLIDES[currentSlide].content}
+        </div>
       </div>
 
       {/* Navigation */}
       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4">
-        <Button variant="ghost" size="sm" onClick={prev} disabled={currentSlide === 0}>
+        <Button variant="ghost" size="sm" onClick={prev} disabled={currentSlide === 0 || isAnimating}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm text-muted-foreground font-mono">
           {currentSlide + 1} / {SLIDES.length}
         </span>
-        <Button variant="ghost" size="sm" onClick={next} disabled={currentSlide === SLIDES.length - 1}>
+        <Button variant="ghost" size="sm" onClick={next} disabled={currentSlide === SLIDES.length - 1 || isAnimating}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Controls */}
       <div className="absolute top-4 right-4 flex gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setShowNotes(v => !v)} title="Toggle speaker notes (N)">
+          <MessageSquare className="h-4 w-4" />
+        </Button>
         <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
           <Maximize2 className="h-4 w-4" />
         </Button>
@@ -325,7 +373,22 @@ export default function PitchDeck() {
   );
 
   if (isFullscreen) {
-    return slideContent;
+    return (
+      <div className="bg-background">
+        {slideContent}
+        {showNotes && (
+          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border p-4 max-h-[30vh] overflow-y-auto z-50">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold text-primary uppercase tracking-wide">Speaker Notes</span>
+            </div>
+            <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+              {SLIDES[currentSlide].speakerNotes}
+            </p>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -337,6 +400,9 @@ export default function PitchDeck() {
             <p className="text-sm text-muted-foreground">Seed Round · $3M Raise · Quantum-Hybrid Layer-1</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setShowNotes(v => !v)}>
+              <MessageSquare className="h-4 w-4" /> {showNotes ? 'Hide Notes' : 'Show Notes'}
+            </Button>
             <Button variant="outline" className="gap-2" onClick={toggleFullscreen}>
               <Maximize2 className="h-4 w-4" /> Present
             </Button>
@@ -344,6 +410,19 @@ export default function PitchDeck() {
         </div>
 
         {slideContent}
+
+        {/* Speaker Notes Panel */}
+        {showNotes && (
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold text-primary uppercase tracking-wide">Speaker Notes — Slide {currentSlide + 1}: {SLIDES[currentSlide].title}</span>
+            </div>
+            <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+              {SLIDES[currentSlide].speakerNotes}
+            </p>
+          </div>
+        )}
 
         {/* Slide thumbnails */}
         <div className="flex gap-2 overflow-x-auto pb-2">
