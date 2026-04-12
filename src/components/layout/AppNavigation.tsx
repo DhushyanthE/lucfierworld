@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers, Gauge } from 'lucide-react';
+import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers, Gauge, Workflow } from 'lucide-react';
 
 interface NavigationItem {
   label: string;
@@ -52,6 +52,12 @@ export function AppNavigation() {
       label: 'Hardware Benchmark',
       href: '/hardware-benchmark',
       icon: <Gauge className="h-5 w-5" />,
+      isNew: true,
+    },
+    {
+      label: 'WS-QAOA Console',
+      href: '/ws-qaoa',
+      icon: <Workflow className="h-5 w-5" />,
       isNew: true,
     },
   ];
