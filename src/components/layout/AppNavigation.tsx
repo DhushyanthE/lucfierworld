@@ -48,6 +48,12 @@ export function AppNavigation() {
       icon: <Layers className="h-5 w-5" />,
       isNew: true,
     },
+    {
+      label: 'Hardware Benchmark',
+      href: '/hardware-benchmark',
+      icon: <Gauge className="h-5 w-5" />,
+      isNew: true,
+    },
   ];
 
   return (
