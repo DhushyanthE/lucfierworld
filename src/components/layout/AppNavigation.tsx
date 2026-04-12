@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers } from 'lucide-react';
+import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers, Gauge } from 'lucide-react';
 
 interface NavigationItem {
   label: string;
@@ -46,6 +46,12 @@ export function AppNavigation() {
       label: 'Blockchain-ANN',
       href: '/blockchain-ann',
       icon: <Layers className="h-5 w-5" />,
+      isNew: true,
+    },
+    {
+      label: 'Hardware Benchmark',
+      href: '/hardware-benchmark',
+      icon: <Gauge className="h-5 w-5" />,
       isNew: true,
     },
   ];
