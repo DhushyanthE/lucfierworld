@@ -270,6 +270,80 @@ const SLIDES: Slide[] = [
       </div>
     ),
   },
+  {
+    id: 9,
+    title: 'Competitive Analysis',
+    speakerNotes: "Let me show you where Kontour sits in the competitive landscape. We aren't competing with Ethereum or Solana on DeFi TVL—we are competing on survivability. Ethereum and Solana have zero quantum resistance. QRL has post-quantum cryptography but no AI optimization and limited throughput. Kontour is the only chain that combines NIST-standard post-quantum cryptography with AI-driven consensus that actually gets faster under load. Our energy efficiency matches Solana while our security model is generations ahead.",
+    content: (
+      <div className="flex flex-col justify-center h-full px-16 space-y-6">
+        <div>
+          <Badge className="bg-purple-600/30 text-purple-400 mb-4">MARKET POSITION</Badge>
+          <h2 className="text-4xl font-bold text-foreground">Competitive Analysis</h2>
+          <p className="text-lg text-muted-foreground mt-1">How Kontour compares on the metrics that matter post-Q-Day</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="py-3 px-4 text-sm text-muted-foreground">Metric</th>
+                <th className="py-3 px-4 text-sm text-center"><span className="text-primary font-bold">Kontour</span></th>
+                <th className="py-3 px-4 text-sm text-center text-muted-foreground">Ethereum</th>
+                <th className="py-3 px-4 text-sm text-center text-muted-foreground">Solana</th>
+                <th className="py-3 px-4 text-sm text-center text-muted-foreground">QRL</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              <tr className="border-b border-border/50">
+                <td className="py-3 px-4 text-muted-foreground">Quantum Resistance</td>
+                <td className="py-3 px-4 text-center"><Badge className="bg-green-600/30 text-green-400">Native (ML-KEM/ML-DSA)</Badge></td>
+                <td className="py-3 px-4 text-center"><Badge variant="destructive" className="bg-red-600/20 text-red-400">None (ECDSA)</Badge></td>
+                <td className="py-3 px-4 text-center"><Badge variant="destructive" className="bg-red-600/20 text-red-400">None (Ed25519)</Badge></td>
+                <td className="py-3 px-4 text-center"><Badge className="bg-green-600/30 text-green-400">XMSS</Badge></td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="py-3 px-4 text-muted-foreground">Throughput (TPS)</td>
+                <td className="py-3 px-4 text-center font-bold text-primary">10,000+</td>
+                <td className="py-3 px-4 text-center text-foreground">~30</td>
+                <td className="py-3 px-4 text-center text-foreground">~65,000</td>
+                <td className="py-3 px-4 text-center text-foreground">~10</td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="py-3 px-4 text-muted-foreground">Consensus</td>
+                <td className="py-3 px-4 text-center font-bold text-primary">PoNW (AI-driven)</td>
+                <td className="py-3 px-4 text-center text-foreground">PoS</td>
+                <td className="py-3 px-4 text-center text-foreground">PoH + PoS</td>
+                <td className="py-3 px-4 text-center text-foreground">PoS</td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="py-3 px-4 text-muted-foreground">Energy (kWh/tx)</td>
+                <td className="py-3 px-4 text-center font-bold text-primary">~0.001</td>
+                <td className="py-3 px-4 text-center text-foreground">~0.03</td>
+                <td className="py-3 px-4 text-center text-foreground">~0.0006</td>
+                <td className="py-3 px-4 text-center text-foreground">~0.05</td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="py-3 px-4 text-muted-foreground">Self-Optimizing</td>
+                <td className="py-3 px-4 text-center"><Badge className="bg-green-600/30 text-green-400">✓ AI Syndicate</Badge></td>
+                <td className="py-3 px-4 text-center text-muted-foreground">✗</td>
+                <td className="py-3 px-4 text-center text-muted-foreground">✗</td>
+                <td className="py-3 px-4 text-center text-muted-foreground">✗</td>
+              </tr>
+              <tr>
+                <td className="py-3 px-4 text-muted-foreground">ZK Compression</td>
+                <td className="py-3 px-4 text-center"><Badge className="bg-green-600/30 text-green-400">RISC Zero</Badge></td>
+                <td className="py-3 px-4 text-center text-muted-foreground">L2 only</td>
+                <td className="py-3 px-4 text-center text-muted-foreground">✗</td>
+                <td className="py-3 px-4 text-center text-muted-foreground">✗</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm text-muted-foreground italic">
+          Kontour is the only Layer-1 combining native post-quantum cryptography, AI-driven consensus, and on-chain ZK compression.
+        </p>
+      </div>
+    ),
+  },
 ];
 
 export default function PitchDeck() {
