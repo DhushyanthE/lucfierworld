@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers } from 'lucide-react';
+import { Brain, ChevronRight, CircleDollarSign, Cpu, Dna, LayoutGrid, Network, Layers, Gauge } from 'lucide-react';
 
 interface NavigationItem {
   label: string;
