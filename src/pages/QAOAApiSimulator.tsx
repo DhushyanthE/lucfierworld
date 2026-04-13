@@ -358,6 +358,7 @@ export default function QAOAApiSimulator() {
               <TabsTrigger value="convergence">Bell Score</TabsTrigger>
               <TabsTrigger value="energy">Energy</TabsTrigger>
               <TabsTrigger value="parameters">Parameters</TabsTrigger>
+              <TabsTrigger value="circuit">Circuit</TabsTrigger>
               <TabsTrigger value="api-log">API Log</TabsTrigger>
             </TabsList>
 
