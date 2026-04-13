@@ -427,7 +427,26 @@ export default function QAOAApiSimulator() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="api-log">
+            <TabsContent value="circuit">
+              <Card className="p-4 border-primary/20">
+                <h4 className="text-xs font-semibold text-primary mb-2">Trotterized QAOA Circuit — {numLayers} Layer{numLayers > 1 ? 's' : ''}</h4>
+                <div className="bg-muted/20 rounded-lg p-3 overflow-x-auto">
+                  <QAOACircuitDiagram
+                    numQubits={matrixValid ? currentMatrix!.length : 4}
+                    numLayers={numLayers}
+                    currentIteration={currentStep}
+                    beta={liveSteps.length > 0 ? liveSteps[liveSteps.length - 1].beta : 0}
+                    gamma={liveSteps.length > 0 ? liveSteps[liveSteps.length - 1].gamma : 0}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  Each layer applies e<sup>−iγH<sub>C</sub></sup> (R<sub>ZZ</sub> gates on all interacting pairs) then e<sup>−iβH<sub>B</sub></sup> (R<sub>X</sub> on all qubits). 
+                  Angles update in real-time during optimization.
+                </p>
+              </Card>
+            </TabsContent>
+
+
               <Card className="p-4 border-primary/20">
                 <h4 className="text-xs font-semibold text-primary mb-2 flex items-center gap-2">
                   <Terminal className="h-3 w-3" /> API Request / Response Log
