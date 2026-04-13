@@ -27,6 +27,7 @@ import DataScientist from './pages/DataScientist';
 import PitchDeck from './pages/PitchDeck';
 import QuantumHardwareBenchmark from './pages/QuantumHardwareBenchmark';
 import WSQAOAConsole from './pages/WSQAOAConsole';
+import QAOAApiSimulator from './pages/QAOAApiSimulator';
 import './App.css';
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
             <Route path="/pitch-deck" element={<PitchDeck />} />
             <Route path="/hardware-benchmark" element={<QuantumHardwareBenchmark />} />
             <Route path="/ws-qaoa" element={<WSQAOAConsole />} />
+            <Route path="/qaoa-simulator" element={<QAOAApiSimulator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
