@@ -27,6 +27,7 @@ import DataScientist from './pages/DataScientist';
 import PitchDeck from './pages/PitchDeck';
 import QuantumHardwareBenchmark from './pages/QuantumHardwareBenchmark';
 import WSQAOAConsole from './pages/WSQAOAConsole';
+import QAOAApiSimulator from './pages/QAOAApiSimulator';
 import './App.css';
 
 function App() {
