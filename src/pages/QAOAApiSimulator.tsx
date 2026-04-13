@@ -105,6 +105,118 @@ interface SimulationResult {
   totalTime: number;
 }
 
+// ── Circuit Diagram Component ──
+function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamma }: {
+  numQubits: number; numLayers: number; currentIteration: number; beta: number; gamma: number;
+}) {
+  const displayQubits = Math.min(numQubits, 8);
+  const gateWidth = 48;
+  const gateGap = 8;
+  const qubitSpacing = 36;
+  const labelWidth = 40;
+
+  // Generate RZZ pairs (all i<j interactions)
+  const rzzPairs: [number, number][] = [];
+  for (let i = 0; i < displayQubits; i++) {
+    for (let j = i + 1; j < displayQubits; j++) {
+      rzzPairs.push([i, j]);
+    }
+  }
+  // Limit displayed pairs for readability
+  const shownPairs = rzzPairs.slice(0, Math.min(rzzPairs.length, 6));
+
+  const layerElements = [];
+  for (let layer = 0; layer < numLayers; layer++) {
+    const isActive = currentIteration > 0;
+    const layerX = layer * (shownPairs.length * (gateWidth + gateGap) + displayQubits * (gateWidth + gateGap) + 40);
+
+    // RZZ gates (cost Hamiltonian)
+    shownPairs.forEach(([qi, qj], pairIdx) => {
+      const x = labelWidth + layerX + pairIdx * (gateWidth + gateGap);
+      const y1 = qi * qubitSpacing;
+      const y2 = qj * qubitSpacing;
+      layerElements.push(
+        <g key={`rzz-${layer}-${pairIdx}`}>
+          <line x1={x + gateWidth / 2} y1={y1 + 12} x2={x + gateWidth / 2} y2={y2 + 12}
+            stroke="hsl(var(--primary))" strokeWidth={1.5} strokeDasharray={isActive ? "none" : "3 3"} opacity={isActive ? 1 : 0.4} />
+          <rect x={x} y={y1 + 2} width={gateWidth} height={20} rx={4}
+            fill={isActive ? "hsl(var(--primary) / 0.15)" : "hsl(var(--muted) / 0.3)"}
+            stroke="hsl(var(--primary))" strokeWidth={1} />
+          <text x={x + gateWidth / 2} y={y1 + 15} textAnchor="middle" fontSize={8}
+            fill="hsl(var(--primary))" fontFamily="monospace">R<tspan fontSize={6} dy={2}>ZZ</tspan></text>
+          <rect x={x} y={y2 + 2} width={gateWidth} height={20} rx={4}
+            fill={isActive ? "hsl(var(--primary) / 0.15)" : "hsl(var(--muted) / 0.3)"}
+            stroke="hsl(var(--primary))" strokeWidth={1} />
+          <text x={x + gateWidth / 2} y={y2 + 15} textAnchor="middle" fontSize={8}
+            fill="hsl(var(--primary))" fontFamily="monospace">R<tspan fontSize={6} dy={2}>ZZ</tspan></text>
+        </g>
+      );
+    });
+
+    // RX gates (mixing Hamiltonian)
+    const rxStartX = labelWidth + layerX + shownPairs.length * (gateWidth + gateGap) + 8;
+    for (let q = 0; q < displayQubits; q++) {
+      layerElements.push(
+        <g key={`rx-${layer}-${q}`}>
+          <rect x={rxStartX} y={q * qubitSpacing + 2} width={gateWidth} height={20} rx={4}
+            fill={isActive ? "hsl(271 91% 65% / 0.2)" : "hsl(var(--muted) / 0.3)"}
+            stroke="hsl(271 91% 65%)" strokeWidth={1} />
+          <text x={rxStartX + gateWidth / 2} y={q * qubitSpacing + 15} textAnchor="middle" fontSize={8}
+            fill="hsl(271 91% 65%)" fontFamily="monospace">R<tspan fontSize={6} dy={2}>X</tspan></text>
+        </g>
+      );
+    }
+
+    // Layer separator
+    const sepX = rxStartX + gateWidth + 16;
+    if (layer < numLayers - 1) {
+      layerElements.push(
+        <line key={`sep-${layer}`} x1={sepX} y1={-4} x2={sepX} y2={displayQubits * qubitSpacing + 4}
+          stroke="hsl(var(--border))" strokeWidth={1} strokeDasharray="4 4" />
+      );
+    }
+
+    // Layer label
+    layerElements.push(
+      <text key={`label-${layer}`} x={labelWidth + layerX + (shownPairs.length * (gateWidth + gateGap) + gateWidth) / 2}
+        y={displayQubits * qubitSpacing + 16} textAnchor="middle" fontSize={9}
+        fill="hsl(var(--muted-foreground))" fontFamily="monospace">
+        Layer {layer + 1} (γ={gamma.toFixed(2)}, β={beta.toFixed(2)})
+      </text>
+    );
+  }
+
+  const totalWidth = labelWidth + numLayers * (shownPairs.length * (gateWidth + gateGap) + displayQubits * (gateWidth + gateGap) + 40) + 20;
+  const totalHeight = displayQubits * qubitSpacing + 28;
+
+  return (
+    <svg width={totalWidth} height={totalHeight} className="min-w-full">
+      {/* Qubit labels + wires */}
+      {Array.from({ length: displayQubits }).map((_, q) => (
+        <g key={`wire-${q}`}>
+          <text x={4} y={q * qubitSpacing + 16} fontSize={10} fill="hsl(var(--muted-foreground))" fontFamily="monospace">
+            q{q}
+          </text>
+          <line x1={labelWidth} y1={q * qubitSpacing + 12} x2={totalWidth - 10} y2={q * qubitSpacing + 12}
+            stroke="hsl(var(--border))" strokeWidth={1} />
+        </g>
+      ))}
+      {/* |+⟩ init markers */}
+      {Array.from({ length: displayQubits }).map((_, q) => (
+        <text key={`init-${q}`} x={labelWidth - 6} y={q * qubitSpacing + 16} fontSize={9}
+          fill="hsl(var(--muted-foreground))" fontFamily="monospace" textAnchor="end">|+⟩</text>
+      ))}
+      {layerElements}
+      {numQubits > 8 && (
+        <text x={totalWidth / 2} y={totalHeight - 2} textAnchor="middle" fontSize={9}
+          fill="hsl(var(--muted-foreground))" fontStyle="italic">
+          Showing 8 of {numQubits} qubits
+        </text>
+      )}
+    </svg>
+  );
+}
+
 export default function QAOAApiSimulator() {
   const navigate = useNavigate();
   const [selectedPreset, setSelectedPreset] = useState('maxcut_4');
