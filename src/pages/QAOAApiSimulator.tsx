@@ -445,8 +445,7 @@ export default function QAOAApiSimulator() {
                 </p>
               </Card>
             </TabsContent>
-
-
+            <TabsContent value="api-log">
               <Card className="p-4 border-primary/20">
                 <h4 className="text-xs font-semibold text-primary mb-2 flex items-center gap-2">
                   <Terminal className="h-3 w-3" /> API Request / Response Log
