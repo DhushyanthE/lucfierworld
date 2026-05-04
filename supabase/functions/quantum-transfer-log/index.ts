@@ -103,11 +103,11 @@ serve(async (req) => {
         // Verify ownership before updating
         const { data: existing, error: ownErr } = await admin
           .from('quantum_transfer_history')
-          .select('user_id')
+          .select('sender_address')
           .eq('session_id', sessionId)
           .maybeSingle();
         if (ownErr || !existing) return json({ success: false, error: 'Not found' }, 404);
-        if (existing.user_id && existing.user_id !== user.id) {
+        if (existing.sender_address !== user.id) {
           return json({ success: false, error: 'Forbidden' }, 403);
         }
         const { data, error } = await admin
