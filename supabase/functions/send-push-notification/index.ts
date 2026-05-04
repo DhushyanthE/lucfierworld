@@ -147,12 +147,12 @@
        console.error(`Push notification failed: ${response.status} ${errorText}`);
        
        // If subscription expired, remove it
-       if (response.status === 410) {
-         await supabaseAdmin
-           .from('profiles')
-           .update({ push_subscription: null })
-           .eq('user_id', userId);
-       }
+        if (response.status === 410) {
+          await supabaseAdmin
+            .from('user_secrets')
+            .update({ push_subscription: null })
+            .eq('user_id', userId);
+        }
        
        return new Response(
          JSON.stringify({ error: 'Failed to send push notification' }),
