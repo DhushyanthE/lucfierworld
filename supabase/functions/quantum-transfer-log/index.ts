@@ -79,7 +79,6 @@ serve(async (req) => {
           .from('quantum_transfer_history')
           .insert({
             session_id: newSessionId,
-            user_id: user.id,
             sender_address: senderAddress,
             receiver_address: transferData.receiver_address,
             amount: transferData.amount,
