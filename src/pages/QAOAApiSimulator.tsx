@@ -187,8 +187,12 @@ function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamm
     );
   }
 
-  const totalWidth = labelWidth + numLayers * (shownPairs.length * (gateWidth + gateGap) + displayQubits * (gateWidth + gateGap) + 40) + 20;
+  const layersWidth = numLayers * (shownPairs.length * (gateWidth + gateGap) + displayQubits * (gateWidth + gateGap) + 40);
+  const measureX = labelWidth + layersWidth + 8;
+  const measureWidth = 32;
+  const totalWidth = measureX + measureWidth + 24;
   const totalHeight = displayQubits * qubitSpacing + 28;
+  const isActive = currentIteration > 0;
 
   return (
     <svg width={totalWidth} height={totalHeight} className="min-w-full">
@@ -198,8 +202,13 @@ function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamm
           <text x={4} y={q * qubitSpacing + 16} fontSize={10} fill="hsl(var(--muted-foreground))" fontFamily="monospace">
             q{q}
           </text>
-          <line x1={labelWidth} y1={q * qubitSpacing + 12} x2={totalWidth - 10} y2={q * qubitSpacing + 12}
+          <line x1={labelWidth} y1={q * qubitSpacing + 12} x2={measureX} y2={q * qubitSpacing + 12}
             stroke="hsl(var(--border))" strokeWidth={1} />
+          {/* Classical double-wire after measurement */}
+          <line x1={measureX + measureWidth} y1={q * qubitSpacing + 10} x2={totalWidth - 4} y2={q * qubitSpacing + 10}
+            stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
+          <line x1={measureX + measureWidth} y1={q * qubitSpacing + 14} x2={totalWidth - 4} y2={q * qubitSpacing + 14}
+            stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
         </g>
       ))}
       {/* |+⟩ init markers */}
@@ -208,6 +217,28 @@ function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamm
           fill="hsl(var(--muted-foreground))" fontFamily="monospace" textAnchor="end">|+⟩</text>
       ))}
       {layerElements}
+      {/* Measurement gates */}
+      {Array.from({ length: displayQubits }).map((_, q) => {
+        const bit = optimalSolution?.[q];
+        return (
+          <g key={`m-${q}`}>
+            <rect x={measureX} y={q * qubitSpacing + 2} width={measureWidth} height={20} rx={4}
+              fill={isActive ? "hsl(142 71% 45% / 0.18)" : "hsl(var(--muted) / 0.3)"}
+              stroke="hsl(142 71% 45%)" strokeWidth={1} />
+            <path d={`M ${measureX + 6} ${q * qubitSpacing + 18} A 10 10 0 0 1 ${measureX + measureWidth - 6} ${q * qubitSpacing + 18}`}
+              fill="none" stroke="hsl(142 71% 45%)" strokeWidth={1} />
+            <line x1={measureX + measureWidth / 2} y1={q * qubitSpacing + 18}
+              x2={measureX + measureWidth - 5} y2={q * qubitSpacing + 6}
+              stroke="hsl(142 71% 45%)" strokeWidth={1} />
+            {bit !== undefined && isActive && (
+              <text x={totalWidth - 8} y={q * qubitSpacing + 16} fontSize={10} textAnchor="end"
+                fill="hsl(142 71% 45%)" fontFamily="monospace" fontWeight="bold">={bit}</text>
+            )}
+          </g>
+        );
+      })}
+      <text x={measureX + measureWidth / 2} y={displayQubits * qubitSpacing + 16} textAnchor="middle" fontSize={9}
+        fill="hsl(142 71% 45%)" fontFamily="monospace">Measure</text>
       {numQubits > 8 && (
         <text x={totalWidth / 2} y={totalHeight - 2} textAnchor="middle" fontSize={9}
           fill="hsl(var(--muted-foreground))" fontStyle="italic">
