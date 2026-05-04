@@ -211,6 +211,7 @@ serve(async (req: Request) => {
       console.log("Password reset email sent successfully to:", email);
     }
 
+    await padResponse();
     return new Response(
       JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -218,9 +219,10 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error("Error in send-password-reset:", error);
+    await padResponse();
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
