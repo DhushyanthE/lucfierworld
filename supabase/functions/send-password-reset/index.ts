@@ -61,7 +61,7 @@ serve(async (req: Request) => {
 
     if (error) {
       console.error("Error generating reset link:", error);
-      // Don't reveal if email exists or not for security
+      await padResponse();
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -72,6 +72,7 @@ serve(async (req: Request) => {
 
     if (!resetLink) {
       console.error("No reset link generated");
+      await padResponse();
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
