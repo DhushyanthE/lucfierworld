@@ -106,8 +106,9 @@ interface SimulationResult {
 }
 
 // ── Circuit Diagram Component ──
-function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamma }: {
+function QAOACircuitDiagram({ numQubits, numLayers, currentIteration, beta, gamma, optimalSolution }: {
   numQubits: number; numLayers: number; currentIteration: number; beta: number; gamma: number;
+  optimalSolution?: number[];
 }) {
   const displayQubits = Math.min(numQubits, 8);
   const gateWidth = 48;
