@@ -29,133 +29,131 @@ interface TransferLogRequest {
   limit?: number;
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const { action, sessionId, transferData, updateData, limit = 50 }: TransferLogRequest = await req.json();
+    // 1. Require auth
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return json({ success: false, error: 'Missing authorization' }, 401);
+    }
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !userData?.user) {
+      return json({ success: false, error: 'Unauthorized' }, 401);
+    }
+    const user = userData.user;
 
-    console.log(`Processing quantum transfer log action: ${action}`);
+    const body = (await req.json()) as TransferLogRequest;
+    const { action, sessionId, transferData, updateData, limit = 50 } = body || {} as TransferLogRequest;
+
+    console.log(`quantum-transfer-log action=${action} user=${user.id}`);
+
+    // Service-role client for writes (RLS-bypassing) — only used after ownership checks
+    const admin = createClient(supabaseUrl, serviceKey);
 
     switch (action) {
       case 'create': {
-        if (!transferData) {
-          throw new Error('Transfer data required for create action');
-        }
-
-        const newSessionId = `QTS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        if (!transferData) return json({ success: false, error: 'transferData required' }, 400);
+        // Force the authenticated user as the sender (do not trust client)
+        const senderAddress = user.id;
+        const newSessionId = `QTS_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         const blockchainHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-        const { data, error } = await supabase
+        const { data, error } = await admin
           .from('quantum_transfer_history')
           .insert({
             session_id: newSessionId,
-            sender_address: transferData.sender_address,
+            user_id: user.id,
+            sender_address: senderAddress,
             receiver_address: transferData.receiver_address,
             amount: transferData.amount,
             data_payload: transferData.data_payload || '',
             blockchain_hash: blockchainHash,
             transfer_status: 'pending',
             network_nodes: transferData.network_nodes || [],
-            entanglement_pairs: Math.floor(Math.random() * 64) + 32
+            entanglement_pairs: Math.floor(Math.random() * 64) + 32,
           })
           .select()
           .single();
 
         if (error) {
-          console.error('Error creating transfer log:', error);
-          throw error;
+          console.error(`create error user=${user.id}:`, error.message);
+          return json({ success: false, error: 'Failed to create transfer' }, 500);
         }
-
-        console.log(`Created transfer log: ${newSessionId}`);
-
-        return new Response(
-          JSON.stringify({ success: true, data, sessionId: newSessionId }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return json({ success: true, data, sessionId: newSessionId });
       }
 
       case 'update': {
-        if (!sessionId || !updateData) {
-          throw new Error('Session ID and update data required');
+        if (!sessionId || !updateData) return json({ success: false, error: 'sessionId and updateData required' }, 400);
+        // Verify ownership before updating
+        const { data: existing, error: ownErr } = await admin
+          .from('quantum_transfer_history')
+          .select('user_id')
+          .eq('session_id', sessionId)
+          .maybeSingle();
+        if (ownErr || !existing) return json({ success: false, error: 'Not found' }, 404);
+        if (existing.user_id && existing.user_id !== user.id) {
+          return json({ success: false, error: 'Forbidden' }, 403);
         }
-
-        const { data, error } = await supabase
+        const { data, error } = await admin
           .from('quantum_transfer_history')
           .update(updateData)
           .eq('session_id', sessionId)
           .select()
           .single();
-
         if (error) {
-          console.error('Error updating transfer log:', error);
-          throw error;
+          console.error(`update error user=${user.id}:`, error.message);
+          return json({ success: false, error: 'Failed to update transfer' }, 500);
         }
-
-        console.log(`Updated transfer log: ${sessionId}`);
-
-        return new Response(
-          JSON.stringify({ success: true, data }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return json({ success: true, data });
       }
 
       case 'get': {
-        if (!sessionId) {
-          throw new Error('Session ID required');
-        }
-
-        const { data, error } = await supabase
+        if (!sessionId) return json({ success: false, error: 'sessionId required' }, 400);
+        // Use the user-scoped client so RLS enforces ownership
+        const { data, error } = await userClient
           .from('quantum_transfer_history')
           .select('*')
           .eq('session_id', sessionId)
-          .single();
-
-        if (error) {
-          console.error('Error getting transfer log:', error);
-          throw error;
-        }
-
-        return new Response(
-          JSON.stringify({ success: true, data }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+          .maybeSingle();
+        if (error) return json({ success: false, error: 'Failed to fetch' }, 500);
+        if (!data) return json({ success: false, error: 'Not found' }, 404);
+        return json({ success: true, data });
       }
 
       case 'list': {
-        const { data, error } = await supabase
+        const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+        // RLS scopes the result to the calling user's transfers
+        const { data, error } = await userClient
           .from('quantum_transfer_history')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(limit);
-
-        if (error) {
-          console.error('Error listing transfer logs:', error);
-          throw error;
-        }
-
-        return new Response(
-          JSON.stringify({ success: true, data, count: data.length }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+          .limit(safeLimit);
+        if (error) return json({ success: false, error: 'Failed to list' }, 500);
+        return json({ success: true, data, count: data?.length ?? 0 });
       }
 
       default:
-        throw new Error(`Unknown action: ${action}`);
+        return json({ success: false, error: 'Unknown action' }, 400);
     }
-
-  } catch (error) {
-    console.error('Quantum transfer log error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  } catch (error: any) {
+    console.error('quantum-transfer-log error:', error?.message || error);
+    return json({ success: false, error: 'Internal error' }, 500);
   }
 });
