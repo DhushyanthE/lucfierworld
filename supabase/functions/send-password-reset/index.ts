@@ -27,9 +27,10 @@ serve(async (req: Request) => {
     const { email, redirectUrl } = await req.json();
 
     if (!email) {
+      await padResponse();
       return new Response(
-        JSON.stringify({ error: "Email is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
