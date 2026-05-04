@@ -581,12 +581,20 @@ export default function QAOAApiSimulator() {
                     currentIteration={currentStep}
                     beta={liveSteps.length > 0 ? liveSteps[liveSteps.length - 1].beta : 0}
                     gamma={liveSteps.length > 0 ? liveSteps[liveSteps.length - 1].gamma : 0}
+                    optimalSolution={result?.optimalSolution}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Each layer applies e<sup>−iγH<sub>C</sub></sup> (R<sub>ZZ</sub> gates on all interacting pairs) then e<sup>−iβH<sub>B</sub></sup> (R<sub>X</sub> on all qubits). 
-                  Angles update in real-time during optimization.
+                <p className="text-[10px] text-muted-foreground mt-2 mb-3">
+                  Each layer applies e<sup>−iγH<sub>C</sub></sup> (R<sub>ZZ</sub> gates on all interacting pairs) then e<sup>−iβH<sub>B</sub></sup> (R<sub>X</sub> on all qubits),
+                  ending with computational-basis measurements (M) producing the final classical bitstring.
                 </p>
+
+                {/* State Vector Readout Panel */}
+                <StateVectorReadout
+                  optimalSolution={result?.optimalSolution}
+                  bellScore={liveSteps.length > 0 ? liveSteps[liveSteps.length - 1].bellScore : 0}
+                  iteration={currentStep}
+                />
               </Card>
             </TabsContent>
             <TabsContent value="api-log">
