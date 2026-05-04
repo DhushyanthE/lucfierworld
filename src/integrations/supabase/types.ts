@@ -500,9 +500,7 @@ export type Database = {
           notification_email: boolean | null
           notification_in_app: boolean | null
           notification_push: boolean | null
-          push_subscription: Json | null
           totp_enabled: boolean | null
-          totp_secret: string | null
           updated_at: string
           user_id: string
         }
@@ -515,9 +513,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_in_app?: boolean | null
           notification_push?: boolean | null
-          push_subscription?: Json | null
           totp_enabled?: boolean | null
-          totp_secret?: string | null
           updated_at?: string
           user_id: string
         }
@@ -530,9 +526,7 @@ export type Database = {
           notification_email?: boolean | null
           notification_in_app?: boolean | null
           notification_push?: boolean | null
-          push_subscription?: Json | null
           totp_enabled?: boolean | null
-          totp_secret?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -678,6 +672,30 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_secrets: {
+        Row: {
+          created_at: string
+          push_subscription: Json | null
+          totp_secret: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          push_subscription?: Json | null
+          totp_secret?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          push_subscription?: Json | null
+          totp_secret?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

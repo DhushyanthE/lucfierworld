@@ -92,22 +92,22 @@
        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
      );
  
-     // Get user's push subscription
-     const { data: profile, error: profileError } = await supabaseAdmin
-       .from('profiles')
-       .select('push_subscription')
-       .eq('user_id', userId)
-       .single();
- 
-     if (profileError || !profile?.push_subscription) {
-       console.log(`No push subscription found for user ${userId}`);
-       return new Response(
-         JSON.stringify({ error: 'User has no push subscription' }),
-         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       );
-     }
- 
-     const subscription = profile.push_subscription;
+    // Get user's push subscription from private user_secrets table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('user_secrets')
+      .select('push_subscription')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileError || !profile?.push_subscription) {
+      console.log(`No push subscription found for user ${userId}`);
+      return new Response(
+        JSON.stringify({ error: 'User has no push subscription' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const subscription = profile.push_subscription;
      console.log(`Sending push notification to user ${userId}`);
  
      // Create notification payload
@@ -147,12 +147,12 @@
        console.error(`Push notification failed: ${response.status} ${errorText}`);
        
        // If subscription expired, remove it
-       if (response.status === 410) {
-         await supabaseAdmin
-           .from('profiles')
-           .update({ push_subscription: null })
-           .eq('user_id', userId);
-       }
+        if (response.status === 410) {
+          await supabaseAdmin
+            .from('user_secrets')
+            .update({ push_subscription: null })
+            .eq('user_id', userId);
+        }
        
        return new Response(
          JSON.stringify({ error: 'Failed to send push notification' }),

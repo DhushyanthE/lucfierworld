@@ -104,11 +104,17 @@ serve(async (req) => {
     if (userId) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('push_subscription, notification_push, notification_email')
+        .select('notification_push, notification_email')
         .eq('user_id', userId)
         .single();
 
-      if (profile?.notification_push && profile?.push_subscription) {
+      const { data: secrets } = await supabase
+        .from('user_secrets')
+        .select('push_subscription')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (profile?.notification_push && secrets?.push_subscription) {
         try {
           const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
             method: 'POST',

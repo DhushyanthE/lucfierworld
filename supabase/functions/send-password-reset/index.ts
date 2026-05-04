@@ -7,19 +7,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MIN_RESPONSE_MS = 1200;
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  const padResponse = async () => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_MS) {
+      await new Promise((r) => setTimeout(r, MIN_RESPONSE_MS - elapsed));
+    }
+  };
+
   try {
     const { email, redirectUrl } = await req.json();
 
     if (!email) {
+      await padResponse();
       return new Response(
-        JSON.stringify({ error: "Email is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -51,7 +62,7 @@ serve(async (req: Request) => {
 
     if (error) {
       console.error("Error generating reset link:", error);
-      // Don't reveal if email exists or not for security
+      await padResponse();
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -62,6 +73,7 @@ serve(async (req: Request) => {
 
     if (!resetLink) {
       console.error("No reset link generated");
+      await padResponse();
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -200,6 +212,7 @@ serve(async (req: Request) => {
       console.log("Password reset email sent successfully to:", email);
     }
 
+    await padResponse();
     return new Response(
       JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -207,9 +220,10 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error("Error in send-password-reset:", error);
+    await padResponse();
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: true, message: "If an account exists, a reset email will be sent." }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

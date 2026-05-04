@@ -50,22 +50,24 @@
        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
      );
  
-     // Store subscription in profiles table or dedicated push_subscriptions table
-     const { error: updateError } = await supabaseAdmin
-       .from('profiles')
-       .update({ 
-         push_subscription: subscription,
-         notification_push: true 
-       })
-       .eq('user_id', user.id);
- 
-     if (updateError) {
-       console.error('Error saving subscription:', updateError);
-       return new Response(
-         JSON.stringify({ error: 'Failed to save subscription' }),
-         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       );
-     }
+    // Store subscription in private user_secrets table (not exposed to clients)
+    const { error: secretError } = await supabaseAdmin
+      .from('user_secrets')
+      .upsert({ user_id: user.id, push_subscription: subscription }, { onConflict: 'user_id' });
+
+    if (secretError) {
+      console.error('Error saving subscription:', secretError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save subscription' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Reflect opt-in flag on profile (no secret data)
+    await supabaseAdmin
+      .from('profiles')
+      .update({ notification_push: true })
+      .eq('user_id', user.id);
  
      console.log(`Push subscription saved for user ${user.id}`);
  
