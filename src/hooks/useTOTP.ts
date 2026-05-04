@@ -121,11 +121,9 @@ export function useTOTP() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ totp_secret: secretKey, totp_enabled: true })
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.functions.invoke('totp-manage', {
+        body: { action: 'enable', secret: secretKey },
+      });
       if (error) throw error;
       setSecret(null);
       return { error: null };
@@ -141,11 +139,9 @@ export function useTOTP() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ totp_secret: null, totp_enabled: false })
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.functions.invoke('totp-manage', {
+        body: { action: 'disable' },
+      });
       if (error) throw error;
       return { error: null };
     } catch (err: any) {
