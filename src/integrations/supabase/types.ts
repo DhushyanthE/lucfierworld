@@ -737,6 +737,16 @@ export type Database = {
         }
         Relationships: []
       }
+      mining_leaderboard: {
+        Row: {
+          avg_hash_rate: number | null
+          blocks_mined: number | null
+          display_name: string | null
+          last_mined_at: string | null
+          total_reward: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_analytics_rate_limit: {
