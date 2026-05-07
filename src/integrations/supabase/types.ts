@@ -134,6 +134,27 @@ export type Database = {
         }
         Relationships: []
       }
+      dao_eligible_voters: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dao_proposals: {
         Row: {
           category: string
@@ -655,6 +676,60 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          category: string
+          created_at: string
+          details: Json | null
+          id: string
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          category?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          category?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Relationships: []
+      }
+      security_memory_snapshots: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          version: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          version: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -740,10 +815,22 @@ export type Database = {
       mining_leaderboard: {
         Row: {
           avg_hash_rate: number | null
-          blocks_mined: number | null
-          display_name: string | null
-          last_mined_at: string | null
+          avg_quantum_boost: number | null
+          best_quantum_boost: number | null
+          miner_alias: string | null
+          total_blocks: number | null
           total_reward: number | null
+        }
+        Relationships: []
+      }
+      security_access_summary: {
+        Row: {
+          anon_events: number | null
+          bucket: string | null
+          events: number | null
+          principal: string | null
+          sessions: number | null
+          source: string | null
         }
         Relationships: []
       }
@@ -772,6 +859,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_eligible_voter: { Args: { _user_id: string }; Returns: boolean }
       refresh_analytics_summary: { Args: never; Returns: undefined }
     }
     Enums: {

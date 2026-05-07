@@ -28,6 +28,10 @@ import PitchDeck from './pages/PitchDeck';
 import QuantumHardwareBenchmark from './pages/QuantumHardwareBenchmark';
 import WSQAOAConsole from './pages/WSQAOAConsole';
 import QAOAApiSimulator from './pages/QAOAApiSimulator';
+import MiningLeaderboardPage from './pages/MiningLeaderboardPage';
+import DAOPage from './pages/DAO';
+import SecurityDashboard from './pages/admin/SecurityDashboard';
+import SecurityMemoryAdmin from './pages/admin/SecurityMemoryAdmin';
 import './App.css';
 
 function App() {
@@ -63,6 +67,10 @@ function App() {
             <Route path="/hardware-benchmark" element={<QuantumHardwareBenchmark />} />
             <Route path="/ws-qaoa" element={<WSQAOAConsole />} />
             <Route path="/qaoa-simulator" element={<QAOAApiSimulator />} />
+            <Route path="/leaderboard/mining" element={<MiningLeaderboardPage />} />
+            <Route path="/dao" element={<DAOPage />} />
+            <Route path="/admin/security-dashboard" element={<SecurityDashboard />} />
+            <Route path="/admin/security-memory" element={<SecurityMemoryAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

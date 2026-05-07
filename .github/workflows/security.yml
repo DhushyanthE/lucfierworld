@@ -1,0 +1,35 @@
+name: security
+on:
+  push:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - '.github/workflows/security.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  rls-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run security.assert_rls_integrity()
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "SUPABASE_DB_URL secret missing"; exit 1; fi
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT * FROM security.assert_rls_integrity();"
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with: { deno-version: v1.x }
+      - name: Realtime + edge function auth tests
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          deno test -A supabase/functions/_tests/
