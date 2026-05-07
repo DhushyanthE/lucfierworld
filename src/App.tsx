@@ -28,6 +28,10 @@ import PitchDeck from './pages/PitchDeck';
 import QuantumHardwareBenchmark from './pages/QuantumHardwareBenchmark';
 import WSQAOAConsole from './pages/WSQAOAConsole';
 import QAOAApiSimulator from './pages/QAOAApiSimulator';
+import MiningLeaderboardPage from './pages/MiningLeaderboardPage';
+import DAOPage from './pages/DAO';
+import SecurityDashboard from './pages/admin/SecurityDashboard';
+import SecurityMemoryAdmin from './pages/admin/SecurityMemoryAdmin';
 import './App.css';
 
 function App() {
