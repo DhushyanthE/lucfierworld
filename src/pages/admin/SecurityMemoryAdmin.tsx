@@ -20,7 +20,7 @@ export default function SecurityMemoryAdmin() {
   const [draft, setDraft] = useState('');
 
   const reload = async () => {
-    const { data: snaps } = await (supabase.from('security_memory_snapshots' as never).select('*').order('version', { ascending: false }) as any);
+    const { data: snaps } = await (supabase.from('security_memory_snapshots' as never).select('*').order('version', { ascending: false }]) as any);
     setSnapshots(snaps ?? []);
     const { data: a } = await (supabase.from('security_audit_log' as never).select('*').order('created_at', { ascending: false }).limit(200) as any);
     setAudit(a ?? []);
@@ -33,13 +33,13 @@ export default function SecurityMemoryAdmin() {
   const saveSnapshot = async () => {
     if (!draft.trim() || !user) return;
     const nextVersion = (snapshots[0]?.version ?? 0) + 1;
-    const { error } = await (supabase.from('security_memory_snapshots' as never).insert({
+    const { error } = await (supabase.from('security_memory_snapshots' as never).insert([{
       version: nextVersion, content: draft, created_by: user.id,
-    }) as any);
+    }]) as any);
     if (error) { toast({ title: 'Save failed', description: error.message, variant: 'destructive' }); return; }
-    await (supabase.from('security_audit_log' as never).insert({
+    await (supabase.from('security_audit_log' as never).insert([{
       actor_user_id: user.id, action: 'snapshot_security_memory', target: `v${nextVersion}`, details: { length: draft.length },
-    }) as any);
+    }]) as any);
     setDraft(''); reload();
     toast({ title: `Saved v${nextVersion}` });
   };
