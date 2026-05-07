@@ -67,6 +67,10 @@ function App() {
             <Route path="/hardware-benchmark" element={<QuantumHardwareBenchmark />} />
             <Route path="/ws-qaoa" element={<WSQAOAConsole />} />
             <Route path="/qaoa-simulator" element={<QAOAApiSimulator />} />
+            <Route path="/leaderboard/mining" element={<MiningLeaderboardPage />} />
+            <Route path="/dao" element={<DAOPage />} />
+            <Route path="/admin/security-dashboard" element={<SecurityDashboard />} />
+            <Route path="/admin/security-memory" element={<SecurityMemoryAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
