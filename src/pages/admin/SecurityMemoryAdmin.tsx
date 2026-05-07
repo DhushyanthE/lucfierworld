@@ -33,13 +33,13 @@ export default function SecurityMemoryAdmin() {
   const saveSnapshot = async () => {
     if (!draft.trim() || !user) return;
     const nextVersion = (snapshots[0]?.version ?? 0) + 1;
-    const { error } = await (supabase.from('security_memory_snapshots' as never).insert([{
+    const { error } = await ((supabase as any).from('security_memory_snapshots').insert([{
       version: nextVersion, content: draft, created_by: user.id,
-    }]) as any);
+    }]));
     if (error) { toast({ title: 'Save failed', description: error.message, variant: 'destructive' }); return; }
-    await (supabase.from('security_audit_log' as never).insert([{
+    await ((supabase as any).from('security_audit_log').insert([{
       actor_user_id: user.id, action: 'snapshot_security_memory', target: `v${nextVersion}`, details: { length: draft.length },
-    }]) as any);
+    }]));
     setDraft(''); reload();
     toast({ title: `Saved v${nextVersion}` });
   };
