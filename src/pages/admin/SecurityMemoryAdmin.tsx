@@ -20,7 +20,7 @@ export default function SecurityMemoryAdmin() {
   const [draft, setDraft] = useState('');
 
   const reload = async () => {
-    const { data: snaps } = await (supabase.from('security_memory_snapshots' as never).select('*').order('version', { ascending: false }]) as any);
+    const { data: snaps } = await (supabase.from('security_memory_snapshots' as never).select('*').order('version', { ascending: false }) as any);
     setSnapshots(snaps ?? []);
     const { data: a } = await (supabase.from('security_audit_log' as never).select('*').order('created_at', { ascending: false }).limit(200) as any);
     setAudit(a ?? []);
