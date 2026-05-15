@@ -45,57 +45,73 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const anomalies: string[] = [];
+    // Load admin-tunable alert settings
+    const { data: settingsRows } = await supabase.from('security_alert_settings').select('*');
+    const settings = new Map<string, any>();
+    (settingsRows ?? []).forEach((s: any) => settings.set(s.alert_key, s));
+    const cfg = (key: string) => settings.get(key) ?? { enabled: true, threshold: 1, window_minutes: 5, channels: ['slack', 'email'] };
 
-    // Anon firewall log writes (should be impossible after hardening)
-    const { count: anonCount } = await supabase
-      .from('quantum_firewall_logs')
-      .select('id', { count: 'exact', head: true })
-      .is('user_id', null)
-      .gte('created_at', since);
-    if ((anonCount ?? 0) > 0) {
-      anomalies.push(`${anonCount} anonymous firewall_logs inserts in last 5min`);
-    }
+    const anomalies: { text: string; channels: string[] }[] = [];
 
-    // dao_votes inserted by non-eligible users (cross-user check)
-    const { data: voteRows } = await supabase
-      .from('dao_votes')
-      .select('user_id, proposal_id, created_at')
-      .gte('created_at', since)
-      .limit(500);
-    if (voteRows && voteRows.length) {
-      const userIds = [...new Set(voteRows.map((v) => v.user_id))];
-      const { data: eligible } = await supabase
-        .from('dao_eligible_voters')
-        .select('user_id')
-        .in('user_id', userIds);
-      const allowed = new Set((eligible ?? []).map((e) => e.user_id));
-      const bad = voteRows.filter((v) => !allowed.has(v.user_id));
-      if (bad.length) anomalies.push(`${bad.length} dao_votes from non-eligible users`);
-    }
-
-    // Cross-user pattern: same session_id firing under multiple user_ids
-    const { data: cross } = await supabase
-      .from('quantum_firewall_logs')
-      .select('session_id, user_id')
-      .gte('created_at', since);
-    if (cross) {
-      const map = new Map<string, Set<string>>();
-      for (const r of cross) {
-        if (!r.session_id || !r.user_id) continue;
-        if (!map.has(r.session_id)) map.set(r.session_id, new Set());
-        map.get(r.session_id)!.add(r.user_id);
+    // Anon firewall log writes
+    const anonCfg = cfg('anon_firewall_writes');
+    if (anonCfg.enabled) {
+      const since = new Date(Date.now() - anonCfg.window_minutes * 60 * 1000).toISOString();
+      const { count } = await supabase
+        .from('quantum_firewall_logs')
+        .select('id', { count: 'exact', head: true })
+        .is('user_id', null)
+        .gte('created_at', since);
+      if ((count ?? 0) >= anonCfg.threshold) {
+        anomalies.push({ text: `${count} anonymous firewall_logs inserts in last ${anonCfg.window_minutes}min`, channels: anonCfg.channels });
       }
-      const collisions = [...map.entries()].filter(([, s]) => s.size > 1);
-      if (collisions.length) anomalies.push(`${collisions.length} session_id collisions across users`);
+    }
+
+
+    // Ineligible DAO votes
+    const voteCfg = cfg('ineligible_dao_vote');
+    if (voteCfg.enabled) {
+      const sinceVote = new Date(Date.now() - voteCfg.window_minutes * 60 * 1000).toISOString();
+      const { data: voteRows } = await supabase
+        .from('dao_votes').select('user_id, proposal_id, created_at')
+        .gte('created_at', sinceVote).limit(500);
+      if (voteRows && voteRows.length) {
+        const userIds = [...new Set(voteRows.map((v) => v.user_id))];
+        const { data: eligible } = await supabase.from('dao_eligible_voters').select('user_id').in('user_id', userIds);
+        const allowed = new Set((eligible ?? []).map((e) => e.user_id));
+        const bad = voteRows.filter((v) => !allowed.has(v.user_id));
+        if (bad.length >= voteCfg.threshold) {
+          anomalies.push({ text: `${bad.length} dao_votes from non-eligible users in last ${voteCfg.window_minutes}min`, channels: voteCfg.channels });
+        }
+      }
+    }
+
+    // Cross-user session_id collisions
+    const crossCfg = cfg('cross_user_session');
+    if (crossCfg.enabled) {
+      const sinceCross = new Date(Date.now() - crossCfg.window_minutes * 60 * 1000).toISOString();
+      const { data: cross } = await supabase
+        .from('quantum_firewall_logs').select('session_id, user_id').gte('created_at', sinceCross);
+      if (cross) {
+        const map = new Map<string, Set<string>>();
+        for (const r of cross) {
+          if (!r.session_id || !r.user_id) continue;
+          if (!map.has(r.session_id)) map.set(r.session_id, new Set());
+          map.get(r.session_id)!.add(r.user_id);
+        }
+        const collisions = [...map.entries()].filter(([, s]) => s.size > 1);
+        if (collisions.length >= crossCfg.threshold) {
+          anomalies.push({ text: `${collisions.length} session_id collisions across users in last ${crossCfg.window_minutes}min`, channels: crossCfg.channels });
+        }
+      }
     }
 
     if (anomalies.length) {
-      const text = anomalies.join('\n• ');
+      const slackItems = anomalies.filter((a) => a.channels.includes('slack'));
+      const emailItems = anomalies.filter((a) => a.channels.includes('email'));
       await Promise.all([
-        sendSlack(`• ${text}`),
-        sendEmail('Quantum Firewall: cross-user/anon anomalies', `<ul><li>${anomalies.join('</li><li>')}</li></ul>`),
+        slackItems.length ? sendSlack(`• ${slackItems.map((a) => a.text).join('\n• ')}`) : Promise.resolve(),
+        emailItems.length ? sendEmail('Quantum Firewall: cross-user/anon anomalies', `<ul><li>${emailItems.map((a) => a.text).join('</li><li>')}</li></ul>`) : Promise.resolve(),
       ]);
     }
 

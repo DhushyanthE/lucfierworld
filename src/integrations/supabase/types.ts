@@ -676,6 +676,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_alert_settings: {
+        Row: {
+          alert_key: string
+          channels: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          label: string
+          threshold: number
+          updated_at: string
+          updated_by: string | null
+          window_minutes: number
+        }
+        Insert: {
+          alert_key: string
+          channels?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label: string
+          threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_minutes?: number
+        }
+        Update: {
+          alert_key?: string
+          channels?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+          window_minutes?: number
+        }
+        Relationships: []
+      }
       security_audit_log: {
         Row: {
           action: string
