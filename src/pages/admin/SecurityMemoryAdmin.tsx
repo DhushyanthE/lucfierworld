@@ -9,7 +9,21 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { FileText, History } from 'lucide-react';
+import { FileText, History, Download } from 'lucide-react';
+
+function downloadFile(name: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+function toCSV(rows: any[]): string {
+  if (!rows.length) return '';
+  const keys = Object.keys(rows[0]);
+  const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  return [keys.join(','), ...rows.map((r) => keys.map((k) => esc(typeof r[k] === 'object' ? JSON.stringify(r[k]) : r[k])).join(','))].join('\n');
+}
 
 export default function SecurityMemoryAdmin() {
   const { isAdmin, loading } = useIsAdmin();
