@@ -32,6 +32,8 @@ import MiningLeaderboardPage from './pages/MiningLeaderboardPage';
 import DAOPage from './pages/DAO';
 import SecurityDashboard from './pages/admin/SecurityDashboard';
 import SecurityMemoryAdmin from './pages/admin/SecurityMemoryAdmin';
+import DAOVotersAdmin from './pages/admin/DAOVotersAdmin';
+import SecurityAlertSettings from './pages/admin/SecurityAlertSettings';
 import './App.css';
 
 function App() {
@@ -71,6 +73,8 @@ function App() {
             <Route path="/dao" element={<DAOPage />} />
             <Route path="/admin/security-dashboard" element={<SecurityDashboard />} />
             <Route path="/admin/security-memory" element={<SecurityMemoryAdmin />} />
+            <Route path="/admin/dao-voters" element={<DAOVotersAdmin />} />
+            <Route path="/admin/alert-settings" element={<SecurityAlertSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

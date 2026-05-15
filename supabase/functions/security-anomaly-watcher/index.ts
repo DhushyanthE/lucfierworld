@@ -45,10 +45,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const anomalies: string[] = [];
+    // Load admin-tunable alert settings
+    const { data: settingsRows } = await supabase.from('security_alert_settings').select('*');
+    const settings = new Map<string, any>();
+    (settingsRows ?? []).forEach((s: any) => settings.set(s.alert_key, s));
+    const cfg = (key: string) => settings.get(key) ?? { enabled: true, threshold: 1, window_minutes: 5, channels: ['slack', 'email'] };
 
-    // Anon firewall log writes (should be impossible after hardening)
+    const anomalies: { text: string; channels: string[] }[] = [];
+
+    // Anon firewall log writes
+    const anonCfg = cfg('anon_firewall_writes');
+    if (anonCfg.enabled) {
+      const since = new Date(Date.now() - anonCfg.window_minutes * 60 * 1000).toISOString();
+      const { count } = await supabase
+        .from('quantum_firewall_logs')
+        .select('id', { count: 'exact', head: true })
+        .is('user_id', null)
+        .gte('created_at', since);
+      if ((count ?? 0) >= anonCfg.threshold) {
+        anomalies.push({ text: `${count} anonymous firewall_logs inserts in last ${anonCfg.window_minutes}min`, channels: anonCfg.channels });
+      }
+    }
     const { count: anonCount } = await supabase
       .from('quantum_firewall_logs')
       .select('id', { count: 'exact', head: true })
