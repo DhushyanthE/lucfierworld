@@ -66,14 +66,7 @@ serve(async (req) => {
         anomalies.push({ text: `${count} anonymous firewall_logs inserts in last ${anonCfg.window_minutes}min`, channels: anonCfg.channels });
       }
     }
-    const { count: anonCount } = await supabase
-      .from('quantum_firewall_logs')
-      .select('id', { count: 'exact', head: true })
-      .is('user_id', null)
-      .gte('created_at', since);
-    if ((anonCount ?? 0) > 0) {
-      anomalies.push(`${anonCount} anonymous firewall_logs inserts in last 5min`);
-    }
+
 
     // Ineligible DAO votes
     const voteCfg = cfg('ineligible_dao_vote');
