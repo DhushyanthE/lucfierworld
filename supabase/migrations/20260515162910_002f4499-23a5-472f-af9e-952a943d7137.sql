@@ -1,0 +1,1 @@
+DELETE FROM public.quantum_firewall_logs WHERE session_id LIKE 'sim-anon-%';
