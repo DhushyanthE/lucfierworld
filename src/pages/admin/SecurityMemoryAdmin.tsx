@@ -64,7 +64,15 @@ export default function SecurityMemoryAdmin() {
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center gap-2"><FileText className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">Security Memory & Audit Trail</h1></div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2"><FileText className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">Security Memory & Audit Trail</h1></div>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => downloadFile('security_snapshots.json', JSON.stringify(snapshots, null, 2), 'application/json')}><Download className="h-4 w-4 mr-1" />Snapshots JSON</Button>
+            <Button size="sm" variant="outline" onClick={() => downloadFile('security_snapshots.csv', toCSV(snapshots), 'text/csv')}><Download className="h-4 w-4 mr-1" />Snapshots CSV</Button>
+            <Button size="sm" variant="outline" onClick={() => downloadFile('security_audit.json', JSON.stringify(audit, null, 2), 'application/json')}><Download className="h-4 w-4 mr-1" />Audit JSON</Button>
+            <Button size="sm" variant="outline" onClick={() => downloadFile('security_audit.csv', toCSV(audit), 'text/csv')}><Download className="h-4 w-4 mr-1" />Audit CSV</Button>
+          </div>
+        </div>
         <Input placeholder="Search snapshots and audit log…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Card>
           <CardHeader><CardTitle>New snapshot</CardTitle></CardHeader>
