@@ -134,6 +134,33 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_status: {
+        Row: {
+          active: boolean
+          current_period_end: string | null
+          stripe_customer_id: string | null
+          tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          current_period_end?: string | null
+          stripe_customer_id?: string | null
+          tier?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          current_period_end?: string | null
+          stripe_customer_id?: string | null
+          tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dao_eligible_voters: {
         Row: {
           added_at: string
@@ -396,6 +423,51 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_total: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          metadata: Json | null
+          product: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_total?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          product?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_total?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          product?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -673,6 +745,42 @@ export type Database = {
           started_at?: string
           total_layers?: number | null
           transfer_status?: string | null
+        }
+        Relationships: []
+      }
+      security_alert_outcomes: {
+        Row: {
+          alert_key: string
+          channel: string
+          created_at: string
+          details: Json | null
+          error: string | null
+          id: string
+          payload_hash: string
+          status: string
+          triggered_count: number
+        }
+        Insert: {
+          alert_key: string
+          channel: string
+          created_at?: string
+          details?: Json | null
+          error?: string | null
+          id?: string
+          payload_hash: string
+          status: string
+          triggered_count?: number
+        }
+        Update: {
+          alert_key?: string
+          channel?: string
+          created_at?: string
+          details?: Json | null
+          error?: string | null
+          id?: string
+          payload_hash?: string
+          status?: string
+          triggered_count?: number
         }
         Relationships: []
       }
