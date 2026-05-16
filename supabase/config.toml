@@ -92,3 +92,15 @@ verify_jwt = false
 
 [functions.crypto-mining-engine]
 verify_jwt = false
+
+[functions.stripe-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.security-simulate]
+verify_jwt = true
+
+[functions.security-anomaly-watcher]
+verify_jwt = false

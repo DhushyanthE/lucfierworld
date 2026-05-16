@@ -34,6 +34,10 @@ import SecurityDashboard from './pages/admin/SecurityDashboard';
 import SecurityMemoryAdmin from './pages/admin/SecurityMemoryAdmin';
 import DAOVotersAdmin from './pages/admin/DAOVotersAdmin';
 import SecurityAlertSettings from './pages/admin/SecurityAlertSettings';
+import SecurityAlertOutcomes from './pages/admin/SecurityAlertOutcomes';
+import Checkout from './pages/Checkout';
+import CheckoutSuccess from './pages/CheckoutSuccess';
+import CheckoutCancel from './pages/CheckoutCancel';
 import './App.css';
 
 function App() {
@@ -75,6 +79,10 @@ function App() {
             <Route path="/admin/security-memory" element={<SecurityMemoryAdmin />} />
             <Route path="/admin/dao-voters" element={<DAOVotersAdmin />} />
             <Route path="/admin/alert-settings" element={<SecurityAlertSettings />} />
+            <Route path="/admin/alert-outcomes" element={<SecurityAlertOutcomes />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
