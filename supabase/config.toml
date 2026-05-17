@@ -104,3 +104,22 @@ verify_jwt = true
 
 [functions.security-anomaly-watcher]
 verify_jwt = false
+
+[functions.critical-threat-alerter]
+verify_jwt = false
+
+[functions.quantum-firewall-scheduler]
+verify_jwt = false
+
+[functions.threat-pattern-learning]
+verify_jwt = false
+
+[functions.generate-vapid-keys]
+verify_jwt = false
+
+[functions.crypto-mining-engine]
+verify_jwt = false
+
+[functions.check-price-alerts]
+verify_jwt = false
+
