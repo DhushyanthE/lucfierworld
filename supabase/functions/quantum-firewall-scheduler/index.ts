@@ -119,7 +119,33 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { operation, sessionId, userId } = await req.json();
+    // Require authenticated caller
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseAuth = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claims, error: authErr } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (authErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const authedUserId = claims.claims.sub as string;
+    const { data: roleRow } = await supabase
+      .from('user_roles').select('role').eq('user_id', authedUserId).eq('role', 'admin').maybeSingle();
+    const isAdmin = !!roleRow;
+
+    const body = await req.json();
+    const { operation, sessionId } = body;
+    // Force userId to authenticated user (ignore client-supplied)
+    const userId = authedUserId;
     console.log(`Quantum Firewall Scheduler operation: ${operation}`);
 
     let result: any;
