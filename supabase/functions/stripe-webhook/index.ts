@@ -15,11 +15,7 @@ const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
-  };
-
-if (import.meta.main) {
-  serve(serveStripeWebhook);
-}
+  });
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -81,6 +77,7 @@ export const sendReceipt = async (session: Stripe.Checkout.Session, product: str
       </html>
     `,
   });
+
   return error ? `Receipt email failed: ${error.message}` : null;
 };
 
@@ -163,15 +160,12 @@ export const serveStripeWebhook = async (req: Request) => {
     return jsonResponse({ error: "Bad signature" }, 400);
   }
 
-  const fields = getSessionFields(event);
-  const payload = event as unknown as Record<string, unknown>;
-
   const { error: insertError } = await admin.from("stripe_webhook_events").insert({
     event_id: event.id,
     event_type: event.type,
-    ...fields,
+    ...getSessionFields(event),
     status: "processing",
-    payload,
+    payload: event as unknown as Record<string, unknown>,
   });
 
   if (insertError) {
@@ -181,12 +175,8 @@ export const serveStripeWebhook = async (req: Request) => {
       .eq("event_id", event.id)
       .maybeSingle();
 
-    if (existing && ["processed", "processed_with_email_error", "ignored"].includes(existing.status)) {
-      return jsonResponse({ received: true, duplicate: true, status: existing.status });
-    }
-
     if (existing) {
-      await admin.from("stripe_webhook_events").update({ status: "processing", error: null }).eq("event_id", event.id);
+      return jsonResponse({ received: true, duplicate: true, status: existing.status });
     }
 
     console.error("Unable to log Stripe event", insertError);
@@ -211,4 +201,8 @@ export const serveStripeWebhook = async (req: Request) => {
     await finish("failed", message.slice(0, 1000));
     return jsonResponse({ error: message }, 500);
   }
-});
+};
+
+if (import.meta.main) {
+  serve(serveStripeWebhook);
+}
