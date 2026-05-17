@@ -18,13 +18,8 @@ export default function CheckoutSuccess() {
       if (!cancelled && data) setPayment(data);
     };
     poll();
-    const ch = supabase.channel(`pay:${sessionId}`)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "payments", filter: `stripe_session_id=eq.${sessionId}` },
-        (p) => setPayment(p.new))
-      .subscribe();
     const t = setInterval(poll, 3000);
-    return () => { cancelled = true; clearInterval(t); supabase.removeChannel(ch); };
+    return () => { cancelled = true; clearInterval(t); };
   }, [sessionId]);
 
   return (

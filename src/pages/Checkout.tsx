@@ -21,19 +21,18 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from("customer_status").select("tier, active").eq("user_id", userId).maybeSingle()
-      .then(({ data }) => data && setStatus(data));
-
-    const ch = supabase.channel(`cs:${userId}`)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "customer_status", filter: `user_id=eq.${userId}` },
-        (p) => {
-          const row = p.new as any;
-          setStatus({ tier: row.tier, active: row.active });
-          if (row.active) toast.success(`${row.tier} activated`);
-        })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    let lastActive = false;
+    const loadStatus = async () => {
+      const { data } = await supabase.from("customer_status").select("tier, active").eq("user_id", userId).maybeSingle();
+      if (data) {
+        setStatus(data);
+        if (data.active && !lastActive) toast.success(`${data.tier} activated`);
+        lastActive = data.active;
+      }
+    };
+    loadStatus();
+    const poll = setInterval(loadStatus, 3000);
+    return () => { clearInterval(poll); };
   }, [userId]);
 
   const buy = async (p: typeof PRODUCTS[number]) => {

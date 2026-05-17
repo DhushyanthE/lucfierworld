@@ -400,6 +400,33 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_attempts: {
+        Row: {
+          allowed: boolean
+          attempted_at: string
+          email_hash: string
+          id: string
+          reason: string
+          requester_hash: string
+        }
+        Insert: {
+          allowed?: boolean
+          attempted_at?: string
+          email_hash: string
+          id?: string
+          reason?: string
+          requester_hash: string
+        }
+        Update: {
+          allowed?: boolean
+          attempted_at?: string
+          email_hash?: string
+          id?: string
+          reason?: string
+          requester_hash?: string
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
           created_at: string
@@ -874,6 +901,51 @@ export type Database = {
           created_by?: string | null
           id?: string
           version?: number
+        }
+        Relationships: []
+      }
+      stripe_webhook_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          payment_intent_id: string | null
+          processed_at: string | null
+          status: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json
+          payment_intent_id?: string | null
+          processed_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          payment_intent_id?: string | null
+          processed_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
