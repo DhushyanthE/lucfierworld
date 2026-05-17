@@ -12,20 +12,27 @@ type Outcome = {
   error: string | null; created_at: string; triggered_count: number; details: any;
 };
 type Setting = { alert_key: string; label: string; enabled: boolean; threshold: number; window_minutes: number; channels: string[] };
+type StripeWebhookEvent = {
+  id: string; event_id: string; event_type: string; stripe_session_id: string | null;
+  status: string; error: string | null; payload: any; processed_at: string | null; created_at: string;
+};
 
 export default function SecurityAlertOutcomes() {
   const { isAdmin, loading: roleLoading } = useIsAdmin();
   const [outcomes, setOutcomes] = useState<Outcome[]>([]);
   const [settings, setSettings] = useState<Setting[]>([]);
+  const [webhookEvents, setWebhookEvents] = useState<StripeWebhookEvent[]>([]);
   const [running, setRunning] = useState<string | null>(null);
 
   const load = async () => {
-    const [o, s] = await Promise.all([
+    const [o, s, w] = await Promise.all([
       supabase.from("security_alert_outcomes").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("security_alert_settings").select("alert_key,label,enabled,threshold,window_minutes,channels"),
+      supabase.from("stripe_webhook_events").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
     setOutcomes((o.data as Outcome[]) ?? []);
     setSettings(((s.data as any[]) ?? []).map((r) => ({ ...r, channels: r.channels ?? [] })));
+    setWebhookEvents((w.data as StripeWebhookEvent[]) ?? []);
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
@@ -35,6 +42,8 @@ export default function SecurityAlertOutcomes() {
     const ch = supabase.channel("alert-outcomes")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "security_alert_outcomes" },
         (p) => setOutcomes((prev) => [p.new as Outcome, ...prev].slice(0, 100)))
+      .on("postgres_changes", { event: "*", schema: "public", table: "stripe_webhook_events" },
+        (p) => setWebhookEvents((prev) => [p.new as StripeWebhookEvent, ...prev.filter((row) => row.id !== (p.new as StripeWebhookEvent).id)].slice(0, 100)))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [isAdmin]);
@@ -120,6 +129,40 @@ export default function SecurityAlertOutcomes() {
                 ))}
                 {!outcomes.length && (
                   <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No outcomes yet — run a simulation.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-3">Stripe webhook delivery log</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr><th className="py-2">Time</th><th>Event</th><th>Type</th><th>Session</th><th>Status</th><th>Error</th><th>Payload</th></tr>
+              </thead>
+              <tbody>
+                {webhookEvents.map((event) => (
+                  <tr key={event.id} className="border-t align-top">
+                    <td className="py-2 whitespace-nowrap">{new Date(event.created_at).toLocaleString()}</td>
+                    <td className="font-mono text-xs max-w-40 truncate">{event.event_id}</td>
+                    <td>{event.event_type}</td>
+                    <td className="font-mono text-xs max-w-44 truncate">{event.stripe_session_id}</td>
+                    <td><Badge variant={statusColor(event.status) as any}>{event.status}</Badge></td>
+                    <td className="text-destructive text-xs max-w-xs truncate">{event.error}</td>
+                    <td>
+                      <details className="max-w-md">
+                        <summary className="cursor-pointer text-muted-foreground">View</summary>
+                        <pre className="mt-2 max-h-72 overflow-auto rounded border bg-muted p-3 text-xs">
+                          {JSON.stringify(event.payload, null, 2)}
+                        </pre>
+                      </details>
+                    </td>
+                  </tr>
+                ))}
+                {!webhookEvents.length && (
+                  <tr><td colSpan={7} className="text-center py-6 text-muted-foreground">No Stripe webhooks logged yet.</td></tr>
                 )}
               </tbody>
             </table>
