@@ -38,11 +38,34 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    
+
+    // Require authenticated caller; force userId = auth.uid()
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseAuth = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claims, error: authErr } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (authErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const authedUserId = claims.claims.sub as string;
+
     const supabase = createClient(supabaseUrl, supabaseKey);
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-    const { threats, userId, sessionId, metrics }: AlertRequest = await req.json();
+    const body: AlertRequest = await req.json();
+    const { threats, sessionId, metrics } = body;
+    // Ignore any client-supplied userId; only allow alerts for the authenticated user
+    const userId = authedUserId;
     console.log(`Processing ${threats.length} critical threats for session ${sessionId}`);
 
     // Filter only critical/high severity threats
