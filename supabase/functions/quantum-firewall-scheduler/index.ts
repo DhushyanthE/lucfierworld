@@ -178,12 +178,14 @@ serve(async (req) => {
       }
 
       case 'get-scan-history': {
-        const { data: logs, error } = await supabase
+        let query = supabase
           .from('quantum_firewall_logs')
           .select('*')
           .eq('event_type', 'scan_completed')
           .order('created_at', { ascending: false })
           .limit(20);
+        if (!isAdmin) query = query.eq('user_id', authedUserId);
+        const { data: logs, error } = await query;
 
         if (error) throw error;
 
@@ -195,12 +197,14 @@ serve(async (req) => {
       }
 
       case 'get-threat-analytics': {
-        const { data: logs, error } = await supabase
+        let query = supabase
           .from('quantum_firewall_logs')
           .select('*')
           .in('event_type', ['threat_detected', 'threat_neutralized'])
           .order('created_at', { ascending: false })
           .limit(100);
+        if (!isAdmin) query = query.eq('user_id', authedUserId);
+        const { data: logs, error } = await query;
 
         if (error) throw error;
 
