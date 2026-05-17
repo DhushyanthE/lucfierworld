@@ -69,7 +69,31 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { operation = 'mine', difficulty = 4, quantumEnabled = true, poolSize = 5 } = await req.json();
+    // Require authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseAuth = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claims, error: authErr } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (authErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json();
+    const operation = body.operation ?? 'mine';
+    // Cap inputs server-side
+    const difficulty = Math.max(1, Math.min(8, Number(body.difficulty ?? 4)));
+    const quantumEnabled = body.quantumEnabled !== false;
+    const poolSize = Math.max(1, Math.min(20, Number(body.poolSize ?? 5)));
     console.log(`Crypto mining engine operation: ${operation}`);
 
     if (operation === 'mine') {
