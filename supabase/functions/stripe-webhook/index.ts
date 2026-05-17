@@ -15,7 +15,11 @@ const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  };
+
+if (import.meta.main) {
+  serve(serveStripeWebhook);
+}
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -46,10 +50,10 @@ const getSessionFields = (event: Stripe.Event) => {
   };
 };
 
-const sendReceipt = async (session: Stripe.Checkout.Session, product: string) => {
+export const sendReceipt = async (session: Stripe.Checkout.Session, product: string) => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const to = session.customer_details?.email ?? session.customer_email;
-  if (!resendApiKey || !to || session.payment_status !== "paid") return;
+  if (!resendApiKey || !to || session.payment_status !== "paid") return null;
 
   const resend = new Resend(resendApiKey);
   const safeProduct = escapeHtml(product.replaceAll("_", " "));
@@ -77,10 +81,62 @@ const sendReceipt = async (session: Stripe.Checkout.Session, product: string) =>
       </html>
     `,
   });
-  if (error) throw new Error(`Receipt email failed: ${error.message}`);
+  return error ? `Receipt email failed: ${error.message}` : null;
 };
 
-serve(async (req) => {
+export const processStripeEvent = async (admin: any, event: Stripe.Event, receiptSender = sendReceipt) => {
+  let receiptError: string | null = null;
+
+  if (SUCCESS_EVENTS.has(event.type)) {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id;
+    const product = session.metadata?.product ?? "pro_access";
+    const paymentStatus = session.payment_status === "paid" ? "paid" : (session.payment_status ?? "pending");
+
+    const { error: paymentError } = await admin.from("payments").update({
+      status: paymentStatus,
+      stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+      stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+      amount_total: session.amount_total ?? undefined,
+      currency: session.currency ?? undefined,
+    }).eq("stripe_session_id", session.id);
+    if (paymentError) throw paymentError;
+
+    if (userId && session.payment_status === "paid") {
+      const { error: statusError } = await admin.from("customer_status").upsert({
+        user_id: userId,
+        tier: product,
+        active: true,
+        stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      if (statusError) throw statusError;
+
+      const { error: notificationError } = await admin.from("notifications").insert({
+        user_id: userId,
+        title: "Payment confirmed",
+        message: `Your ${product} purchase was successful.`,
+        type: "success",
+        data: { session_id: session.id, stripe_event_id: event.id },
+      });
+      if (notificationError) throw notificationError;
+
+      receiptError = await receiptSender(session, product);
+    }
+  } else if (FAILURE_EVENTS.has(event.type)) {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const { error: paymentError } = await admin.from("payments").update({
+      status: event.type === "checkout.session.expired" ? "expired" : "failed",
+      stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+      stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+    }).eq("stripe_session_id", session.id);
+    if (paymentError) throw paymentError;
+  }
+
+  return { status: receiptError ? "processed_with_email_error" : "processed", error: receiptError };
+};
+
+export const serveStripeWebhook = async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
@@ -125,8 +181,12 @@ serve(async (req) => {
       .eq("event_id", event.id)
       .maybeSingle();
 
-    if (existing) {
+    if (existing && ["processed", "processed_with_email_error", "ignored"].includes(existing.status)) {
       return jsonResponse({ received: true, duplicate: true, status: existing.status });
+    }
+
+    if (existing) {
+      await admin.from("stripe_webhook_events").update({ status: "processing", error: null }).eq("event_id", event.id);
     }
 
     console.error("Unable to log Stripe event", insertError);
@@ -142,54 +202,9 @@ serve(async (req) => {
   };
 
   try {
-    if (SUCCESS_EVENTS.has(event.type)) {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.user_id;
-      const product = session.metadata?.product ?? "pro_access";
-      const paymentStatus = session.payment_status === "paid" ? "paid" : (session.payment_status ?? "pending");
-
-      const { error: paymentError } = await admin.from("payments").update({
-        status: paymentStatus,
-        stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-        stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-        amount_total: session.amount_total ?? undefined,
-        currency: session.currency ?? undefined,
-      }).eq("stripe_session_id", session.id);
-      if (paymentError) throw paymentError;
-
-      if (userId && session.payment_status === "paid") {
-        const { error: statusError } = await admin.from("customer_status").upsert({
-          user_id: userId,
-          tier: product,
-          active: true,
-          stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-        if (statusError) throw statusError;
-
-        const { error: notificationError } = await admin.from("notifications").insert({
-          user_id: userId,
-          title: "Payment confirmed",
-          message: `Your ${product} purchase was successful.`,
-          type: "success",
-          data: { session_id: session.id, stripe_event_id: event.id },
-        });
-        if (notificationError) throw notificationError;
-
-        await sendReceipt(session, product);
-      }
-    } else if (FAILURE_EVENTS.has(event.type)) {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const { error: paymentError } = await admin.from("payments").update({
-        status: event.type === "checkout.session.expired" ? "expired" : "failed",
-        stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-        stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-      }).eq("stripe_session_id", session.id);
-      if (paymentError) throw paymentError;
-    }
-
-    await finish("processed");
-    return jsonResponse({ received: true, processed: true });
+    const result = await processStripeEvent(admin, event);
+    await finish(result.status, result.error);
+    return jsonResponse({ received: true, processed: true, status: result.status });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("Stripe webhook handler error", message);
