@@ -156,7 +156,7 @@ export default function SecurityAlertOutcomes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground">
-                <tr><th className="py-2">Time</th><th>Event</th><th>Type</th><th>Session</th><th>Status</th><th>Error</th><th>Payload</th></tr>
+                <tr><th className="py-2">Time</th><th>Event</th><th>Type</th><th>Session</th><th>Status</th><th>Error</th><th>Payload</th><th>Replay</th></tr>
               </thead>
               <tbody>
                 {webhookEvents.map((event) => (
@@ -174,6 +174,16 @@ export default function SecurityAlertOutcomes() {
                           {JSON.stringify(event.payload, null, 2)}
                         </pre>
                       </details>
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={replaying === event.event_id}
+                        onClick={() => replay(event.event_id)}
+                      >
+                        {replaying === event.event_id ? "Replaying…" : "Replay"}
+                      </Button>
                     </td>
                   </tr>
                 ))}
