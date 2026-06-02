@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +9,7 @@ const corsHeaders = {
 
 const SUCCESS_EVENTS = new Set(["checkout.session.completed", "checkout.session.async_payment_succeeded"]);
 const FAILURE_EVENTS = new Set(["checkout.session.expired", "checkout.session.async_payment_failed"]);
+const REFUND_EVENTS = new Set(["charge.refunded", "charge.refund.updated"]);
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
