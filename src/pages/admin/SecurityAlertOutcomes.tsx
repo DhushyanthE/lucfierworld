@@ -60,6 +60,22 @@ export default function SecurityAlertOutcomes() {
     } finally { setRunning(null); }
   };
 
+  const [replaying, setReplaying] = useState<string | null>(null);
+  const replay = async (eventId: string) => {
+    setReplaying(eventId);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-webhook-replay", {
+        body: { event_id: eventId },
+      });
+      if (error) throw error;
+      toast.success(`Replayed ${eventId}: ${data?.status ?? "ok"}`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Replay failed");
+    } finally { setReplaying(null); }
+  };
+
+
   if (roleLoading) return <Layout><div className="p-8">Loading…</div></Layout>;
   if (!isAdmin) return <Layout><div className="p-8">Admin only.</div></Layout>;
 
