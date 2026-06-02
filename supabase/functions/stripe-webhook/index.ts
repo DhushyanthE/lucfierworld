@@ -35,15 +35,23 @@ const money = (amount: number | null, currency: string | null) => {
 };
 
 const getSessionFields = (event: Stripe.Event) => {
-  if (!SUCCESS_EVENTS.has(event.type) && !FAILURE_EVENTS.has(event.type)) {
-    return { stripe_session_id: null, payment_intent_id: null, user_id: null };
+  if (SUCCESS_EVENTS.has(event.type) || FAILURE_EVENTS.has(event.type)) {
+    const session = event.data.object as Stripe.Checkout.Session;
+    return {
+      stripe_session_id: session.id,
+      payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+      user_id: session.metadata?.user_id ?? null,
+    };
   }
-  const session = event.data.object as Stripe.Checkout.Session;
-  return {
-    stripe_session_id: session.id,
-    payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-    user_id: session.metadata?.user_id ?? null,
-  };
+  if (REFUND_EVENTS.has(event.type)) {
+    const charge = event.data.object as Stripe.Charge;
+    return {
+      stripe_session_id: null,
+      payment_intent_id: typeof charge.payment_intent === "string" ? charge.payment_intent : null,
+      user_id: null,
+    };
+  }
+  return { stripe_session_id: null, payment_intent_id: null, user_id: null };
 };
 
 export const sendReceipt = async (session: Stripe.Checkout.Session, product: string) => {
@@ -51,6 +59,7 @@ export const sendReceipt = async (session: Stripe.Checkout.Session, product: str
   const to = session.customer_details?.email ?? session.customer_email;
   if (!resendApiKey || !to || session.payment_status !== "paid") return null;
 
+  const { Resend } = await import("npm:resend@4.0.0");
   const resend = new Resend(resendApiKey);
   const safeProduct = escapeHtml(product.replaceAll("_", " "));
   const safeAmount = escapeHtml(money(session.amount_total, session.currency));
