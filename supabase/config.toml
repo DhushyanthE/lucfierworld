@@ -123,3 +123,7 @@ verify_jwt = false
 [functions.check-price-alerts]
 verify_jwt = false
 
+[functions.stripe-webhook-replay]
+verify_jwt = false
+
+

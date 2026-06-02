@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +9,7 @@ const corsHeaders = {
 
 const SUCCESS_EVENTS = new Set(["checkout.session.completed", "checkout.session.async_payment_succeeded"]);
 const FAILURE_EVENTS = new Set(["checkout.session.expired", "checkout.session.async_payment_failed"]);
+const REFUND_EVENTS = new Set(["charge.refunded", "charge.refund.updated"]);
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -35,15 +35,23 @@ const money = (amount: number | null, currency: string | null) => {
 };
 
 const getSessionFields = (event: Stripe.Event) => {
-  if (!SUCCESS_EVENTS.has(event.type) && !FAILURE_EVENTS.has(event.type)) {
-    return { stripe_session_id: null, payment_intent_id: null, user_id: null };
+  if (SUCCESS_EVENTS.has(event.type) || FAILURE_EVENTS.has(event.type)) {
+    const session = event.data.object as Stripe.Checkout.Session;
+    return {
+      stripe_session_id: session.id,
+      payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+      user_id: session.metadata?.user_id ?? null,
+    };
   }
-  const session = event.data.object as Stripe.Checkout.Session;
-  return {
-    stripe_session_id: session.id,
-    payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-    user_id: session.metadata?.user_id ?? null,
-  };
+  if (REFUND_EVENTS.has(event.type)) {
+    const charge = event.data.object as Stripe.Charge;
+    return {
+      stripe_session_id: null,
+      payment_intent_id: typeof charge.payment_intent === "string" ? charge.payment_intent : null,
+      user_id: null,
+    };
+  }
+  return { stripe_session_id: null, payment_intent_id: null, user_id: null };
 };
 
 export const sendReceipt = async (session: Stripe.Checkout.Session, product: string) => {
@@ -51,6 +59,7 @@ export const sendReceipt = async (session: Stripe.Checkout.Session, product: str
   const to = session.customer_details?.email ?? session.customer_email;
   if (!resendApiKey || !to || session.payment_status !== "paid") return null;
 
+  const { Resend } = await import("npm:resend@4.0.0");
   const resend = new Resend(resendApiKey);
   const safeProduct = escapeHtml(product.replaceAll("_", " "));
   const safeAmount = escapeHtml(money(session.amount_total, session.currency));
@@ -128,6 +137,46 @@ export const processStripeEvent = async (admin: any, event: Stripe.Event, receip
       stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
     }).eq("stripe_session_id", session.id);
     if (paymentError) throw paymentError;
+  } else if (REFUND_EVENTS.has(event.type)) {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+    if (!paymentIntentId) {
+      return { status: "skipped_no_payment_intent", error: null };
+    }
+    const fullyRefunded = charge.refunded === true || (charge.amount_refunded ?? 0) >= (charge.amount ?? 0);
+    const newStatus = fullyRefunded ? "refunded" : "partially_refunded";
+
+    const { data: paymentRow, error: lookupError } = await admin
+      .from("payments")
+      .select("user_id")
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const { error: paymentError } = await admin.from("payments").update({
+      status: newStatus,
+      stripe_customer_id: typeof charge.customer === "string" ? charge.customer : null,
+    }).eq("stripe_payment_intent_id", paymentIntentId);
+    if (paymentError) throw paymentError;
+
+    if (fullyRefunded && paymentRow?.user_id) {
+      const { error: statusError } = await admin.from("customer_status").upsert({
+        user_id: paymentRow.user_id,
+        tier: "free",
+        active: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      if (statusError) throw statusError;
+
+      const { error: notificationError } = await admin.from("notifications").insert({
+        user_id: paymentRow.user_id,
+        title: "Refund processed",
+        message: "Your payment was refunded and access has been revoked.",
+        type: "warning",
+        data: { payment_intent: paymentIntentId, stripe_event_id: event.id },
+      });
+      if (notificationError) throw notificationError;
+    }
   }
 
   return { status: receiptError ? "processed_with_email_error" : "processed", error: receiptError };
