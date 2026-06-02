@@ -137,6 +137,46 @@ export const processStripeEvent = async (admin: any, event: Stripe.Event, receip
       stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
     }).eq("stripe_session_id", session.id);
     if (paymentError) throw paymentError;
+  } else if (REFUND_EVENTS.has(event.type)) {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+    if (!paymentIntentId) {
+      return { status: "skipped_no_payment_intent", error: null };
+    }
+    const fullyRefunded = charge.refunded === true || (charge.amount_refunded ?? 0) >= (charge.amount ?? 0);
+    const newStatus = fullyRefunded ? "refunded" : "partially_refunded";
+
+    const { data: paymentRow, error: lookupError } = await admin
+      .from("payments")
+      .select("user_id")
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const { error: paymentError } = await admin.from("payments").update({
+      status: newStatus,
+      stripe_customer_id: typeof charge.customer === "string" ? charge.customer : null,
+    }).eq("stripe_payment_intent_id", paymentIntentId);
+    if (paymentError) throw paymentError;
+
+    if (fullyRefunded && paymentRow?.user_id) {
+      const { error: statusError } = await admin.from("customer_status").upsert({
+        user_id: paymentRow.user_id,
+        tier: "free",
+        active: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      if (statusError) throw statusError;
+
+      const { error: notificationError } = await admin.from("notifications").insert({
+        user_id: paymentRow.user_id,
+        title: "Refund processed",
+        message: "Your payment was refunded and access has been revoked.",
+        type: "warning",
+        data: { payment_intent: paymentIntentId, stripe_event_id: event.id },
+      });
+      if (notificationError) throw notificationError;
+    }
   }
 
   return { status: receiptError ? "processed_with_email_error" : "processed", error: receiptError };
