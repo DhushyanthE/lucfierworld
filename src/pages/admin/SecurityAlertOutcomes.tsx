@@ -188,7 +188,7 @@ export default function SecurityAlertOutcomes() {
                   </tr>
                 ))}
                 {!webhookEvents.length && (
-                  <tr><td colSpan={7} className="text-center py-6 text-muted-foreground">No Stripe webhooks logged yet.</td></tr>
+                  <tr><td colSpan={8} className="text-center py-6 text-muted-foreground">No Stripe webhooks logged yet.</td></tr>
                 )}
               </tbody>
             </table>
