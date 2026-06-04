@@ -139,6 +139,11 @@ export type AuditContext = {
 export type ReplayDeps = {
   admin: SupabaseClient;
   notifySlack?: (text: string) => Promise<void>;
+  // Injectable for tests; defaults to Supabase auth.getClaims.
+  verifyClaims?: (token: string) => Promise<{
+    claims: Record<string, unknown> | null;
+    error: { message: string } | null;
+  }>;
 };
 
 // In-memory short-window throttle for repeated denials (per origin+reason)
