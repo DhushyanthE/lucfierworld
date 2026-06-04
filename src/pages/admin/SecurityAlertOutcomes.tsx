@@ -201,7 +201,86 @@ export default function SecurityAlertOutcomes() {
             </table>
           </div>
         </Card>
+
+        <ReplayAuditExport />
       </div>
     </Layout>
+  );
+}
+
+function ReplayAuditExport() {
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
+  const [from, setFrom] = useState(weekAgo);
+  const [to, setTo] = useState(today);
+  const [busy, setBusy] = useState(false);
+
+  const exportCsv = async () => {
+    setBusy(true);
+    try {
+      const csrfBytes = crypto.getRandomValues(new Uint8Array(24));
+      const csrfToken = Array.from(csrfBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-replay-audit-export`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "x-requested-with": "XMLHttpRequest",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({
+          from: `${from}T00:00:00Z`,
+          to: `${to}T23:59:59Z`,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const rows = res.headers.get("x-row-count") ?? "?";
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = `stripe-replay-audit_${from}_to_${to}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(dlUrl);
+      toast.success(`Exported ${rows} audit row(s)`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Export failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-3">Export replay audit log</h2>
+      <p className="text-sm text-muted-foreground mb-3">
+        Download all replay attempts and denials (including JWT/CSRF/rate-limit blocks) for the selected range.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">From</div>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
+            className="rounded border bg-background px-2 py-1" />
+        </label>
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">To</div>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
+            className="rounded border bg-background px-2 py-1" />
+        </label>
+        <Button onClick={exportCsv} disabled={busy}>
+          {busy ? "Exporting…" : "Download CSV"}
+        </Button>
+      </div>
+    </Card>
   );
 }
