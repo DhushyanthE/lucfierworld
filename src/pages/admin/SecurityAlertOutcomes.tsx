@@ -64,8 +64,15 @@ export default function SecurityAlertOutcomes() {
   const replay = async (eventId: string) => {
     setReplaying(eventId);
     try {
+      // CSRF defense-in-depth: random per-request token + XHR marker header.
+      const csrfBytes = crypto.getRandomValues(new Uint8Array(24));
+      const csrfToken = Array.from(csrfBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
       const { data, error } = await supabase.functions.invoke("stripe-webhook-replay", {
         body: { event_id: eventId },
+        headers: {
+          "x-requested-with": "XMLHttpRequest",
+          "x-csrf-token": csrfToken,
+        },
       });
       if (error) throw error;
       toast.success(`Replayed ${eventId}: ${data?.status ?? "ok"}`);
