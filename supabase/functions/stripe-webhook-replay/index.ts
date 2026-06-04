@@ -269,7 +269,7 @@ export async function handleReplayRequest(req: Request, deps?: Partial<ReplayDep
     return deny("csrf_token_missing");
   }
 
-  if (!supabaseUrl || !anonKey || !admin) {
+  if (!admin) {
     return json({ error: "Server misconfigured" }, 500, cors);
   }
 
@@ -277,12 +277,21 @@ export async function handleReplayRequest(req: Request, deps?: Partial<ReplayDep
   if (!authHeader?.startsWith("Bearer ")) return deny("auth_missing");
   const token = authHeader.slice(7);
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const verifyClaims =
+    deps?.verifyClaims ??
+    (async (t: string) => {
+      if (!supabaseUrl || !anonKey) return { claims: null, error: { message: "no env" } };
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: `Bearer ${t}` } },
+      });
+      const { data, error } = await userClient.auth.getClaims(t);
+      return {
+        claims: (data?.claims as Record<string, unknown> | null) ?? null,
+        error: error ? { message: error.message } : null,
+      };
+    });
 
-  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-  const claims = claimsData?.claims as Record<string, unknown> | undefined;
+  const { claims, error: claimsError } = await verifyClaims(token);
   if (claimsError || !claims?.sub) return deny("jwt_invalid", claimsError?.message);
 
   const now = Math.floor(Date.now() / 1000);
