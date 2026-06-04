@@ -949,6 +949,42 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_webhook_replay_audit: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          error: string | null
+          event_id: string
+          id: string
+          ip_hash: string | null
+          origin: string | null
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          error?: string | null
+          event_id: string
+          id?: string
+          ip_hash?: string | null
+          origin?: string | null
+          status: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          id?: string
+          ip_hash?: string | null
+          origin?: string | null
+          status?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1062,6 +1098,19 @@ export type Database = {
           p_window_minutes?: number
         }
         Returns: boolean
+      }
+      check_stripe_replay_rate_limit: {
+        Args: {
+          p_event_cooldown_seconds?: number
+          p_event_id: string
+          p_per_hour?: number
+          p_per_minute?: number
+          p_user_id: string
+        }
+        Returns: {
+          allowed: boolean
+          reason: string
+        }[]
       }
       get_user_analytics_summary: {
         Args: { target_user_id?: string }
