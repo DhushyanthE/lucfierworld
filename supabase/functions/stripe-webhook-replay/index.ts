@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { processStripeEvent } from "../stripe-webhook/index.ts";
+// processStripeEvent is loaded dynamically so the test runner does not have to
+// type-check stripe-webhook's transitive `npm:resend` import.
+const loadProcessStripeEvent = async () =>
+  (await import("../stripe-webhook/index.ts")).processStripeEvent;
 
 const ALLOWED_ORIGINS = (Deno.env.get("STRIPE_REPLAY_ALLOWED_ORIGINS") ?? "")
   .split(",")
