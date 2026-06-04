@@ -347,6 +347,7 @@ export async function handleReplayRequest(req: Request, deps?: Partial<ReplayDep
     });
 
   try {
+    const processStripeEvent = await loadProcessStripeEvent();
     const result = await processStripeEvent(admin, row.payload as never);
     const newStatus = `replayed:${result.status}`;
     await admin
