@@ -76,6 +76,15 @@ const makeReq = (body: unknown, headers = baseHeaders(), method = "POST") =>
 const verifyClaims = (claims: Record<string, unknown> | null, error: { message: string } | null = null) =>
   () => Promise.resolve({ claims, error });
 
+// No-op Slack notifier injected into every test by default so the sandbox
+// never issues outbound fetches to hooks.slack.com and never emits warnings.
+const noopSlack = () => Promise.resolve();
+
+// Wrap handleReplayRequest so notifySlack always defaults to the no-op stub
+// unless a specific test overrides it (e.g. the Slack-emission assertion).
+const callReplay = (req: Request, opts: Parameters<typeof handleReplayRequest>[1] = {}) =>
+  handleReplayRequest(req, { notifySlack: noopSlack, ...opts });
+
 const validEventId = "evt_test_1234567890ab";
 
 Deno.test("denies non-POST methods", async () => {
