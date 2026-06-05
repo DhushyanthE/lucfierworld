@@ -76,11 +76,20 @@ const makeReq = (body: unknown, headers = baseHeaders(), method = "POST") =>
 const verifyClaims = (claims: Record<string, unknown> | null, error: { message: string } | null = null) =>
   () => Promise.resolve({ claims, error });
 
+// No-op Slack notifier injected into every test by default so the sandbox
+// never issues outbound fetches to hooks.slack.com and never emits warnings.
+const noopSlack = () => Promise.resolve();
+
+// Wrap handleReplayRequest so notifySlack always defaults to the no-op stub
+// unless a specific test overrides it (e.g. the Slack-emission assertion).
+const callReplay = (req: Request, opts: Parameters<typeof handleReplayRequest>[1] = {}) =>
+  handleReplayRequest(req, { notifySlack: noopSlack, ...opts });
+
 const validEventId = "evt_test_1234567890ab";
 
 Deno.test("denies non-POST methods", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq(null, baseHeaders(), "GET"), {
+  const res = await callReplay(makeReq(null, baseHeaders(), "GET"), {
     admin: makeAdmin({}) as never,
   });
   assertEquals(res.status, 405);
@@ -91,7 +100,7 @@ Deno.test("denies request missing CSRF XHR header", async () => {
   auditInserts.length = 0;
   const h = baseHeaders();
   delete (h as Record<string, string>)["x-requested-with"];
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }, h), {
+  const res = await callReplay(makeReq({ event_id: validEventId }, h), {
     admin: makeAdmin({}) as never,
   });
   assertEquals(res.status, 403);
@@ -101,7 +110,7 @@ Deno.test("denies request missing CSRF XHR header", async () => {
 
 Deno.test("denies request from non-allowlisted origin", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(
+  const res = await callReplay(
     makeReq({ event_id: validEventId }, baseHeaders({ origin: "https://evil.test" })),
     { admin: makeAdmin({}) as never },
   );
@@ -111,7 +120,7 @@ Deno.test("denies request from non-allowlisted origin", async () => {
 
 Deno.test("denies request with short CSRF token", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(
+  const res = await callReplay(
     makeReq({ event_id: validEventId }, baseHeaders({ "x-csrf-token": "short" })),
     { admin: makeAdmin({}) as never },
   );
@@ -121,7 +130,7 @@ Deno.test("denies request with short CSRF token", async () => {
 
 Deno.test("denies request with expired JWT", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({ isAdmin: true }) as never,
     verifyClaims: verifyClaims(expiredClaims()),
   });
@@ -132,7 +141,7 @@ Deno.test("denies request with expired JWT", async () => {
 
 Deno.test("denies request with invalid JWT signature", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({}) as never,
     verifyClaims: verifyClaims(null, { message: "bad signature" }),
   });
@@ -142,7 +151,7 @@ Deno.test("denies request with invalid JWT signature", async () => {
 
 Deno.test("denies request with bad audience claim", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({ isAdmin: true }) as never,
     verifyClaims: verifyClaims({ ...adminClaims(), aud: "service_role" }),
   });
@@ -152,7 +161,7 @@ Deno.test("denies request with bad audience claim", async () => {
 
 Deno.test("denies request when JWT belongs to non-admin user", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({ isAdmin: false }) as never,
     verifyClaims: verifyClaims(adminClaims()),
   });
@@ -163,7 +172,7 @@ Deno.test("denies request when JWT belongs to non-admin user", async () => {
 
 Deno.test("denies request when event_id is invalid", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: "not-an-event" }), {
+  const res = await callReplay(makeReq({ event_id: "not-an-event" }), {
     admin: makeAdmin({ isAdmin: true }) as never,
     verifyClaims: verifyClaims(adminClaims()),
   });
@@ -173,7 +182,7 @@ Deno.test("denies request when event_id is invalid", async () => {
 
 Deno.test("denies request when per-minute rate limit is exceeded", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({
       isAdmin: true,
       rateLimit: { allowed: false, reason: "rate_limited_minute" },
@@ -187,7 +196,7 @@ Deno.test("denies request when per-minute rate limit is exceeded", async () => {
 
 Deno.test("denies request when event cooldown is active", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({
       isAdmin: true,
       rateLimit: { allowed: false, reason: "event_cooldown" },
@@ -200,7 +209,7 @@ Deno.test("denies request when event cooldown is active", async () => {
 
 Deno.test("denies request when target event is not found", async () => {
   auditInserts.length = 0;
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  const res = await callReplay(makeReq({ event_id: validEventId }), {
     admin: makeAdmin({ isAdmin: true, webhookEvent: null }) as never,
     verifyClaims: verifyClaims(adminClaims()),
   });
@@ -212,7 +221,10 @@ Deno.test("denies request when target event is not found", async () => {
 Deno.test("emits Slack notification for severe denials (role_not_admin)", async () => {
   auditInserts.length = 0;
   const slackCalls: string[] = [];
-  const res = await handleReplayRequest(makeReq({ event_id: validEventId }), {
+  // Use a unique IP so we bypass the 60s in-process denial dedup window
+  // that other tests in this file may have populated.
+  const headers = baseHeaders({ "x-forwarded-for": `203.0.113.${Math.floor(Math.random() * 200) + 1}` });
+  const res = await handleReplayRequest(makeReq({ event_id: validEventId }, headers), {
     admin: makeAdmin({ isAdmin: false }) as never,
     verifyClaims: verifyClaims(adminClaims()),
     notifySlack: (t) => { slackCalls.push(t); return Promise.resolve(); },

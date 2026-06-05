@@ -61,7 +61,7 @@ serve(async (req) => {
   });
   if (roleErr || isAdmin !== true) return json({ error: "Forbidden" }, 403);
 
-  let body: { from?: string; to?: string } = {};
+  let body: { from?: string; to?: string; denial_reason?: string; statuses?: string[] } = {};
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
   const isoRe = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?)?$/;
@@ -76,11 +76,23 @@ serve(async (req) => {
   const spanDays = (+toDate - +fromDate) / (24 * 3600_000);
   if (spanDays > 92) return json({ error: "Range cannot exceed 92 days" }, 400);
 
-  const { data: rows, error } = await admin
+  // Optional denial reason narrowing. Accept a single code or list of full statuses.
+  const reasonRe = /^[a-z0-9_:]{1,64}$/;
+  const denialReason = body.denial_reason && reasonRe.test(body.denial_reason) ? body.denial_reason : null;
+  const statuses = Array.isArray(body.statuses)
+    ? body.statuses.filter((s) => typeof s === "string" && reasonRe.test(s)).slice(0, 32)
+    : [];
+
+  let q = admin
     .from("stripe_webhook_replay_audit")
     .select("id, admin_user_id, event_id, status, error, ip_hash, user_agent, origin, created_at")
     .gte("created_at", fromDate.toISOString())
-    .lte("created_at", toDate.toISOString())
+    .lte("created_at", toDate.toISOString());
+
+  if (denialReason) q = q.eq("status", `denied:${denialReason}`);
+  else if (statuses.length) q = q.in("status", statuses);
+
+  const { data: rows, error } = await q
     .order("created_at", { ascending: false })
     .limit(10_000);
 

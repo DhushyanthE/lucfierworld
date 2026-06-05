@@ -59,7 +59,11 @@ export const sendReceipt = async (session: Stripe.Checkout.Session, product: str
   const to = session.customer_details?.email ?? session.customer_email;
   if (!resendApiKey || !to || session.payment_status !== "paid") return null;
 
-  const { Resend } = await import("npm:resend@4.0.0");
+  // Build the specifier dynamically so the Deno test runner does not try to
+  // statically resolve `npm:resend` (which fails in the sandbox without a
+  // node_modules directory). At runtime the edge function resolves it normally.
+  const resendSpec = "npm:" + "resend@4.0.0";
+  const { Resend } = await import(resendSpec);
   const resend = new Resend(resendApiKey);
   const safeProduct = escapeHtml(product.replaceAll("_", " "));
   const safeAmount = escapeHtml(money(session.amount_total, session.currency));
