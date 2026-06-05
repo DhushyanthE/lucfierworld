@@ -203,16 +203,36 @@ export default function SecurityAlertOutcomes() {
         </Card>
 
         <ReplayAuditExport />
+        <DeniedAttemptsTable />
       </div>
     </Layout>
   );
 }
+
+const DENIAL_REASONS = [
+  "csrf_xhr_missing",
+  "csrf_token_missing",
+  "cors_origin_blocked",
+  "auth_missing",
+  "jwt_invalid",
+  "jwt_expired",
+  "jwt_bad_audience",
+  "role_not_admin",
+  "rate_limit_minute",
+  "rate_limit_hour",
+  "rate_limit_event_cooldown",
+  "event_not_found",
+  "event_id_invalid",
+  "body_invalid",
+  "method_not_allowed",
+] as const;
 
 function ReplayAuditExport() {
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
   const [from, setFrom] = useState(weekAgo);
   const [to, setTo] = useState(today);
+  const [denialReason, setDenialReason] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   const exportCsv = async () => {
