@@ -221,7 +221,10 @@ Deno.test("denies request when target event is not found", async () => {
 Deno.test("emits Slack notification for severe denials (role_not_admin)", async () => {
   auditInserts.length = 0;
   const slackCalls: string[] = [];
-  const res = await callReplay(makeReq({ event_id: validEventId }), {
+  // Use a unique IP so we bypass the 60s in-process denial dedup window
+  // that other tests in this file may have populated.
+  const headers = baseHeaders({ "x-forwarded-for": `203.0.113.${Math.floor(Math.random() * 200) + 1}` });
+  const res = await handleReplayRequest(makeReq({ event_id: validEventId }, headers), {
     admin: makeAdmin({ isAdmin: false }) as never,
     verifyClaims: verifyClaims(adminClaims()),
     notifySlack: (t) => { slackCalls.push(t); return Promise.resolve(); },
