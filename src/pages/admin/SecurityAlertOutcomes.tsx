@@ -256,6 +256,7 @@ function ReplayAuditExport() {
         body: JSON.stringify({
           from: `${from}T00:00:00Z`,
           to: `${to}T23:59:59Z`,
+          denial_reason: denialReason || undefined,
         }),
       });
       if (!res.ok) {
@@ -267,7 +268,8 @@ function ReplayAuditExport() {
       const dlUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = dlUrl;
-      a.download = `stripe-replay-audit_${from}_to_${to}.csv`;
+      const suffix = denialReason ? `_${denialReason}` : "";
+      a.download = `stripe-replay-audit_${from}_to_${to}${suffix}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -297,9 +299,183 @@ function ReplayAuditExport() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             className="rounded border bg-background px-2 py-1" />
         </label>
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">Denial reason</div>
+          <select value={denialReason} onChange={(e) => setDenialReason(e.target.value)}
+            className="rounded border bg-background px-2 py-1 min-w-44">
+            <option value="">All reasons</option>
+            {DENIAL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
         <Button onClick={exportCsv} disabled={busy}>
           {busy ? "Exporting…" : "Download CSV"}
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+type AuditRow = {
+  id: string;
+  created_at: string;
+  admin_user_id: string;
+  event_id: string;
+  status: string;
+  error: string | null;
+  origin: string | null;
+  ip_hash: string | null;
+};
+
+type SortCol = "created_at" | "status" | "event_id" | "admin_user_id";
+
+function DeniedAttemptsTable() {
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const [from, setFrom] = useState(monthAgo);
+  const [to, setTo] = useState(today);
+  const [denialReason, setDenialReason] = useState<string>("");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [sortCol, setSortCol] = useState<SortCol>("created_at");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const fromIso = `${from}T00:00:00Z`;
+        const toIso = `${to}T23:59:59Z`;
+        let q = supabase
+          .from("stripe_webhook_replay_audit")
+          .select("id, created_at, admin_user_id, event_id, status, error, origin, ip_hash",
+            { count: "exact" })
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .like("status", "denied:%");
+        if (denialReason) q = q.eq("status", `denied:${denialReason}`);
+        q = q.order(sortCol, { ascending: sortAsc })
+          .range(page * pageSize, page * pageSize + pageSize - 1);
+        const { data, count, error } = await q;
+        if (error) throw error;
+        if (cancelled) return;
+        setRows((data as AuditRow[]) ?? []);
+        setTotal(count ?? 0);
+      } catch (e: any) {
+        if (!cancelled) toast.error(e.message ?? "Failed to load denied attempts");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [from, to, denialReason, page, pageSize, sortCol, sortAsc]);
+
+  // Reset to first page on filter change
+  useEffect(() => { setPage(0); }, [from, to, denialReason, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortAsc((a) => !a);
+    else { setSortCol(col); setSortAsc(false); }
+  };
+  const sortIndicator = (col: SortCol) =>
+    sortCol === col ? (sortAsc ? " ↑" : " ↓") : "";
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-3">Denied replay attempts</h2>
+      <p className="text-sm text-muted-foreground mb-3">
+        Server-side filtered, sorted, and paginated view of every blocked replay attempt.
+      </p>
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">From</div>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
+            className="rounded border bg-background px-2 py-1" />
+        </label>
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">To</div>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
+            className="rounded border bg-background px-2 py-1" />
+        </label>
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">Denial reason</div>
+          <select value={denialReason} onChange={(e) => setDenialReason(e.target.value)}
+            className="rounded border bg-background px-2 py-1 min-w-44">
+            <option value="">All reasons</option>
+            {DENIAL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">
+          <div className="mb-1 text-muted-foreground">Page size</div>
+          <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
+            className="rounded border bg-background px-2 py-1">
+            {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-muted-foreground">
+            <tr>
+              <th className="py-2 cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+                Time{sortIndicator("created_at")}
+              </th>
+              <th className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
+                Denial reason{sortIndicator("status")}
+              </th>
+              <th className="cursor-pointer select-none" onClick={() => toggleSort("event_id")}>
+                Event{sortIndicator("event_id")}
+              </th>
+              <th className="cursor-pointer select-none" onClick={() => toggleSort("admin_user_id")}>
+                Admin{sortIndicator("admin_user_id")}
+              </th>
+              <th>Origin</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t align-top">
+                <td className="py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                <td>
+                  <Badge variant="destructive">{r.status.replace(/^denied:/, "")}</Badge>
+                </td>
+                <td className="font-mono text-xs max-w-40 truncate">{r.event_id}</td>
+                <td className="font-mono text-xs max-w-40 truncate">{r.admin_user_id}</td>
+                <td className="text-xs max-w-40 truncate">{r.origin ?? "—"}</td>
+                <td className="text-destructive text-xs max-w-xs truncate">{r.error ?? ""}</td>
+              </tr>
+            ))}
+            {!rows.length && (
+              <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">
+                {loading ? "Loading…" : "No denied attempts in this range."}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4 text-sm">
+        <div className="text-muted-foreground">
+          {total.toLocaleString()} match{total === 1 ? "" : "es"} · page {page + 1} of {totalPages}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" disabled={page === 0 || loading}
+            onClick={() => setPage(0)}>« First</Button>
+          <Button size="sm" variant="outline" disabled={page === 0 || loading}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}>‹ Prev</Button>
+          <Button size="sm" variant="outline" disabled={page >= totalPages - 1 || loading}
+            onClick={() => setPage((p) => p + 1)}>Next ›</Button>
+          <Button size="sm" variant="outline" disabled={page >= totalPages - 1 || loading}
+            onClick={() => setPage(totalPages - 1)}>Last »</Button>
+        </div>
       </div>
     </Card>
   );
