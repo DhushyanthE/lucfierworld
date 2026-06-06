@@ -6,6 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-requested-with, x-csrf-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "x-row-count, x-sort-by, x-sort-order",
 };
 
 const json = (body: unknown, status: number) =>
@@ -17,7 +18,6 @@ const json = (body: unknown, status: number) =>
 const csvCell = (v: unknown): string => {
   if (v === null || v === undefined) return "";
   const s = typeof v === "string" ? v : JSON.stringify(v);
-  // Mitigate CSV/spreadsheet formula injection.
   const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return `"${safe.replaceAll('"', '""')}"`;
 };
@@ -26,7 +26,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  // Defense-in-depth CSRF check (same contract as replay endpoint).
   if (req.headers.get("x-requested-with") !== "XMLHttpRequest") {
     return json({ error: "Missing CSRF header" }, 403);
   }
@@ -61,7 +60,13 @@ serve(async (req) => {
   });
   if (roleErr || isAdmin !== true) return json({ error: "Forbidden" }, 403);
 
-  let body: { from?: string; to?: string; denial_reason?: string; statuses?: string[] } = {};
+  let body: {
+    from?: string; to?: string;
+    denial_reason?: string; statuses?: string[];
+    sort_by?: string; order?: string;
+    page?: number; page_size?: number;
+    only_denied?: boolean;
+  } = {};
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
   const isoRe = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?)?$/;
@@ -76,12 +81,20 @@ serve(async (req) => {
   const spanDays = (+toDate - +fromDate) / (24 * 3600_000);
   if (spanDays > 92) return json({ error: "Range cannot exceed 92 days" }, 400);
 
-  // Optional denial reason narrowing. Accept a single code or list of full statuses.
   const reasonRe = /^[a-z0-9_:]{1,64}$/;
   const denialReason = body.denial_reason && reasonRe.test(body.denial_reason) ? body.denial_reason : null;
   const statuses = Array.isArray(body.statuses)
     ? body.statuses.filter((s) => typeof s === "string" && reasonRe.test(s)).slice(0, 32)
     : [];
+
+  // Whitelist sort + pagination so the CSV mirrors the UI exactly.
+  const allowedSort = new Set(["created_at", "status", "event_id", "admin_user_id"]);
+  const sortBy = body.sort_by && allowedSort.has(body.sort_by) ? body.sort_by : "created_at";
+  const ascending = String(body.order ?? "desc").toLowerCase() === "asc";
+  const page = Number.isInteger(body.page) && (body.page as number) >= 0 ? (body.page as number) : null;
+  const pageSize = Number.isInteger(body.page_size) && (body.page_size as number) > 0 && (body.page_size as number) <= 1000
+    ? (body.page_size as number) : null;
+  const onlyDenied = body.only_denied !== false; // default true: matches denied-attempts table view
 
   let q = admin
     .from("stripe_webhook_replay_audit")
@@ -91,11 +104,16 @@ serve(async (req) => {
 
   if (denialReason) q = q.eq("status", `denied:${denialReason}`);
   else if (statuses.length) q = q.in("status", statuses);
+  else if (onlyDenied) q = q.like("status", "denied:%");
 
-  const { data: rows, error } = await q
-    .order("created_at", { ascending: false })
-    .limit(10_000);
+  q = q.order(sortBy, { ascending });
+  if (page !== null && pageSize !== null) {
+    q = q.range(page * pageSize, page * pageSize + pageSize - 1);
+  } else {
+    q = q.limit(10_000);
+  }
 
+  const { data: rows, error } = await q;
   if (error) return json({ error: error.message }, 500);
 
   const header = [
@@ -112,7 +130,8 @@ serve(async (req) => {
   }
   const csv = lines.join("\n");
 
-  const filename = `stripe-replay-audit_${body.from}_to_${body.to}.csv`.replace(/[^\w.\-]+/g, "_");
+  const suffix = page !== null ? `_p${page + 1}` : "";
+  const filename = `stripe-replay-audit_${body.from}_to_${body.to}${suffix}.csv`.replace(/[^\w.\-]+/g, "_");
 
   return new Response(csv, {
     status: 200,
@@ -121,6 +140,8 @@ serve(async (req) => {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "X-Row-Count": String(rows?.length ?? 0),
+      "X-Sort-By": sortBy,
+      "X-Sort-Order": ascending ? "asc" : "desc",
     },
   });
 });
