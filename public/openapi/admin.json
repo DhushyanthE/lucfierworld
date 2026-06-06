@@ -1,0 +1,112 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "QuantumSynapse Admin API",
+    "version": "1.0.0",
+    "description": "Admin-only Edge Functions for Stripe webhook replay, CSV export, and security alerting. All endpoints require a Supabase JWT for a user with the `admin` role plus the CSRF headers `x-requested-with: XMLHttpRequest` and a 16-256 char `x-csrf-token`."
+  },
+  "servers": [
+    {
+      "url": "https://lttxaakpruqqgqdlwpki.supabase.co/functions/v1",
+      "description": "Lovable Cloud (production)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "csrfHeader": { "type": "apiKey", "in": "header", "name": "x-csrf-token" },
+      "xhrHeader":  { "type": "apiKey", "in": "header", "name": "x-requested-with" }
+    },
+    "schemas": {
+      "DenialReason": {
+        "type": "string",
+        "enum": [
+          "csrf_xhr_missing", "csrf_token_missing", "cors_origin_blocked",
+          "auth_missing", "jwt_invalid", "jwt_expired", "jwt_bad_audience",
+          "role_not_admin", "rate_limit_minute", "rate_limit_hour",
+          "rate_limit_event_cooldown", "event_not_found", "event_id_invalid",
+          "body_invalid", "method_not_allowed"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": ["error"]
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [], "csrfHeader": [], "xhrHeader": [] }],
+  "paths": {
+    "/stripe-webhook-replay": {
+      "post": {
+        "summary": "Replay a stored Stripe webhook event",
+        "description": "Re-processes a previously received event from `stripe_webhook_events` and writes an audit row to `stripe_webhook_replay_audit`. Subject to per-admin rate limits (5/min, 30/hr) and a 30s per-event cooldown.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["event_id"],
+                "properties": { "event_id": { "type": "string", "example": "evt_1OabcDEFghij" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Replay accepted and processed" },
+          "401": { "description": "Missing/invalid JWT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Not an admin, or CSRF headers missing", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Event not found" },
+          "429": { "description": "Rate-limit or cooldown" }
+        }
+      }
+    },
+    "/stripe-replay-audit-export": {
+      "post": {
+        "summary": "Export the replay audit log as CSV (mirrors the admin UI filters, sort, and pagination)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["from", "to"],
+                "properties": {
+                  "from":          { "type": "string", "format": "date-time", "example": "2026-05-01T00:00:00Z" },
+                  "to":            { "type": "string", "format": "date-time", "example": "2026-06-01T23:59:59Z" },
+                  "denial_reason": { "$ref": "#/components/schemas/DenialReason" },
+                  "statuses":      { "type": "array", "maxItems": 32, "items": { "type": "string", "pattern": "^[a-z0-9_:]{1,64}$" } },
+                  "sort_by":       { "type": "string", "enum": ["created_at", "status", "event_id", "admin_user_id"], "default": "created_at" },
+                  "order":         { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+                  "page":          { "type": "integer", "minimum": 0, "description": "Zero-based. Omit to export the entire range (capped at 10 000 rows)." },
+                  "page_size":     { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "only_denied":   { "type": "boolean", "default": true, "description": "When true (default), only `denied:*` statuses are returned — matches the denied-attempts table view." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CSV file. Response headers `x-row-count`, `x-sort-by`, and `x-sort-order` echo the effective query.",
+            "content": { "text/csv": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "400": { "description": "Invalid body (range, sort, or reason failed validation)" },
+          "401": { "description": "Missing/invalid JWT" },
+          "403": { "description": "Not an admin, or CSRF headers missing" }
+        }
+      }
+    },
+    "/security-anomaly-watcher": {
+      "post": {
+        "summary": "Run the security anomaly watcher",
+        "description": "Scheduled job that scans `quantum_firewall_logs` and `dao_votes` for anomalies, fans out Slack/email alerts, and records deliveries to `security_alert_outcomes`.",
+        "responses": {
+          "200": { "description": "Scan complete; returns the list of anomalies and delivery outcomes." },
+          "500": { "description": "Server error" }
+        }
+      }
+    }
+  }
+}

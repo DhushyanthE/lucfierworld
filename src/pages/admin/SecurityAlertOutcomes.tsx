@@ -386,12 +386,68 @@ function DeniedAttemptsTable() {
   const sortIndicator = (col: SortCol) =>
     sortCol === col ? (sortAsc ? " ↑" : " ↓") : "";
 
+  const exportCurrentView = async () => {
+    try {
+      const csrfBytes = crypto.getRandomValues(new Uint8Array(24));
+      const csrfToken = Array.from(csrfBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-replay-audit-export`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "x-requested-with": "XMLHttpRequest",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({
+          from: `${from}T00:00:00Z`,
+          to: `${to}T23:59:59Z`,
+          denial_reason: denialReason || undefined,
+          sort_by: sortCol,
+          order: sortAsc ? "asc" : "desc",
+          page,
+          page_size: pageSize,
+          only_denied: true,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const rowCount = res.headers.get("x-row-count") ?? "?";
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = `denied-attempts_${from}_to_${to}_p${page + 1}.csv`;
+      a.setAttribute("data-testid", "denied-csv-link");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(dlUrl);
+      toast.success(`Exported ${rowCount} row(s) matching current view`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Export failed");
+    }
+  };
+
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-semibold mb-3">Denied replay attempts</h2>
-      <p className="text-sm text-muted-foreground mb-3">
-        Server-side filtered, sorted, and paginated view of every blocked replay attempt.
-      </p>
+    <Card className="p-6" data-testid="denied-attempts-card">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h2 className="text-xl font-semibold">Denied replay attempts</h2>
+          <p className="text-sm text-muted-foreground">
+            Server-side filtered, sorted, and paginated view of every blocked replay attempt.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={exportCurrentView} data-testid="export-current-view">
+          Export current view (CSV)
+        </Button>
+      </div>
       <div className="flex flex-wrap items-end gap-3 mb-4">
         <label className="text-sm">
           <div className="mb-1 text-muted-foreground">From</div>
