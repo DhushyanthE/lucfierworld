@@ -77,6 +77,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@eslint/js": "^9.9.0",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.15",
