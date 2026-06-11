@@ -80,8 +80,11 @@ jobs:
           done
           echo "::error::$E2E_BASE_URL did not become reachable within 120s"
           exit 1
-      - name: Run Playwright admin suite (retries=2, workers=1 on CI)
-        run: npx playwright test --reporter=list,html
+      - name: Run full Playwright e2e suite (retries=2, workers=1 on CI)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npx playwright test tests/e2e --reporter=list,html
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
