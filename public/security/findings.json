@@ -1,0 +1,13 @@
+[
+  {
+    "id": "wiz-example-001",
+    "scanner": "wiz",
+    "rule": "Example finding — replace with real scanner export",
+    "severity": "LOW",
+    "status": "RESOLVED",
+    "resource": "supabase://analytics_events",
+    "owner": "platform-team",
+    "fix_commit": null,
+    "detected_at": "2026-06-11T00:00:00Z"
+  }
+]
