@@ -89,8 +89,21 @@
         },
         "responses": {
           "200": {
-            "description": "CSV file. Response headers `x-row-count`, `x-sort-by`, and `x-sort-order` echo the effective query.",
-            "content": { "text/csv": { "schema": { "type": "string", "format": "binary" } } }
+            "description": "CSV file. Response headers `x-row-count`, `x-sort-by`, and `x-sort-order` echo the effective query. The CSV body uses the exact column order listed in `x-csv-columns` — additional columns must NEVER appear, since they would leak fields outside the admin contract.",
+            "content": { "text/csv": { "schema": { "type": "string", "format": "binary" } } },
+            "headers": {
+              "Content-Disposition": {
+                "description": "attachment; filename=\"stripe-replay-audit_<from>_to_<to>[_p<page>].csv\"",
+                "schema": { "type": "string", "pattern": "^attachment; filename=\"stripe-replay-audit_.+\\.csv\"$" }
+              },
+              "X-Row-Count":  { "schema": { "type": "integer", "minimum": 0 } },
+              "X-Sort-By":    { "schema": { "type": "string", "enum": ["created_at", "status", "event_id", "admin_user_id"] } },
+              "X-Sort-Order": { "schema": { "type": "string", "enum": ["asc", "desc"] } }
+            },
+            "x-csv-columns": [
+              "id", "created_at", "admin_user_id", "event_id", "status",
+              "error", "origin", "ip_hash", "user_agent"
+            ]
           },
           "400": { "description": "Invalid body (range, sort, or reason failed validation)" },
           "401": { "description": "Missing/invalid JWT" },
