@@ -216,22 +216,6 @@ serve(async (req) => {
         });
       }
     }
-            ended_at: new Date().toISOString(),
-            page_views: existingSession.page_views + 1,
-            exit_page: eventInput.page_url,
-          })
-          .eq("session_id", eventInput.session_id);
-      } else {
-        // Create new session
-        await supabaseClient.from("analytics_sessions").insert({
-          session_id: eventInput.session_id,
-          user_id: user?.id || null,
-          entry_page: eventInput.page_url,
-          device_type: eventInput.device_type,
-          browser: eventInput.browser,
-        });
-      }
-    }
 
     console.log("Analytics event tracked:", eventInput.event_name);
 
