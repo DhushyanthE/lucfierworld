@@ -189,19 +189,33 @@ serve(async (req) => {
       throw eventError;
     }
 
-    // Update or create session
+    // Update or create session via service role
     if (eventInput.session_id) {
-      const { data: existingSession } = await supabaseClient
+      const { data: existingSession } = await serviceClient
         .from("analytics_sessions")
         .select("*")
         .eq("session_id", eventInput.session_id)
         .maybeSingle();
 
       if (existingSession) {
-        // Update existing session
-        await supabaseClient
+        await serviceClient
           .from("analytics_sessions")
           .update({
+            ended_at: new Date().toISOString(),
+            page_views: existingSession.page_views + 1,
+            exit_page: eventInput.page_url,
+          })
+          .eq("session_id", eventInput.session_id);
+      } else {
+        await serviceClient.from("analytics_sessions").insert({
+          session_id: eventInput.session_id,
+          user_id: user?.id || null,
+          entry_page: eventInput.page_url,
+          device_type: eventInput.device_type,
+          browser: eventInput.browser,
+        });
+      }
+    }
             ended_at: new Date().toISOString(),
             page_views: existingSession.page_views + 1,
             exit_page: eventInput.page_url,
