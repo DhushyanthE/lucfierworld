@@ -106,20 +106,31 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Auth client (only used to identify the caller from their JWT, if any)
+    const authClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
+          headers: { Authorization: req.headers.get("Authorization") ?? "" },
         },
       }
+    );
+
+    // Service-role client used for the actual insert. This guarantees that
+    // trusted fields (ip_address, user_agent) come from request headers,
+    // never from arbitrary client-supplied values, and that anonymous
+    // ingestion does not require a permissive RLS policy on the table.
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
     );
 
     // Parse and validate input
     const requestData = await req.json();
     const validation = validateEventInput(requestData);
-    
+
     if (!validation.valid) {
       return new Response(
         JSON.stringify({ error: validation.error }),
@@ -135,10 +146,15 @@ serve(async (req) => {
     // Get user ID from session if authenticated
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await authClient.auth.getUser();
 
-    // Rate limiting based on user ID or IP
-    const rateLimitIdentifier = user?.id || req.headers.get("x-forwarded-for") || "anonymous";
+    // Trusted server-side fields — derived from request headers, NOT client body
+    const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
+    const trustedIp = forwardedFor.split(",")[0].trim() || null;
+    const trustedUserAgent = (req.headers.get("user-agent") ?? "").slice(0, 512) || null;
+
+    // Rate limiting based on user ID or trusted IP
+    const rateLimitIdentifier = user?.id || trustedIp || "anonymous";
     if (!checkRateLimit(rateLimitIdentifier)) {
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
@@ -149,8 +165,9 @@ serve(async (req) => {
       );
     }
 
-    // Insert analytics event
-    const { data: eventData, error: eventError } = await supabaseClient
+    // Insert analytics event via service role. Trusted fields are populated
+    // server-side; user-supplied user_agent is ignored to prevent forgery.
+    const { data: eventData, error: eventError } = await serviceClient
       .from("analytics_events")
       .insert({
         event_name: eventInput.event_name,
@@ -159,7 +176,8 @@ serve(async (req) => {
         session_id: eventInput.session_id,
         page_url: eventInput.page_url,
         referrer: eventInput.referrer,
-        user_agent: eventInput.user_agent,
+        user_agent: trustedUserAgent,
+        ip_address: trustedIp,
         device_type: eventInput.device_type,
         browser: eventInput.browser,
       })
