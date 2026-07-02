@@ -1,4 +1,4 @@
-import { pipeline, Pipeline } from '@huggingface/transformers';
+import { pipeline } from '@huggingface/transformers';
 
 export interface TransactionFeatures {
   amount: number;
