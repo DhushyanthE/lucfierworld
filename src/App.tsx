@@ -39,6 +39,7 @@ import SecurityFindings from './pages/admin/SecurityFindings';
 import Checkout from './pages/Checkout';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import CheckoutCancel from './pages/CheckoutCancel';
+import QuantumLab from './pages/QuantumLab';
 import './App.css';
 
 function App() {
@@ -85,6 +86,7 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/checkout/success" element={<CheckoutSuccess />} />
             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+            <Route path="/quantum-lab" element={<QuantumLab />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
