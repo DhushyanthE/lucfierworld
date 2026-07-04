@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, Play, KeyRound, Search, Sigma } from "lucide-react";
+import { Trash2, Play, KeyRound, Search, Sigma, Network } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
 /*  Complex-number & quantum-state primitives                                  */
