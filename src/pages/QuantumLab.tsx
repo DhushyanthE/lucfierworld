@@ -318,21 +318,56 @@ function Stat({ label, value, hint }: { label: string; value: string | number; h
 /*  Complex algorithm solvers                                                  */
 /* -------------------------------------------------------------------------- */
 
-/** Grover's search over N items, marked = target. Returns success probability
- *  vs. iteration count and the optimal iteration ⌊π/4·√N⌋. */
-function grover(N: number, target: number) {
-  const iters = Math.max(1, Math.floor((Math.PI / 4) * Math.sqrt(N)));
-  const theta = 2 * Math.asin(1 / Math.sqrt(N));
+/** Grover over N=2^nBits with an oracle described by a bit-pattern using
+ *  '0', '1', '?'. Returns marked indices, optimal iteration count, and the
+ *  success-probability trace P(k) = sin²((2k+1)·θ/2), θ=2·asin(√(M/N)). */
+function parsePattern(pattern: string, nBits: number): number[] {
+  const p = pattern.trim().padStart(nBits, "?").slice(-nBits);
+  const marked: number[] = [];
+  for (let x = 0; x < (1 << nBits); x++) {
+    let ok = true;
+    for (let b = 0; b < nBits; b++) {
+      const ch = p[nBits - 1 - b];
+      if (ch === "0" && ((x >> b) & 1) !== 0) { ok = false; break; }
+      if (ch === "1" && ((x >> b) & 1) !== 1) { ok = false; break; }
+    }
+    if (ok) marked.push(x);
+  }
+  return marked;
+}
+function grover(nBits: number, pattern: string) {
+  const N = 1 << nBits;
+  const marked = parsePattern(pattern, nBits);
+  const M = Math.max(1, marked.length);
+  const theta = 2 * Math.asin(Math.sqrt(M / N));
+  const iters = Math.max(1, Math.round(Math.PI / (2 * theta) - 0.5));
   const trace: { k: number; p: number }[] = [];
   for (let k = 0; k <= iters + 2; k++) {
     const amp = Math.sin((2 * k + 1) * (theta / 2));
     trace.push({ k, p: amp * amp });
   }
-  return { iters, target, trace };
+  return { N, M, marked, iters, trace };
 }
 
-/** Shor-style period finding via classical modular exponentiation. Returns the
- *  period r of a^x mod N and the factors derived from gcd(a^{r/2}±1, N). */
+/** Continued-fraction convergents of x (0<x<1) up to denominator ≤ maxDen. */
+function continuedFraction(x: number, maxDen: number): { p: number; q: number }[] {
+  const out: { p: number; q: number }[] = [];
+  let h1 = 1, h0 = 0, k1 = 0, k0 = 1;
+  let a = x;
+  for (let i = 0; i < 32; i++) {
+    const ai = Math.floor(a);
+    const h = ai * h1 + h0;
+    const k = ai * k1 + k0;
+    if (k > maxDen) break;
+    out.push({ p: h, q: k });
+    const frac = a - ai;
+    if (frac < 1e-12) break;
+    a = 1 / frac;
+    h0 = h1; h1 = h; k0 = k1; k1 = k;
+  }
+  return out;
+}
+
 function gcd(a: number, b: number): number {
   a = Math.abs(a); b = Math.abs(b);
   while (b) { [a, b] = [b, a % b]; }
@@ -343,93 +378,131 @@ function modpow(base: number, exp: number, m: number): number {
   while (exp > 0) { if (exp & 1) r = (r * base) % m; exp = Math.floor(exp / 2); base = (base * base) % m; }
   return r;
 }
-function shorLike(N: number): { a: number; r: number | null; factors: [number, number] | null; note: string } {
-  if (N % 2 === 0) return { a: 2, r: null, factors: [2, N / 2], note: "Even — trivial factor." };
-  for (let attempt = 0; attempt < 20; attempt++) {
+/** Shor factoring using classical order finding + continued-fraction post-processing
+ *  applied to a simulated QPE measurement s/2^t ≈ k/r. */
+function shorFactor(N: number): {
+  a: number; r: number | null; s: number | null; t: number | null;
+  convergents: { p: number; q: number }[]; factors: [number, number] | null; note: string;
+} {
+  if (N % 2 === 0) return { a: 2, r: null, s: null, t: null, convergents: [], factors: [2, N / 2], note: "Even — trivial factor 2." };
+  for (let attempt = 0; attempt < 25; attempt++) {
     const a = 2 + Math.floor(Math.random() * (N - 3));
     const g = gcd(a, N);
-    if (g > 1) return { a, r: null, factors: [g, N / g], note: `Lucky gcd(a,N)=${g}.` };
+    if (g > 1) return { a, r: null, s: null, t: null, convergents: [], factors: [g, N / g], note: `gcd(a,N)=${g}.` };
     let r: number | null = null;
-    for (let k = 1; k < N; k++) {
-      if (modpow(a, k, N) === 1) { r = k; break; }
-    }
+    for (let k = 1; k < N; k++) if (modpow(a, k, N) === 1) { r = k; break; }
     if (!r || r % 2 !== 0) continue;
+    // Simulate a QPE outcome s ≈ round(k/r · 2^t) for random 0<k<r.
+    const t = Math.ceil(2 * Math.log2(N));
+    const k0 = 1 + Math.floor(Math.random() * (r - 1));
+    const s = Math.round((k0 / r) * (1 << t));
+    const convergents = continuedFraction(s / (1 << t), N);
     const x = modpow(a, r / 2, N);
     if (x === N - 1) continue;
     const p = gcd(x - 1, N); const q = gcd(x + 1, N);
-    if (p > 1 && p < N) return { a, r, factors: [p, N / p], note: `Order r=${r}.` };
-    if (q > 1 && q < N) return { a, r, factors: [q, N / q], note: `Order r=${r}.` };
+    const f = p > 1 && p < N ? p : q > 1 && q < N ? q : null;
+    if (f) return { a, r, s, t, convergents, factors: [f, N / f], note: `Order r=${r} recovered; QPE s=${s}/2^${t}.` };
   }
-  return { a: 0, r: null, factors: null, note: "Failed — try again or a larger N." };
+  return { a: 0, r: null, s: null, t: null, convergents: [], factors: null, note: "Failed — try again or another N." };
 }
 
-/** Newton's method in ℂ for f(z)=z^n − 1. Finds complex roots of unity. */
-function newtonRoots(n: number, iterations = 40) {
-  const roots: C[] = [];
-  const seeds: C[] = [];
-  for (let k = 0; k < 4 * n; k++) {
-    const ang = (2 * Math.PI * k) / (4 * n);
-    seeds.push({ re: Math.cos(ang) * (0.5 + Math.random()), im: Math.sin(ang) * (0.5 + Math.random()) });
-  }
-  const cSub = (a: C, b: C): C => ({ re: a.re - b.re, im: a.im - b.im });
-  const cDiv = (a: C, b: C): C => {
-    const d = b.re * b.re + b.im * b.im;
-    return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d };
+/* -- QAOA MaxCut (p=1) on a small graph, exact statevector simulation -------- */
+
+type Edge = [number, number];
+function cutValue(x: number, edges: Edge[]): number {
+  let v = 0;
+  for (const [i, j] of edges) if (((x >> i) & 1) !== ((x >> j) & 1)) v++;
+  return v;
+}
+function qaoaMaxCut(nNodes: number, edges: Edge[]) {
+  const N = 1 << nNodes;
+  // Precompute cut value for each bitstring.
+  const cuts = new Array(N).fill(0).map((_, x) => cutValue(x, edges));
+  const bestCut = Math.max(...cuts);
+  // p=1 QAOA: |ψ⟩ = U_B(β) U_C(γ) H^n |0⟩. Cost is diagonal so U_C is a phase.
+  // Grid search (γ, β) ∈ [0, π] × [0, π/2].
+  const gridG = 24, gridB = 12;
+  let best = { gamma: 0, beta: 0, exp: -Infinity, probs: [] as number[] };
+  const rxMat = (angle: number): [C, C, C, C] => {
+    const c0 = Math.cos(angle / 2);
+    const s0 = -Math.sin(angle / 2); // coefficient on i·σx
+    return [c(c0), c(0, s0), c(0, s0), c(c0)];
   };
-  const cPow = (z: C, k: number): C => {
-    let r: C = c(1);
-    for (let i = 0; i < k; i++) r = cMul(r, z);
-    return r;
-  };
-  for (const s of seeds) {
-    let z = s;
-    for (let i = 0; i < iterations; i++) {
-      const zn = cPow(z, n);
-      const num = cSub(zn, c(1));
-      const den = cMul(c(n), cPow(z, n - 1));
-      if (den.re === 0 && den.im === 0) break;
-      z = cSub(z, cDiv(num, den));
-    }
-    if (Number.isFinite(z.re) && Number.isFinite(z.im)) {
-      const dup = roots.find((r) => Math.hypot(r.re - z.re, r.im - z.im) < 1e-4);
-      if (!dup) roots.push({ re: +z.re.toFixed(6), im: +z.im.toFixed(6) });
+  for (let gi = 0; gi < gridG; gi++) {
+    const gamma = (Math.PI * gi) / gridG;
+    for (let bi = 0; bi < gridB; bi++) {
+      const beta = (Math.PI / 2 * bi) / gridB;
+      // Start: uniform superposition (H^n on |0⟩).
+      const amp = 1 / Math.sqrt(N);
+      let state: C[] = new Array(N);
+      // Apply diagonal U_C: phase = exp(-i γ C(x)).
+      for (let x = 0; x < N; x++) {
+        const ang = -gamma * cuts[x];
+        state[x] = c(amp * Math.cos(ang), amp * Math.sin(ang));
+      }
+      // Apply U_B = ∏ RX(2β) on each qubit.
+      const m = rxMat(2 * beta);
+      for (let q = 0; q < nNodes; q++) state = applySingle(state, nNodes, q, m);
+      // Expectation ⟨C⟩ = Σ |ψ_x|² · C(x).
+      let exp = 0;
+      for (let x = 0; x < N; x++) exp += cAbs2(state[x]) * cuts[x];
+      if (exp > best.exp) {
+        best = { gamma, beta, exp, probs: state.map((a) => cAbs2(a)) };
+      }
     }
   }
-  return roots.slice(0, n);
+  // Rank top bitstrings from best distribution.
+  const ranked = best.probs
+    .map((p, x) => ({ x, p, cut: cuts[x] }))
+    .sort((a, b) => b.p - a.p)
+    .slice(0, 6);
+  return { bestCut, best, ranked, cuts };
 }
 
 function SolverPanel() {
-  const [gN, setGN] = useState(32);
-  const [gTarget, setGTarget] = useState(11);
-  const grov = useMemo(() => grover(gN, gTarget), [gN, gTarget]);
+  const [gBits, setGBits] = useState(5);
+  const [gPattern, setGPattern] = useState("1?01?");
+  const grov = useMemo(() => grover(gBits, gPattern), [gBits, gPattern]);
 
-  const [shorN, setShorN] = useState(15);
-  const [shorRes, setShorRes] = useState(() => shorLike(15));
+  const [shorN, setShorN] = useState(21);
+  const [shorRes, setShorRes] = useState(() => shorFactor(21));
 
-  const [polyN, setPolyN] = useState(5);
-  const roots = useMemo(() => newtonRoots(polyN), [polyN]);
+  const [qNodes, setQNodes] = useState(5);
+  const [qEdges, setQEdges] = useState<Edge[]>([[0, 1], [1, 2], [2, 3], [3, 4], [4, 0], [0, 2]]);
+  const qaoa = useMemo(
+    () => qaoaMaxCut(qNodes, qEdges.filter(([i, j]) => i < qNodes && j < qNodes && i !== j)),
+    [qNodes, qEdges],
+  );
+  const [eA, setEA] = useState(0);
+  const [eB, setEB] = useState(1);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Search className="h-4 w-4" /> Grover Search
+            <Search className="h-4 w-4" /> Grover Search (oracle builder)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-3">
-            <div><Label className="text-xs">N (search space)</Label>
-              <Input type="number" min={2} max={1024} value={gN}
-                onChange={(e) => setGN(Number(e.target.value) || 2)} className="w-28" /></div>
-            <div><Label className="text-xs">Marked index</Label>
-              <Input type="number" min={0} max={gN - 1} value={gTarget}
-                onChange={(e) => setGTarget(Number(e.target.value) || 0)} className="w-28" /></div>
+            <div><Label className="text-xs">Bits (n)</Label>
+              <Input type="number" min={2} max={8} value={gBits}
+                onChange={(e) => setGBits(Math.max(2, Math.min(8, Number(e.target.value) || 2)))} className="w-24" /></div>
+            <div className="flex-1"><Label className="text-xs">Pattern (0/1/?)</Label>
+              <Input value={gPattern} onChange={(e) => setGPattern(e.target.value.replace(/[^01?]/g, ""))} /></div>
           </div>
           <div className="text-sm text-muted-foreground">
-            Optimal iterations: <span className="font-mono">{grov.iters}</span> (≈ π/4·√N).
-            Classical brute force: <span className="font-mono">O(N)</span>.
+            N = <span className="font-mono">{grov.N}</span>, marked M = <span className="font-mono">{grov.M}</span>.
+            Optimal iters = <span className="font-mono">{grov.iters}</span> ≈ π/4·√(N/M).
           </div>
+          {grov.marked.length > 0 && grov.marked.length <= 16 && (
+            <div className="flex flex-wrap gap-1 text-xs font-mono">
+              {grov.marked.map((x) => (
+                <Badge key={x} variant="secondary">|{x.toString(2).padStart(gBits, "0")}⟩</Badge>
+              ))}
+            </div>
+          )}
           <div className="space-y-1">
             {grov.trace.map((t) => (
               <div key={t.k} className="flex items-center gap-2 text-xs">
@@ -445,7 +518,7 @@ function SolverPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sigma className="h-4 w-4" /> Shor-style Factoring
+            <Sigma className="h-4 w-4" /> Shor Factoring (CF post-processing)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -453,43 +526,90 @@ function SolverPanel() {
             <div><Label className="text-xs">N to factor</Label>
               <Input type="number" min={4} max={9999} value={shorN}
                 onChange={(e) => setShorN(Number(e.target.value) || 15)} className="w-28" /></div>
-            <Button onClick={() => setShorRes(shorLike(shorN))}>Factor</Button>
+            <Button onClick={() => setShorRes(shorFactor(shorN))}>Factor</Button>
           </div>
           <div className="rounded border p-3 text-sm space-y-1">
-            <div>Tried base a = <span className="font-mono">{shorRes.a || "—"}</span></div>
-            <div>Period r = <span className="font-mono">{shorRes.r ?? "—"}</span></div>
-            <div>Factors ={" "}
-              <span className="font-mono">
-                {shorRes.factors ? `${shorRes.factors[0]} × ${shorRes.factors[1]}` : "—"}
-              </span>
-            </div>
+            <div>Base a = <span className="font-mono">{shorRes.a || "—"}</span></div>
+            <div>QPE outcome s / 2^t = <span className="font-mono">{shorRes.s ?? "—"} / 2^{shorRes.t ?? "—"}</span></div>
+            <div>Recovered order r = <span className="font-mono">{shorRes.r ?? "—"}</span></div>
+            <div>Factors = <span className="font-mono">
+              {shorRes.factors ? `${shorRes.factors[0]} × ${shorRes.factors[1]}` : "—"}
+            </span></div>
             <div className="text-xs text-muted-foreground">{shorRes.note}</div>
           </div>
+          {shorRes.convergents.length > 0 && (
+            <div>
+              <Label className="text-xs">Continued-fraction convergents p/q</Label>
+              <div className="mt-1 flex flex-wrap gap-1 text-xs font-mono">
+                {shorRes.convergents.map((cv, i) => (
+                  <Badge key={i} variant="outline">{cv.p}/{cv.q}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle className="text-base">Complex Roots — Newton on zⁿ − 1</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Network className="h-4 w-4" /> QAOA MaxCut (p=1, exact statevector)
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-3">
-            <div><Label className="text-xs">Degree n</Label>
-              <Input type="number" min={2} max={12} value={polyN}
-                onChange={(e) => setPolyN(Number(e.target.value) || 2)} className="w-24" /></div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div><Label className="text-xs">Nodes</Label>
+              <Input type="number" min={3} max={6} value={qNodes}
+                onChange={(e) => setQNodes(Math.max(3, Math.min(6, Number(e.target.value) || 3)))} className="w-20" /></div>
+            <div><Label className="text-xs">Edge a</Label>
+              <Input type="number" min={0} max={qNodes - 1} value={eA}
+                onChange={(e) => setEA(Number(e.target.value) || 0)} className="w-20" /></div>
+            <div><Label className="text-xs">Edge b</Label>
+              <Input type="number" min={0} max={qNodes - 1} value={eB}
+                onChange={(e) => setEB(Number(e.target.value) || 0)} className="w-20" /></div>
+            <Button variant="outline" onClick={() => {
+              if (eA !== eB && !qEdges.some(([i, j]) => (i === eA && j === eB) || (i === eB && j === eA))) {
+                setQEdges([...qEdges, [Math.min(eA, eB), Math.max(eA, eB)]]);
+              }
+            }}>Add edge</Button>
+            <Button variant="ghost" onClick={() => setQEdges([])}>Clear edges</Button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono">
-            {roots.map((r, i) => (
-              <div key={i} className="rounded border px-2 py-1">
-                z{i} = {r.re.toFixed(4)}{r.im >= 0 ? "+" : ""}{r.im.toFixed(4)}i
-              </div>
+          <div className="flex flex-wrap gap-1">
+            {qEdges.map(([i, j], idx) => (
+              <Badge key={idx} variant="secondary" className="gap-1">
+                {i}—{j}
+                <button onClick={() => setQEdges(qEdges.filter((_, k) => k !== idx))}
+                  className="ml-1 opacity-60 hover:opacity-100" aria-label="remove edge">
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </Badge>
             ))}
+            {qEdges.length === 0 && <span className="text-sm text-muted-foreground">Add edges to build the graph.</span>}
+          </div>
+          <div className="grid gap-3 md:grid-cols-3 text-sm">
+            <Stat label="Best cut (classical)" value={qaoa.bestCut} />
+            <Stat label="⟨C⟩ at optimum" value={qaoa.best.exp.toFixed(3)} />
+            <Stat label="γ*, β*" value={`${qaoa.best.gamma.toFixed(2)}, ${qaoa.best.beta.toFixed(2)}`} />
+          </div>
+          <div>
+            <Label className="text-xs">Top-6 measurement outcomes</Label>
+            <div className="mt-1 space-y-1">
+              {qaoa.ranked.map((r) => (
+                <div key={r.x} className="flex items-center gap-2 text-xs">
+                  <span className="w-20 font-mono">|{r.x.toString(2).padStart(qNodes, "0")}⟩</span>
+                  <Progress value={r.p * 100} className="h-1.5 flex-1" />
+                  <span className="w-14 text-right font-mono">{(r.p * 100).toFixed(1)}%</span>
+                  <span className="w-16 text-right text-muted-foreground">cut={r.cut}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                       */
