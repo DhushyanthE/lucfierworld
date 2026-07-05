@@ -775,6 +775,27 @@ export type Database = {
         }
         Relationships: []
       }
+      realtime_pings: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       security_alert_outcomes: {
         Row: {
           alert_key: string
