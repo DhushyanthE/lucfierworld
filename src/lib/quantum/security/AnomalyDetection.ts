@@ -1,4 +1,7 @@
-import { pipeline } from '@huggingface/transformers';
+// NOTE: @huggingface/transformers was removed to eliminate a critical transitive
+// dependency vulnerability (protobufjs). Anomaly detection now runs purely on
+// the rule-based path (`ruleBasedDetection`), which was already the fallback.
+
 
 export interface TransactionFeatures {
   amount: number;
@@ -41,25 +44,14 @@ export class AnomalyDetection {
   }
 
   /**
-   * Initialize the ML model for anomaly detection
+   * Initialize the ML model for anomaly detection.
+   * ML model support is disabled; detection uses the rule-based path.
    */
   private async initializeModel(): Promise<void> {
-    if (this.isModelLoading) return;
-    
-    this.isModelLoading = true;
-    try {
-      // Use a lightweight classification model suitable for browser
-      this.model = await pipeline(
-        'text-classification',
-        'distilbert-base-uncased-finetuned-sst-2-english',
-        { device: 'cpu' }
-      );
-    } catch (error) {
-      console.warn('Failed to load HuggingFace model, using fallback detection:', error);
-      this.model = null;
-    }
+    this.model = null;
     this.isModelLoading = false;
   }
+
 
   /**
    * Generate synthetic training data for the anomaly detection model
@@ -219,46 +211,12 @@ export class AnomalyDetection {
   }
 
   /**
-   * Detect anomalies using ML model
+   * Detect anomalies using ML model (currently delegates to rule-based).
    */
   private async mlBasedDetection(features: number[]): Promise<AnomalyResult> {
-    if (!this.model) {
-      return this.ruleBasedDetection(features);
-    }
-
-    try {
-      // Convert features to text for the text classification model
-      const featureText = `Transaction: amount ${features[0]}, chains ${features[1]} to ${features[2]}, nonce ${features[3]}, age ${features[4]}s, signature ${features[5]}`;
-      
-      const result = await this.model(featureText);
-      
-      // Convert sentiment to anomaly score
-      // Assuming 'NEGATIVE' sentiment indicates potential anomaly
-      const isNegative = Array.isArray(result) && result[0]?.label === 'NEGATIVE';
-      const confidence = Array.isArray(result) ? result[0]?.score || 0.5 : 0.5;
-      
-      let score = isNegative ? confidence * 100 : (1 - confidence) * 100;
-      
-      // Combine with rule-based approach
-      const ruleResult = this.ruleBasedDetection(features);
-      score = (score + ruleResult.score) / 2;
-
-      const risk = score >= 70 ? 'CRITICAL' : 
-                   score >= 50 ? 'HIGH' : 
-                   score >= 30 ? 'MEDIUM' : 'LOW';
-
-      return {
-        score: Math.round(score),
-        risk,
-        confidence,
-        features: ruleResult.features,
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.warn('ML model failed, using rule-based detection:', error);
-      return this.ruleBasedDetection(features);
-    }
+    return this.ruleBasedDetection(features);
   }
+
 
   /**
    * Analyze transaction for anomalies
