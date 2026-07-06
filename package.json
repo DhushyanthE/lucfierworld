@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
-    "@huggingface/transformers": "4.2.0",
     "@lovable.dev/cloud-auth-js": "^1.0.0",
     "@lovable.dev/mcp-js": "^0.20.0",
     "@radix-ui/react-accordion": "^1.2.0",
@@ -99,3 +98,4 @@
     "vite": "^5.4.1"
   }
 }
+
