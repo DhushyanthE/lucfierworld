@@ -41,6 +41,7 @@ import CheckoutSuccess from './pages/CheckoutSuccess';
 import CheckoutCancel from './pages/CheckoutCancel';
 import QuantumLab from './pages/QuantumLab';
 import RealtimeDemo from './pages/RealtimeDemo';
+import Connect from './pages/Connect';
 import './App.css';
 
 function App() {
@@ -89,6 +90,7 @@ function App() {
             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
             <Route path="/quantum-lab" element={<QuantumLab />} />
             <Route path="/realtime-demo" element={<RealtimeDemo />} />
+            <Route path="/connect" element={<Connect />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
