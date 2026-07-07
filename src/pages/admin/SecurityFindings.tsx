@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Search } from "lucide-react";
 
 type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -46,7 +46,7 @@ const PAGE_SIZES = [10, 25, 50, 100];
 // CSV column contract — mirrors the Finding schema exactly. Additional columns
 // MUST NEVER appear here, matching the discipline of the OpenAPI x-csv-columns
 // contract used by the server-side audit export.
-const CSV_COLUMNS: (keyof Finding)[] = [
+export const CSV_COLUMNS: (keyof Finding)[] = [
   "id", "scanner", "rule", "severity", "status",
   "resource", "owner", "fix_commit", "detected_at",
 ];
@@ -54,6 +54,8 @@ const CSV_COLUMNS: (keyof Finding)[] = [
 const FINDINGS_URL =
   (import.meta.env.VITE_SECURITY_FINDINGS_URL as string | undefined) ??
   "/security/findings.json";
+
+const SEARCH_DEBOUNCE_MS = 250;
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -70,51 +72,119 @@ function toCsv(rows: Finding[]): string {
   return [header, ...body].join("\n");
 }
 
+// ---- URL-state helpers ----------------------------------------------------
+// We persist all filter, search, and pagination state in the URL so a reload
+// or shared link reproduces the same view. Empty/default values are stripped
+// to keep the URL tidy.
+const isSeverity = (v: string): v is Severity =>
+  (SEVERITIES as string[]).includes(v);
+const isStatus = (v: string): v is Status =>
+  (STATUSES as string[]).includes(v);
+
+function coercePageSize(v: string | null): number {
+  const n = Number(v);
+  return PAGE_SIZES.includes(n) ? n : 25;
+}
+function coercePage(v: string | null): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
 export default function SecurityFindings() {
   const { isAdmin, loading } = useIsAdmin();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [findings, setFindings] = useState<Finding[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState({
-    severity: "ALL" as "ALL" | Severity,
-    status: "ALL" as "ALL" | Status,
-    owner: "",
-    scanner: "",
-  });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(25);
+
+  // Derived state from URL.
+  const query = searchParams.get("q") ?? "";
+  const sevParam = searchParams.get("severity") ?? "ALL";
+  const statusParam = searchParams.get("status") ?? "ALL";
+  const owner = searchParams.get("owner") ?? "";
+  const scanner = searchParams.get("scanner") ?? "";
+  const page = coercePage(searchParams.get("page"));
+  const pageSize = coercePageSize(searchParams.get("size"));
+  const severity: "ALL" | Severity =
+    sevParam !== "ALL" && isSeverity(sevParam) ? sevParam : "ALL";
+  const status: "ALL" | Status =
+    statusParam !== "ALL" && isStatus(statusParam) ? statusParam : "ALL";
+
+  // Local search-box state feeding a debounced URL update.
+  const [searchInput, setSearchInput] = useState(query);
+  useEffect(() => { setSearchInput(query); }, [query]);
+
+  const updateParams = useCallback(
+    (patch: Record<string, string | number | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [k, v] of Object.entries(patch)) {
+            if (v === null || v === undefined || v === "" || v === "ALL") {
+              next.delete(k);
+            } else {
+              next.set(k, String(v));
+            }
+          }
+          // page defaults to 1, size defaults to 25 — strip to keep URL clean.
+          if (next.get("page") === "1") next.delete("page");
+          if (next.get("size") === "25") next.delete("size");
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Debounce search-input into URL.
+  useEffect(() => {
+    if (searchInput === query) return;
+    const t = window.setTimeout(() => {
+      updateParams({ q: searchInput, page: 1 });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [searchInput, query, updateParams]);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/");
   }, [isAdmin, loading, navigate]);
 
-  const load = async () => {
+  // Track in-flight fetches so a rapid Reload or unmount cancels the previous one.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const load = useCallback(async () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setError(null);
     try {
-      const res = await fetch(FINDINGS_URL, { cache: "no-store" });
+      const res = await fetch(FINDINGS_URL, { cache: "no-store", signal: ctrl.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Finding[] = await res.json();
+      if (ctrl.signal.aborted) return;
       setFindings(Array.isArray(data) ? data : []);
       setLoadedAt(new Date().toISOString());
     } catch (e) {
+      if ((e as { name?: string })?.name === "AbortError") return;
       setError(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, []);
 
-  useEffect(() => { void load(); }, []);
-
-  // Reset to first page whenever filters/search/page-size change.
-  useEffect(() => { setPage(1); }, [query, filter, pageSize]);
+  useEffect(() => {
+    void load();
+    return () => abortRef.current?.abort();
+  }, [load]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return findings.filter((f) => {
-      if (filter.severity !== "ALL" && f.severity !== filter.severity) return false;
-      if (filter.status !== "ALL" && f.status !== filter.status) return false;
-      if (filter.owner && !f.owner.toLowerCase().includes(filter.owner.toLowerCase())) return false;
-      if (filter.scanner && !f.scanner.toLowerCase().includes(filter.scanner.toLowerCase())) return false;
+      if (severity !== "ALL" && f.severity !== severity) return false;
+      if (status !== "ALL" && f.status !== status) return false;
+      if (owner && !f.owner.toLowerCase().includes(owner.toLowerCase())) return false;
+      if (scanner && !f.scanner.toLowerCase().includes(scanner.toLowerCase())) return false;
       if (q) {
         const hay = [
           f.id, f.scanner, f.rule, f.severity, f.status,
@@ -124,7 +194,7 @@ export default function SecurityFindings() {
       }
       return true;
     });
-  }, [findings, filter, query]);
+  }, [findings, severity, status, owner, scanner, query]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -139,8 +209,8 @@ export default function SecurityFindings() {
     return c;
   }, [findings]);
 
-  const updateStatus = (id: string, status: Status) => {
-    setFindings((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
+  const updateStatus = (id: string, next: Status) => {
+    setFindings((prev) => prev.map((f) => (f.id === id ? { ...f, status: next } : f)));
   };
 
   const downloadCsv = () => {
@@ -190,11 +260,11 @@ export default function SecurityFindings() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={downloadCsv} variant="default">
+          <Button onClick={downloadCsv} variant="default" data-testid="export-csv">
             <Download className="mr-2 h-4 w-4" />
             Export CSV ({filtered.length})
           </Button>
-          <Button onClick={load} variant="outline">Reload</Button>
+          <Button onClick={() => void load()} variant="outline">Reload</Button>
         </div>
       </div>
 
@@ -221,14 +291,15 @@ export default function SecurityFindings() {
             <Input
               placeholder="Search rule, resource, id, commit…"
               className="pl-9"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               aria-label="Search findings"
+              data-testid="findings-search"
             />
           </div>
           <Select
-            value={filter.severity}
-            onValueChange={(v) => setFilter((f) => ({ ...f, severity: v as Severity | "ALL" }))}
+            value={severity}
+            onValueChange={(v) => updateParams({ severity: v, page: 1 })}
           >
             <SelectTrigger className="w-44"><SelectValue placeholder="Severity" /></SelectTrigger>
             <SelectContent>
@@ -237,8 +308,8 @@ export default function SecurityFindings() {
             </SelectContent>
           </Select>
           <Select
-            value={filter.status}
-            onValueChange={(v) => setFilter((f) => ({ ...f, status: v as Status | "ALL" }))}
+            value={status}
+            onValueChange={(v) => updateParams({ status: v, page: 1 })}
           >
             <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -249,14 +320,14 @@ export default function SecurityFindings() {
           <Input
             placeholder="Owner contains…"
             className="w-56"
-            value={filter.owner}
-            onChange={(e) => setFilter((f) => ({ ...f, owner: e.target.value }))}
+            value={owner}
+            onChange={(e) => updateParams({ owner: e.target.value, page: 1 })}
           />
           <Input
             placeholder="Scanner contains…"
             className="w-56"
-            value={filter.scanner}
-            onChange={(e) => setFilter((f) => ({ ...f, scanner: e.target.value }))}
+            value={scanner}
+            onChange={(e) => updateParams({ scanner: e.target.value, page: 1 })}
           />
         </CardContent>
       </Card>
@@ -276,7 +347,10 @@ export default function SecurityFindings() {
           </CardTitle>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Rows per page</span>
-            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => updateParams({ size: Number(v), page: 1 })}
+            >
               <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
@@ -343,7 +417,10 @@ export default function SecurityFindings() {
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
-                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        updateParams({ page: Math.max(1, currentPage - 1) });
+                      }}
                       aria-disabled={currentPage === 1}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
@@ -356,7 +433,7 @@ export default function SecurityFindings() {
                         <PaginationLink
                           href="#"
                           isActive={it === currentPage}
-                          onClick={(e) => { e.preventDefault(); setPage(it); }}
+                          onClick={(e) => { e.preventDefault(); updateParams({ page: it }); }}
                         >
                           {it}
                         </PaginationLink>
@@ -366,7 +443,10 @@ export default function SecurityFindings() {
                   <PaginationItem>
                     <PaginationNext
                       href="#"
-                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(pageCount, p + 1)); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        updateParams({ page: Math.min(pageCount, currentPage + 1) });
+                      }}
                       aria-disabled={currentPage === pageCount}
                       className={currentPage === pageCount ? "pointer-events-none opacity-50" : ""}
                     />
