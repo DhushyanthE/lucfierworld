@@ -43,6 +43,7 @@ import QuantumLab from './pages/QuantumLab';
 import RealtimeDemo from './pages/RealtimeDemo';
 import Connect from './pages/Connect';
 import ToolRunner from './pages/ToolRunner';
+import QuantumCore from './pages/QuantumCore';
 import './App.css';
 
 function App() {
@@ -93,6 +94,7 @@ function App() {
             <Route path="/realtime-demo" element={<RealtimeDemo />} />
             <Route path="/connect" element={<Connect />} />
             <Route path="/tools" element={<ToolRunner />} />
+            <Route path="/quantum-core" element={<QuantumCore />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

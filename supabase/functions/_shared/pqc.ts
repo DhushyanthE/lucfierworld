@@ -10,8 +10,8 @@
  * silently turn every signature into an error.
  */
 
-import { ml_kem1024 } from "npm:@noble/post-quantum@0.5.0/ml-kem";
-import { ml_dsa87 } from "npm:@noble/post-quantum@0.5.0/ml-dsa";
+import { ml_kem1024 } from "npm:@noble/post-quantum@0.7.0/ml-kem.js";
+import { ml_dsa87 } from "npm:@noble/post-quantum@0.7.0/ml-dsa.js";
 
 export function toB64(bytes: Uint8Array): string {
   let s = "";
