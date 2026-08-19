@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { ml_dsa87 } from "@noble/post-quantum/ml-dsa";
+import { ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
