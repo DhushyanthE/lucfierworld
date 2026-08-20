@@ -9,7 +9,7 @@
 
 export type Gate =
   | { gate: "h" | "x" | "y" | "z" | "s" | "t"; qubit: number }
-  | { gate: "rz"; qubit: number; theta: number }
+  | { gate: "rz" | "rx" | "ry"; qubit: number; theta: number }
   | { gate: "cx" | "cz"; control: number; target: number };
 
 export const MAX_QUBITS = 16;
@@ -80,6 +80,24 @@ export class Statevector {
       Math.sin(h),
     ]);
   }
+  rx(q: number, theta: number) {
+    const c = Math.cos(theta / 2);
+    const s = -Math.sin(theta / 2);
+    this.apply1(q, [c, 0], [0, s], [0, s], [c, 0]);
+  }
+  ry(q: number, theta: number) {
+    const c = Math.cos(theta / 2);
+    const s = Math.sin(theta / 2);
+    this.apply1(q, [c, 0], [-s, 0], [s, 0], [c, 0]);
+  }
+
+  /** Deep copy — needed for expectation values that change basis in place. */
+  clone(): Statevector {
+    const sv = new Statevector(this.n);
+    sv.re.set(this.re);
+    sv.im.set(this.im);
+    return sv;
+  }
 
   cx(control: number, target: number) {
     this.controlled(control, target, "x");
@@ -123,6 +141,8 @@ export class Statevector {
       case "s": return this.s(g.qubit);
       case "t": return this.t(g.qubit);
       case "rz": return this.rz(g.qubit, g.theta);
+      case "rx": return this.rx(g.qubit, g.theta);
+      case "ry": return this.ry(g.qubit, g.theta);
       case "cx": return this.cx(g.control, g.target);
       case "cz": return this.cz(g.control, g.target);
       default: throw new Error(`unknown gate: ${(g as { gate: string }).gate}`);
