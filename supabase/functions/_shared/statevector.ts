@@ -141,6 +141,8 @@ export class Statevector {
       case "s": return this.s(g.qubit);
       case "t": return this.t(g.qubit);
       case "rz": return this.rz(g.qubit, g.theta);
+      case "rx": return this.rx(g.qubit, g.theta);
+      case "ry": return this.ry(g.qubit, g.theta);
       case "cx": return this.cx(g.control, g.target);
       case "cz": return this.cz(g.control, g.target);
       default: throw new Error(`unknown gate: ${(g as { gate: string }).gate}`);
