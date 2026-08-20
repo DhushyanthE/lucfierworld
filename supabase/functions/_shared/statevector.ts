@@ -9,7 +9,7 @@
 
 export type Gate =
   | { gate: "h" | "x" | "y" | "z" | "s" | "t"; qubit: number }
-  | { gate: "rz"; qubit: number; theta: number }
+  | { gate: "rz" | "rx" | "ry"; qubit: number; theta: number }
   | { gate: "cx" | "cz"; control: number; target: number };
 
 export const MAX_QUBITS = 16;
@@ -79,6 +79,24 @@ export class Statevector {
       Math.cos(h),
       Math.sin(h),
     ]);
+  }
+  rx(q: number, theta: number) {
+    const c = Math.cos(theta / 2);
+    const s = -Math.sin(theta / 2);
+    this.apply1(q, [c, 0], [0, s], [0, s], [c, 0]);
+  }
+  ry(q: number, theta: number) {
+    const c = Math.cos(theta / 2);
+    const s = Math.sin(theta / 2);
+    this.apply1(q, [c, 0], [-s, 0], [s, 0], [c, 0]);
+  }
+
+  /** Deep copy — needed for expectation values that change basis in place. */
+  clone(): Statevector {
+    const sv = new Statevector(this.n);
+    sv.re.set(this.re);
+    sv.im.set(this.im);
+    return sv;
   }
 
   cx(control: number, target: number) {
