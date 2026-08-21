@@ -41,7 +41,7 @@ const GateSchema = z.union([
     qubit: z.number().int().min(0).max(MAX_QUBITS - 1),
   }),
   z.object({
-    gate: z.literal("rz"),
+    gate: z.enum(["rz", "rx", "ry"]),
     qubit: z.number().int().min(0).max(MAX_QUBITS - 1),
     theta: z.number().finite(),
   }),
@@ -84,6 +84,33 @@ const schemas = {
     public_key_b64: z.string().min(1),
     message: z.string().min(1).max(10000),
     signature_b64: z.string().min(1),
+  }),
+  vqe: z.object({
+    num_qubits: z.number().int().min(2).max(8).default(2),
+    layers: z.number().int().min(1).max(4).default(2),
+    j: z.number().finite().default(1),
+    h: z.number().finite().default(1),
+    max_iterations: z.number().int().min(1).max(400).default(120),
+  }),
+  qaoa: z.object({
+    num_nodes: z.number().int().min(2).max(10).default(4),
+    edges: z.array(z.object({
+      u: z.number().int().min(0).max(9),
+      v: z.number().int().min(0).max(9),
+      weight: z.number().positive().max(100).optional(),
+    })).min(1).max(45),
+    depth: z.number().int().min(1).max(4).default(2),
+    max_iterations: z.number().int().min(1).max(300).default(80),
+    shots: z.number().int().min(1).max(20000).default(1024),
+  }),
+  qml: z.object({
+    samples: z.array(z.object({
+      x: z.number().finite(),
+      label: z.union([z.literal(0), z.literal(1)]),
+    })).min(4).max(400),
+    layers: z.number().int().min(1).max(4).default(2),
+    max_iterations: z.number().int().min(1).max(400).default(150),
+    test_split: z.number().min(0).max(0.5).default(0.3),
   }),
 };
 
