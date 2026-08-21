@@ -24,6 +24,7 @@ import { z } from "npm:zod@3.23.8";
 import { ghz, MAX_QUBITS, randomBit, Statevector, type Gate } from "../_shared/statevector.ts";
 import { simulateBB84 } from "../_shared/bb84.ts";
 import { mlDsa, mlKem } from "../_shared/pqc.ts";
+import { runQAOAMaxCut, runVQE, trainQuantumClassifier } from "../_shared/variational.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
