@@ -24,6 +24,7 @@ import { z } from "npm:zod@3.23.8";
 import { ghz, MAX_QUBITS, randomBit, Statevector, type Gate } from "../_shared/statevector.ts";
 import { simulateBB84 } from "../_shared/bb84.ts";
 import { mlDsa, mlKem } from "../_shared/pqc.ts";
+import { runQAOAMaxCut, runVQE, trainQuantumClassifier } from "../_shared/variational.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -40,7 +41,7 @@ const GateSchema = z.union([
     qubit: z.number().int().min(0).max(MAX_QUBITS - 1),
   }),
   z.object({
-    gate: z.literal("rz"),
+    gate: z.enum(["rz", "rx", "ry"]),
     qubit: z.number().int().min(0).max(MAX_QUBITS - 1),
     theta: z.number().finite(),
   }),
@@ -83,6 +84,33 @@ const schemas = {
     public_key_b64: z.string().min(1),
     message: z.string().min(1).max(10000),
     signature_b64: z.string().min(1),
+  }),
+  vqe: z.object({
+    num_qubits: z.number().int().min(2).max(8).default(2),
+    layers: z.number().int().min(1).max(4).default(2),
+    j: z.number().finite().default(1),
+    h: z.number().finite().default(1),
+    max_iterations: z.number().int().min(1).max(400).default(120),
+  }),
+  qaoa: z.object({
+    num_nodes: z.number().int().min(2).max(10).default(4),
+    edges: z.array(z.object({
+      u: z.number().int().min(0).max(9),
+      v: z.number().int().min(0).max(9),
+      weight: z.number().positive().max(100).optional(),
+    })).min(1).max(45),
+    depth: z.number().int().min(1).max(4).default(2),
+    max_iterations: z.number().int().min(1).max(300).default(80),
+    shots: z.number().int().min(1).max(20000).default(1024),
+  }),
+  qml: z.object({
+    samples: z.array(z.object({
+      x: z.number().finite(),
+      label: z.union([z.literal(0), z.literal(1)]),
+    })).min(4).max(400),
+    layers: z.number().int().min(1).max(4).default(2),
+    max_iterations: z.number().int().min(1).max(400).default(150),
+    test_split: z.number().min(0).max(0.5).default(0.3),
   }),
 };
 
@@ -272,6 +300,42 @@ async function handle(req: Request): Promise<Response> {
         verify_tampered_message: validTampered,
         behaves_correctly: validCorrect === true && validTampered === false,
       });
+    }
+
+    case "/v1/vqe/run": {
+      const v = await parse(req, schemas.vqe);
+      return json(runVQE({
+        numQubits: v.num_qubits,
+        layers: v.layers,
+        j: v.j,
+        h: v.h,
+        maxIterations: v.max_iterations,
+      }));
+    }
+
+    case "/v1/qaoa/maxcut": {
+      const q = await parse(req, schemas.qaoa);
+      for (const e of q.edges) {
+        if (e.u >= q.num_nodes || e.v >= q.num_nodes) return bad("edge references unknown node");
+        if (e.u === e.v) return bad("self-loops are not valid Max-Cut edges");
+      }
+      return json(runQAOAMaxCut({
+        numNodes: q.num_nodes,
+        edges: q.edges,
+        depth: q.depth,
+        maxIterations: q.max_iterations,
+        shots: q.shots,
+      }));
+    }
+
+    case "/v1/qml/classify": {
+      const c = await parse(req, schemas.qml);
+      return json(trainQuantumClassifier({
+        samples: c.samples,
+        layers: c.layers,
+        maxIterations: c.max_iterations,
+        testSplit: c.test_split,
+      }));
     }
   }
 

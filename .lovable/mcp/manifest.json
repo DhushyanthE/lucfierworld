@@ -8,7 +8,7 @@
   "mcp": {
     "server": {
       "name": "quantum-coin-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Quantum Coin MCP"
     },
     "tools": [
@@ -75,6 +75,177 @@
           "required": [
             "coinId"
           ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "run_qrng",
+        "title": "Quantum random number generator",
+        "description": "Generate random bits by measuring Hadamard-prepared qubits on the native statevector engine. Returns the bitstring and its integer value.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "numBits": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 512,
+              "default": 32,
+              "description": "How many bits to generate."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "run_bb84_simulation",
+        "title": "BB84 QKD simulation",
+        "description": "Run a BB84 quantum key distribution simulation, optionally with an intercept-resend eavesdropper, and return the sifted key length and measured QBER.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "numBits": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 2048,
+              "default": 256,
+              "description": "Raw qubits exchanged."
+            },
+            "simulateEavesdropper": {
+              "type": "boolean",
+              "default": false,
+              "description": "Insert an intercept-resend Eve."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "run_vqe",
+        "title": "VQE ground state",
+        "description": "Estimate the ground-state energy of a transverse-field Ising ring with a variational quantum eigensolver, using analytic parameter-shift gradients. Also reports the best unentangled ansatz for comparison.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "numQubits": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 6,
+              "default": 2,
+              "description": "System size."
+            },
+            "layers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 2,
+              "description": "Ansatz depth."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "run_qaoa",
+        "title": "QAOA Max-Cut",
+        "description": "Solve a Max-Cut instance with QAOA on the native engine and compare the sampled cut against the brute-force optimum.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "numNodes": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 8,
+              "default": 4,
+              "description": "Number of graph nodes."
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "u": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "v": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "u",
+                  "v"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 28,
+              "description": "Edge list, node indices are 0-based."
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 2,
+              "description": "QAOA depth p."
+            }
+          },
+          "required": [
+            "edges"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "check_blockchain_findings",
+        "title": "Check on-chain findings (read-only)",
+        "description": "Read recent on-chain events for the configured ProofOfNeuralWork contract through the read-only indexer. Reports `configured: false` honestly when no chain is configured instead of inventing findings. This tool cannot sign transactions or change contract state.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "blockWindow": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20000,
+              "default": 2000,
+              "description": "How many blocks back from the chain head to scan."
+            }
+          },
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
