@@ -3,13 +3,31 @@
  * Environment configuration for the application
  */
 
+/**
+ * Backend base URL. The real backend of this project is the Lovable Cloud edge
+ * function runtime, so it is the default rather than an unreachable public host.
+ * VITE_API_URL still wins when a self-hosted gateway is running.
+ */
+const FUNCTIONS_BASE = import.meta.env.VITE_SUPABASE_URL
+  ? `${String(import.meta.env.VITE_SUPABASE_URL).replace(/\/+$/, "")}/functions/v1`
+  : "";
+
 // Base API config
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || "https://api.quantumblockchain.dev",
+  BASE_URL: import.meta.env.VITE_API_URL || FUNCTIONS_BASE || "https://api.quantumblockchain.dev",
   TIMEOUT: 30000,
   RETRY_COUNT: 3,
   VERSION: "v1",
   API_KEY: import.meta.env.VITE_API_KEY || ""
+};
+
+// Service endpoints of the fabric (all served by the edge runtime unless overridden)
+export const SERVICE_URLS = {
+  FUNCTIONS_BASE,
+  QUANTUM_CORE: import.meta.env.VITE_QUANTUM_CORE_URL || `${FUNCTIONS_BASE}/quantum-core`,
+  QUANTUM_GATEWAY: import.meta.env.VITE_QUANTUM_GATEWAY_URL || `${FUNCTIONS_BASE}/quantum-gateway`,
+  BLOCKCHAIN_INDEXER:
+    import.meta.env.VITE_BLOCKCHAIN_INDEXER_URL || `${FUNCTIONS_BASE}/blockchain-indexer`
 };
 
 // Wallet configuration
