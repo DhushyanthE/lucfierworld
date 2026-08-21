@@ -301,6 +301,42 @@ async function handle(req: Request): Promise<Response> {
         behaves_correctly: validCorrect === true && validTampered === false,
       });
     }
+
+    case "/v1/vqe/run": {
+      const v = await parse(req, schemas.vqe);
+      return json(runVQE({
+        numQubits: v.num_qubits,
+        layers: v.layers,
+        j: v.j,
+        h: v.h,
+        maxIterations: v.max_iterations,
+      }));
+    }
+
+    case "/v1/qaoa/maxcut": {
+      const q = await parse(req, schemas.qaoa);
+      for (const e of q.edges) {
+        if (e.u >= q.num_nodes || e.v >= q.num_nodes) return bad("edge references unknown node");
+        if (e.u === e.v) return bad("self-loops are not valid Max-Cut edges");
+      }
+      return json(runQAOAMaxCut({
+        numNodes: q.num_nodes,
+        edges: q.edges,
+        depth: q.depth,
+        maxIterations: q.max_iterations,
+        shots: q.shots,
+      }));
+    }
+
+    case "/v1/qml/classify": {
+      const c = await parse(req, schemas.qml);
+      return json(trainQuantumClassifier({
+        samples: c.samples,
+        layers: c.layers,
+        maxIterations: c.max_iterations,
+        testSplit: c.test_split,
+      }));
+    }
   }
 
   return bad(`no route for ${req.method} ${path}`, 404);
