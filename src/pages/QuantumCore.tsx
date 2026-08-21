@@ -417,6 +417,278 @@ function GatewayPanel() {
   );
 }
 
+async function callFn(
+  fn: string,
+  path: string,
+  body?: unknown,
+  method: "GET" | "POST" = "POST",
+): Promise<Outcome> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
+      },
+      body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
+    });
+    const text = await res.text();
+    let parsed: unknown = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* keep raw text */
+    }
+    return { ok: res.ok, status: res.status, body: parsed };
+  } catch (e) {
+    return {
+      ok: false,
+      status: null,
+      body: {
+        error: "network_error",
+        detail: e instanceof Error ? e.message : String(e),
+        hint: "The request never reached the backend. If the hosted database is paused, resume it and retry.",
+      },
+    };
+  }
+}
+
+function VqePanel() {
+  const [qubits, setQubits] = useState(2);
+  const [layers, setLayers] = useState(2);
+  const { busy, outcome, run } = useCall();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>VQE — /v1/vqe/run</CardTitle>
+        <CardDescription>
+          Transverse-field Ising ring. Gradients come from the analytic parameter-shift rule, and the
+          response also optimises the best unentangled ansatz so you can see whether entanglement
+          actually helped, plus the exact ground energy for the error term.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="vqe-q">num_qubits</Label>
+            <Input
+              id="vqe-q"
+              type="number"
+              min={2}
+              max={6}
+              value={qubits}
+              onChange={(e) => setQubits(Number(e.target.value))}
+              className="w-28"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="vqe-l">layers</Label>
+            <Input
+              id="vqe-l"
+              type="number"
+              min={1}
+              max={4}
+              value={layers}
+              onChange={(e) => setLayers(Number(e.target.value))}
+              className="w-28"
+            />
+          </div>
+          <RunButton
+            busy={busy}
+            onClick={() => run(() => callCore("/v1/vqe/run", { num_qubits: qubits, layers }))}
+          >
+            Run VQE
+          </RunButton>
+        </div>
+        <ResultBlock outcome={outcome} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function QaoaPanel() {
+  const [edges, setEdges] = useState("0-1, 1-2, 2-3, 3-0");
+  const [nodes, setNodes] = useState(4);
+  const [depth, setDepth] = useState(2);
+  const { busy, outcome, run } = useCall();
+
+  const parsedEdges = useMemo(
+    () =>
+      edges
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+          const [u, v] = part.split("-").map((n) => Number(n.trim()));
+          return { u, v };
+        })
+        .filter((e) => Number.isInteger(e.u) && Number.isInteger(e.v)),
+    [edges],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>QAOA Max-Cut — /v1/qaoa/maxcut</CardTitle>
+        <CardDescription>
+          Real entangling cost layers (cx · rz · cx) alternating with rx mixers, then the sampled cut
+          is compared against the brute-force optimum for an honest approximation ratio.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="qaoa-n">num_nodes</Label>
+            <Input
+              id="qaoa-n"
+              type="number"
+              min={2}
+              max={8}
+              value={nodes}
+              onChange={(e) => setNodes(Number(e.target.value))}
+              className="w-28"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="qaoa-d">depth</Label>
+            <Input
+              id="qaoa-d"
+              type="number"
+              min={1}
+              max={4}
+              value={depth}
+              onChange={(e) => setDepth(Number(e.target.value))}
+              className="w-24"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="qaoa-e">edges (u-v, comma separated)</Label>
+            <Input
+              id="qaoa-e"
+              value={edges}
+              onChange={(e) => setEdges(e.target.value)}
+              className="w-72 font-mono text-xs"
+            />
+          </div>
+          <RunButton
+            busy={busy}
+            onClick={() =>
+              run(() =>
+                callCore("/v1/qaoa/maxcut", { num_nodes: nodes, edges: parsedEdges, depth }),
+              )}
+          >
+            Run QAOA
+          </RunButton>
+        </div>
+        <ResultBlock outcome={outcome} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function QmlPanel() {
+  const [layers, setLayers] = useState(2);
+  const { busy, outcome, run } = useCall();
+  const samples = useMemo(
+    () =>
+      Array.from({ length: 40 }, (_, i) => {
+        const x = -1 + (2 * i) / 39;
+        return { x: Number(x.toFixed(4)), label: x > 0 ? 1 : 0 };
+      }).sort(() => Math.random() - 0.5),
+    [],
+  );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Quantum classifier — /v1/qml/classify</CardTitle>
+        <CardDescription>
+          Single-qubit data re-uploading classifier trained on a held-out split with real binary
+          cross-entropy and parameter-shift gradients. Reports train and test accuracy separately.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="qml-l">layers</Label>
+            <Input
+              id="qml-l"
+              type="number"
+              min={1}
+              max={4}
+              value={layers}
+              onChange={(e) => setLayers(Number(e.target.value))}
+              className="w-24"
+            />
+          </div>
+          <RunButton
+            busy={busy}
+            onClick={() => run(() => callCore("/v1/qml/classify", { samples, layers }))}
+          >
+            Train classifier
+          </RunButton>
+        </div>
+        <ResultBlock outcome={outcome} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function IndexerPanel() {
+  const [window_, setWindow] = useState(2000);
+  const health = useCall();
+  const scan = useCall();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Blockchain indexer — /functions/v1/blockchain-indexer</CardTitle>
+        <CardDescription>
+          Read-only bridge to the chain: <code>eth_chainId</code>, <code>eth_blockNumber</code>,{" "}
+          <code>eth_getLogs</code>, <code>eth_call</code> and nothing else. With no{" "}
+          <code>EVM_RPC_URL</code> / <code>PONW_CONTRACT_ADDRESS</code> configured it answers{" "}
+          <code>configured: false</code> instead of inventing findings. No signer exists in this path,
+          so it cannot move funds or change contract state.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <RunButton
+            busy={health.busy}
+            onClick={() => health.run(() => callFn("blockchain-indexer", "/health", undefined, "GET"))}
+          >
+            Check /health
+          </RunButton>
+          <div className="space-y-1">
+            <Label htmlFor="idx-w">block_window</Label>
+            <Input
+              id="idx-w"
+              type="number"
+              min={1}
+              max={50000}
+              value={window_}
+              onChange={(e) => setWindow(Number(e.target.value))}
+              className="w-32"
+            />
+          </div>
+          <RunButton
+            busy={scan.busy}
+            onClick={() =>
+              scan.run(() =>
+                callFn("blockchain-indexer", "/v1/blockchain/indexer/scan", {
+                  block_window: window_,
+                }),
+              )}
+          >
+            Scan events
+          </RunButton>
+        </div>
+        <ResultBlock outcome={health.outcome} />
+        <ResultBlock outcome={scan.outcome} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function QuantumCore() {
   const health = useCall();
   return (
