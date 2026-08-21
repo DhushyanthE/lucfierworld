@@ -105,13 +105,137 @@ var crypto_price_default = defineTool3({
   }
 });
 
+// src/lib/mcp/tools/quantum.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z3 } from "npm:zod@^3.25.76";
+var FUNCTIONS_BASE = `https://${Deno.env.get("SUPABASE_PROJECT_ID") ?? ""}.supabase.co/functions/v1`;
+function baseUrl() {
+  const url = Deno.env.get("SUPABASE_URL");
+  return url ? `${url.replace(/\/+$/, "")}/functions/v1` : FUNCTIONS_BASE;
+}
+async function callFunction(path, body, method = "POST") {
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const res = await fetch(`${baseUrl()}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...anon ? { Authorization: `Bearer ${anon}`, apikey: anon } : {}
+    },
+    ...method === "POST" ? { body: JSON.stringify(body ?? {}) } : {}
+  });
+  const text = await res.text();
+  let parsed;
+  try {
+    parsed = text ? JSON.parse(text) : {};
+  } catch {
+    parsed = { raw: text };
+  }
+  return { ok: res.ok, status: res.status, data: parsed };
+}
+function result(payload, ok = true) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+    ...ok ? {} : { isError: true }
+  };
+}
+var readOnly = { readOnlyHint: true, idempotentHint: false, openWorldHint: false };
+var runQrngTool = defineTool4({
+  name: "run_qrng",
+  title: "Quantum random number generator",
+  description: "Generate random bits by measuring Hadamard-prepared qubits on the native statevector engine. Returns the bitstring and its integer value.",
+  inputSchema: {
+    numBits: z3.number().int().min(1).max(512).default(32).describe("How many bits to generate.")
+  },
+  annotations: readOnly,
+  handler: async ({ numBits }) => {
+    const r = await callFunction("/quantum-core/v1/quantum/qrng", { num_bits: numBits });
+    return result(r.data, r.ok);
+  }
+});
+var runBb84Tool = defineTool4({
+  name: "run_bb84_simulation",
+  title: "BB84 QKD simulation",
+  description: "Run a BB84 quantum key distribution simulation, optionally with an intercept-resend eavesdropper, and return the sifted key length and measured QBER.",
+  inputSchema: {
+    numBits: z3.number().int().min(8).max(2048).default(256).describe("Raw qubits exchanged."),
+    simulateEavesdropper: z3.boolean().default(false).describe("Insert an intercept-resend Eve.")
+  },
+  annotations: readOnly,
+  handler: async ({ numBits, simulateEavesdropper }) => {
+    const r = await callFunction("/quantum-core/v1/quantum/bb84/simulate", {
+      num_bits: numBits,
+      simulate_eavesdropper: simulateEavesdropper
+    });
+    return result(r.data, r.ok);
+  }
+});
+var runVqeTool = defineTool4({
+  name: "run_vqe",
+  title: "VQE ground state",
+  description: "Estimate the ground-state energy of a transverse-field Ising ring with a variational quantum eigensolver, using analytic parameter-shift gradients. Also reports the best unentangled ansatz for comparison.",
+  inputSchema: {
+    numQubits: z3.number().int().min(2).max(6).default(2).describe("System size."),
+    layers: z3.number().int().min(1).max(3).default(2).describe("Ansatz depth.")
+  },
+  annotations: readOnly,
+  handler: async ({ numQubits, layers }) => {
+    const r = await callFunction("/quantum-core/v1/vqe/run", {
+      num_qubits: numQubits,
+      layers
+    });
+    return result(r.data, r.ok);
+  }
+});
+var runQaoaTool = defineTool4({
+  name: "run_qaoa",
+  title: "QAOA Max-Cut",
+  description: "Solve a Max-Cut instance with QAOA on the native engine and compare the sampled cut against the brute-force optimum.",
+  inputSchema: {
+    numNodes: z3.number().int().min(2).max(8).default(4).describe("Number of graph nodes."),
+    edges: z3.array(z3.object({ u: z3.number().int().min(0), v: z3.number().int().min(0) })).min(1).max(28).describe("Edge list, node indices are 0-based."),
+    depth: z3.number().int().min(1).max(3).default(2).describe("QAOA depth p.")
+  },
+  annotations: readOnly,
+  handler: async ({ numNodes, edges, depth }) => {
+    const r = await callFunction("/quantum-core/v1/qaoa/maxcut", {
+      num_nodes: numNodes,
+      edges,
+      depth
+    });
+    return result(r.data, r.ok);
+  }
+});
+var checkBlockchainFindingsTool = defineTool4({
+  name: "check_blockchain_findings",
+  title: "Check on-chain findings (read-only)",
+  description: "Read recent on-chain events for the configured ProofOfNeuralWork contract through the read-only indexer. Reports `configured: false` honestly when no chain is configured instead of inventing findings. This tool cannot sign transactions or change contract state.",
+  inputSchema: {
+    blockWindow: z3.number().int().min(1).max(2e4).default(2e3).describe("How many blocks back from the chain head to scan.")
+  },
+  annotations: readOnly,
+  handler: async ({ blockWindow }) => {
+    const r = await callFunction("/blockchain-indexer/v1/blockchain/indexer/scan", {
+      block_window: blockWindow
+    });
+    return result(r.data, r.ok);
+  }
+});
+var quantum_default = [
+  runQrngTool,
+  runBb84Tool,
+  runVqeTool,
+  runQaoaTool,
+  checkBlockchainFindingsTool
+];
+
 // src/lib/mcp/index.ts
 var mcp_default = defineMcp({
   name: "quantum-coin-mcp",
   title: "Quantum Coin MCP",
-  version: "0.1.0",
-  instructions: "Tools for the Quantum Coin app. Use `echo` to verify connectivity, `get_app_info` to learn what routes and features the app exposes, and `get_crypto_price` to fetch live USD prices for a given CoinGecko coin id.",
-  tools: [echo_default, app_info_default, crypto_price_default]
+  version: "0.2.0",
+  instructions: "Tools for the Quantum Coin / QuantumSynapse Fabric app. Use `echo` to verify connectivity, `get_app_info` for routes and features, and `get_crypto_price` for live USD prices. Quantum tools: `run_qrng`, `run_bb84_simulation`, `run_vqe`, `run_qaoa`. Chain data: `check_blockchain_findings`. Every tool is read-only \u2014 none can sign a transaction, call a state-changing contract function, or move funds.",
+  tools: [echo_default, app_info_default, crypto_price_default, ...quantum_default]
 });
 
 // lovable-mcp-supabase-entry.ts
