@@ -108,13 +108,18 @@ var crypto_price_default = defineTool3({
 // src/lib/mcp/tools/quantum.ts
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z3 } from "npm:zod@^3.25.76";
-var FUNCTIONS_BASE = `https://${Deno.env.get("SUPABASE_PROJECT_ID") ?? ""}.supabase.co/functions/v1`;
+function env(name) {
+  const runtime = globalThis.Deno;
+  return runtime?.env.get(name) ?? "";
+}
 function baseUrl() {
-  const url = Deno.env.get("SUPABASE_URL");
-  return url ? `${url.replace(/\/+$/, "")}/functions/v1` : FUNCTIONS_BASE;
+  const url = env("SUPABASE_URL");
+  if (url) return `${url.replace(/\/+$/, "")}/functions/v1`;
+  const projectId = env("SUPABASE_PROJECT_ID");
+  return `https://${projectId}.supabase.co/functions/v1`;
 }
 async function callFunction(path, body, method = "POST") {
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const anon = env("SUPABASE_ANON_KEY");
   const res = await fetch(`${baseUrl()}${path}`, {
     method,
     headers: {

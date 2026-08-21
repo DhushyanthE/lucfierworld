@@ -10,17 +10,21 @@ import { z } from "zod";
  * (confirmation flow, spending limits, audit trail) and is intentionally absent.
  */
 
-const FUNCTIONS_BASE = `https://${
-  Deno.env.get("SUPABASE_PROJECT_ID") ?? ""
-}.supabase.co/functions/v1`;
+/** Read an env var in the Deno edge runtime without depending on Deno types. */
+function env(name: string): string {
+  const runtime = (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno;
+  return runtime?.env.get(name) ?? "";
+}
 
 function baseUrl(): string {
-  const url = Deno.env.get("SUPABASE_URL");
-  return url ? `${url.replace(/\/+$/, "")}/functions/v1` : FUNCTIONS_BASE;
+  const url = env("SUPABASE_URL");
+  if (url) return `${url.replace(/\/+$/, "")}/functions/v1`;
+  const projectId = env("SUPABASE_PROJECT_ID");
+  return `https://${projectId}.supabase.co/functions/v1`;
 }
 
 async function callFunction(path: string, body?: unknown, method: "GET" | "POST" = "POST") {
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const anon = env("SUPABASE_ANON_KEY");
   const res = await fetch(`${baseUrl()}${path}`, {
     method,
     headers: {
