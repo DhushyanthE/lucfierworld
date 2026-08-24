@@ -720,6 +720,8 @@ export default function QuantumCore() {
           <TabsTrigger value="qkd">QKD</TabsTrigger>
           <TabsTrigger value="pqc">PQC</TabsTrigger>
           <TabsTrigger value="gateway">Gateway</TabsTrigger>
+          <TabsTrigger value="variational">Variational</TabsTrigger>
+          <TabsTrigger value="chain">Chain</TabsTrigger>
         </TabsList>
         <TabsContent value="quantum" className="mt-4 space-y-6">
           <QrngPanel />
