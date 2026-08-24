@@ -669,3 +669,60 @@ is the deployed default is a choice, not something defaulted silently here.
 - Honest roadmap (shorter): `docs/HONEST-ROADMAP-DPR.md`
 - Full DPR: `docs/QuantumSynapse-Fabric-DPR-Complete.md`
 - This document: `docs/DEVELOPMENT.md`
+
+## 5c — Variational layer, indexer and console (implemented, TS/Deno)
+
+Ported from the Python specification into the runtime this project actually has
+(Supabase Edge Functions on Deno). No Python service is required.
+
+| Endpoint | Function | What it really does |
+| --- | --- | --- |
+| `POST /v1/vqe/run` | `quantum-core` | TFIM ring ground state via parameter-shift gradient descent; also optimises the best product-state ansatz and returns the exact ground energy, so `entanglement_helps` and `error_vs_exact` are measured, not asserted. |
+| `POST /v1/qaoa/maxcut` | `quantum-core` | Depth-p QAOA with real `cx·rz·cx` cost layers and `rx` mixers; the sampled cut is compared to the brute-force optimum for an honest `approximation_ratio`. |
+| `POST /v1/qml/classify` | `quantum-core` | Single-qubit data re-uploading classifier, binary cross-entropy, train/test split reported separately. |
+| `GET /health`, `POST /v1/blockchain/indexer/scan` | `blockchain-indexer` | Read-only JSON-RPC bridge: `eth_chainId`, `eth_blockNumber`, `eth_getLogs`, `eth_call` only. |
+
+### Boundaries that are deliberate, not gaps
+
+- The indexer holds **no signer**. There is no private key on the path, and the
+  RPC method allow-list makes `eth_sendRawTransaction` unreachable. Nothing the
+  agent can call is able to move funds or mutate contract state.
+- With `EVM_RPC_URL` / `PONW_CONTRACT_ADDRESS` unset the scan answers
+  `{"configured": false, "missing": [...], "findings": []}` — it never invents
+  findings to look healthy.
+- The simulator is a classical statevector engine. Every response labels itself
+  `engine: "native-statevector"`; QRNG entropy is the host CSPRNG, so it is not a
+  physical quantum source.
+
+### Configuration
+
+Set on the backend (edge function secrets), not in the client bundle:
+
+```
+EVM_RPC_URL=https://<your-rpc-endpoint>
+PONW_CONTRACT_ADDRESS=0x<20-byte address>
+```
+
+Frontend overrides, all optional — the defaults resolve to the edge runtime:
+`VITE_API_URL`, `VITE_QUANTUM_CORE_URL`, `VITE_QUANTUM_GATEWAY_URL`,
+`VITE_BLOCKCHAIN_INDEXER_URL` (see `src/config/env.ts`).
+
+### Console
+
+`/quantum-core` has tabs for Quantum, QKD, PQC, Gateway, **Variational** (VQE,
+QAOA, QML) and **Chain** (indexer health + scan). Every panel prints the raw
+response or the raw error; nothing is faked when the backend is unreachable.
+
+### Tests
+
+```
+deno test --allow-net --allow-env supabase/functions/_tests/variational_test.ts \
+  supabase/functions/_tests/indexer_test.ts
+```
+
+11 tests, all passing. They assert physics and gradient properties against closed
+forms (`<Z> = cos θ`, exact ground energy `-√5` for 2-qubit TFIM, optimal 4-cycle
+cut = 4) rather than snapshotting output. The indexer's "configured" path runs
+against an in-process stub JSON-RPC server: only the HTTP endpoint is
+substituted, the real config reading, method allow-list and log normalisation
+execute.
