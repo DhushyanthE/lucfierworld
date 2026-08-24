@@ -737,6 +737,14 @@ export default function QuantumCore() {
         <TabsContent value="gateway" className="mt-4">
           <GatewayPanel />
         </TabsContent>
+        <TabsContent value="variational" className="mt-4 space-y-6">
+          <VqePanel />
+          <QaoaPanel />
+          <QmlPanel />
+        </TabsContent>
+        <TabsContent value="chain" className="mt-4">
+          <IndexerPanel />
+        </TabsContent>
       </Tabs>
     </main>
   );
