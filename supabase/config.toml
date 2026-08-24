@@ -133,3 +133,12 @@ verify_jwt = false
 
 
 
+
+[functions.quantum-core]
+verify_jwt = false
+
+[functions.quantum-gateway]
+verify_jwt = false
+
+[functions.blockchain-indexer]
+verify_jwt = false
