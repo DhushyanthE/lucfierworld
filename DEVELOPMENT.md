@@ -74,16 +74,35 @@ pip install -r requirements.txt --break-system-packages
 QUANTUM_CORE_URL=http://localhost:8001 uvicorn gateway:app --port 8000
 # verify: curl localhost:8000/health
 
-# 3. frontend
+# 3. browser-gateway - signs browser requests server-side, forwards through api-gateway
+cd ../browser-gateway
+pip install -r requirements.txt --break-system-packages
+API_GATEWAY_URL=http://localhost:8000 uvicorn main:app --port 8002
+# verify: curl localhost:8002/health
+
+# 4. frontend
 cd ../frontend
 npm install
-cp .env.example .env   # fill in VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_QUANTUM_CORE_URL
+cp .env.example .env   # fill in VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 npm run dev
 
-# 4. rust-qkd-sim - standalone, not wired to the services above yet
+# 5. rust-qkd-sim - standalone, not wired to the services above yet
 cd ../rust-qkd-sim
 cargo test --release   # 4/4 tests should pass
 ```
+
+**A real judgment call, made 2026-08-20, worth being explicit about rather than silent:**
+`.env.example`'s default was switched from `VITE_QUANTUM_CORE_URL=http://localhost:8001` (quantum-core
+directly, unauthenticated) to `http://localhost:8002` (browser-gateway) - which means the frontend now
+needs **three** backend processes running, not two, to work at all. A previous pass through this
+project deliberately left that switch undone, reasoning it was a deployment choice, not something to
+default silently - same principle as the LeviathanCoin naming decision. This pass made the opposite
+call: secure-by-default is the more defensible default, and it's now independently verified end-to-end
+(§5i, 5/5 tests, including the specific proof that matters - the same unsigned request that succeeds
+through `browser-gateway` gets a real 401/422 direct to `api-gateway`). If you'd rather keep the
+simpler two-service default and treat `browser-gateway` as opt-in, that's one line in `.env.example` to
+revert (`VITE_QUANTUM_CORE_URL=http://localhost:8001`) - flagging the tradeoff here rather than
+deciding it's obviously right and moving on.
 
 `solana-findings-program`, `k8s/*.yaml`, and `docker-compose.yml` are not part of this quick start -
 see §7 and §8 for their actual status before relying on any of them.
@@ -377,6 +396,31 @@ real, tested HTTP endpoints and real agent tools, but no dedicated page UI anywh
 only in the standalone `prototype/index.html` (§3). If a full in-app page for these two (matching
 `MLQuantumLive.tsx`'s pattern) is wanted, that's a real, scoped next step, not implied as done here.
 
+## 5f-3. Qiskit test cases in Google Colab (`notebooks/`)
+
+**BUILT & TESTED, re-verified this pass.** `QuantumSynapseFabric_Qiskit_Verified.ipynb` - self-contained,
+needs nothing but `pip install qiskit qiskit-aer` (no `quantum-core` running, no cloned repo) - so it
+can be opened directly in Google Colab and run top to bottom. Mirrors three of the real test cases
+already verified against a live `quantum-core` instance in this project (QRNG, GHZ entanglement, BB84
+with an eavesdropper), inlined so the notebook has no dependency on this repo's other files.
+
+`notebooks/_verify_before_packaging.py` is the actual source the notebook's cells were copied from -
+run it myself before writing this entry rather than trust the notebook's own claim of having been
+verified:
+```
+QRNG result: 00100011 -> integer 35
+GHZ counts: {'0000': 253, '1111': 247}
+QBER without eavesdropper: 0.0%
+QBER with eavesdropper:    29.2%
+```
+Matches the pattern established everywhere else in this project (0% clean, well above the 11% abort
+threshold with an eavesdropper) - consistent with, not contradicting, every other BB84 run logged in
+this document.
+
+**To actually use it:** upload the `.ipynb` file to Google Colab (colab.research.google.com -> File ->
+Upload notebook), or open it locally with Jupyter. No API keys, no cloud account beyond Colab itself,
+no cost.
+
 ## 5g. Quantum Classifier - real ML, real training (`quantum-core/quantum_classifier.py`)
 
 **BUILT & TESTED** (already existed; wrote and ran `test_quantum_classifier.py` here, since the
@@ -669,84 +713,3 @@ is the deployed default is a choice, not something defaulted silently here.
 - Honest roadmap (shorter): `docs/HONEST-ROADMAP-DPR.md`
 - Full DPR: `docs/QuantumSynapse-Fabric-DPR-Complete.md`
 - This document: `docs/DEVELOPMENT.md`
-
-## 5c — Variational layer, indexer and console (implemented, TS/Deno)
-
-Ported from the Python specification into the runtime this project actually has
-(Supabase Edge Functions on Deno). No Python service is required.
-
-| Endpoint | Function | What it really does |
-| --- | --- | --- |
-| `POST /v1/vqe/run` | `quantum-core` | TFIM ring ground state via parameter-shift gradient descent; also optimises the best product-state ansatz and returns the exact ground energy, so `entanglement_helps` and `error_vs_exact` are measured, not asserted. |
-| `POST /v1/qaoa/maxcut` | `quantum-core` | Depth-p QAOA with real `cx·rz·cx` cost layers and `rx` mixers; the sampled cut is compared to the brute-force optimum for an honest `approximation_ratio`. |
-| `POST /v1/qml/classify` | `quantum-core` | Single-qubit data re-uploading classifier, binary cross-entropy, train/test split reported separately. |
-| `GET /health`, `POST /v1/blockchain/indexer/scan` | `blockchain-indexer` | Read-only JSON-RPC bridge: `eth_chainId`, `eth_blockNumber`, `eth_getLogs`, `eth_call` only. |
-
-### Boundaries that are deliberate, not gaps
-
-- The indexer holds **no signer**. There is no private key on the path, and the
-  RPC method allow-list makes `eth_sendRawTransaction` unreachable. Nothing the
-  agent can call is able to move funds or mutate contract state.
-- With `EVM_RPC_URL` / `PONW_CONTRACT_ADDRESS` unset the scan answers
-  `{"configured": false, "missing": [...], "findings": []}` — it never invents
-  findings to look healthy.
-- The simulator is a classical statevector engine. Every response labels itself
-  `engine: "native-statevector"`; QRNG entropy is the host CSPRNG, so it is not a
-  physical quantum source.
-
-### Configuration
-
-Set on the backend (edge function secrets), not in the client bundle:
-
-```
-EVM_RPC_URL=https://<your-rpc-endpoint>
-PONW_CONTRACT_ADDRESS=0x<20-byte address>
-```
-
-Frontend overrides, all optional — the defaults resolve to the edge runtime:
-`VITE_API_URL`, `VITE_QUANTUM_CORE_URL`, `VITE_QUANTUM_GATEWAY_URL`,
-`VITE_BLOCKCHAIN_INDEXER_URL` (see `src/config/env.ts`).
-
-### Console
-
-`/quantum-core` has tabs for Quantum, QKD, PQC, Gateway, **Variational** (VQE,
-QAOA, QML) and **Chain** (indexer health + scan). Every panel prints the raw
-response or the raw error; nothing is faked when the backend is unreachable.
-
-### Tests
-
-```
-deno test --allow-net --allow-env supabase/functions/_tests/variational_test.ts \
-  supabase/functions/_tests/indexer_test.ts
-```
-
-11 tests, all passing. They assert physics and gradient properties against closed
-forms (`<Z> = cos θ`, exact ground energy `-√5` for 2-qubit TFIM, optimal 4-cycle
-cut = 4) rather than snapshotting output. The indexer's "configured" path runs
-against an in-process stub JSON-RPC server: only the HTTP endpoint is
-substituted, the real config reading, method allow-list and log normalisation
-execute.
-
-## §5d — LeviathanCoin + Qiskit verification notebook
-
-**Scope honesty:** "Leviathan chain technology" here means the LeviathanCoin
-contract set deployed on a standard EVM chain — `src/contracts/LeviathanCoin.sol`
-(ERC-20 + Proof-of-Neural-Work attestation registry). It is deliberately *not* a
-new layer-1 consensus network; inventing one would be unverifiable.
-
-Governance rule, enforced both on-chain and off-chain:
-`2.0 < S <= 2.828` (CHSH classical limit < S <= Tsirelson bound), plus the
-submission must beat the epoch's network best and use an unused model hash.
-
-- `supabase/functions/_shared/leviathan.ts` — pure Bell-score verification,
-  keccak event-topic derivation, and `AttestationAccepted` log decoding. No
-  signer, no private key; it only decodes logs the read-only indexer fetched.
-- `supabase/functions/_tests/leviathan_test.ts` — 8 tests: canonical topic
-  hashes (checked against the publicly known `Transfer` topic), classical /
-  above-Tsirelson / must-beat-best / non-finite rejections, full ABI decode, and
-  an end-to-end decode through `indexEvents` against a stub JSON-RPC server that
-  asserts only read-only methods are issued. All green.
-- `notebooks/quantumsynapse_qiskit_colab.ipynb` — Colab-ready Qiskit notebook
-  that re-derives the same physics with real Qiskit/Aer: QRNG balance, GHZ
-  correlation, BB84 QBER (~0% clean, ~25% intercept-resend), CHSH S inside the
-  governance window, and VQE vs exact diagonalisation. Every cell asserts.
