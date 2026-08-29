@@ -7,7 +7,12 @@
 //     attacker-supplied user_agent in the JSON body is ignored.
 import { assert, assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import "https://deno.land/std@0.224.0/dotenv/load.ts";
+// Load .env explicitly. The auto-loading `dotenv/load.ts` cross-checks .env
+// against .env.example and throws when any documented VITE_* var is unset,
+// which has nothing to do with what these tests need — so load without the
+// example check instead.
+import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
+await load({ envPath: ".env", export: true, examplePath: null });
 
 const URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const ANON = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
