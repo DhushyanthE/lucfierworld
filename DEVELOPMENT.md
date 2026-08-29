@@ -726,3 +726,27 @@ cut = 4) rather than snapshotting output. The indexer's "configured" path runs
 against an in-process stub JSON-RPC server: only the HTTP endpoint is
 substituted, the real config reading, method allow-list and log normalisation
 execute.
+
+## §5d — LeviathanCoin + Qiskit verification notebook
+
+**Scope honesty:** "Leviathan chain technology" here means the LeviathanCoin
+contract set deployed on a standard EVM chain — `src/contracts/LeviathanCoin.sol`
+(ERC-20 + Proof-of-Neural-Work attestation registry). It is deliberately *not* a
+new layer-1 consensus network; inventing one would be unverifiable.
+
+Governance rule, enforced both on-chain and off-chain:
+`2.0 < S <= 2.828` (CHSH classical limit < S <= Tsirelson bound), plus the
+submission must beat the epoch's network best and use an unused model hash.
+
+- `supabase/functions/_shared/leviathan.ts` — pure Bell-score verification,
+  keccak event-topic derivation, and `AttestationAccepted` log decoding. No
+  signer, no private key; it only decodes logs the read-only indexer fetched.
+- `supabase/functions/_tests/leviathan_test.ts` — 8 tests: canonical topic
+  hashes (checked against the publicly known `Transfer` topic), classical /
+  above-Tsirelson / must-beat-best / non-finite rejections, full ABI decode, and
+  an end-to-end decode through `indexEvents` against a stub JSON-RPC server that
+  asserts only read-only methods are issued. All green.
+- `notebooks/quantumsynapse_qiskit_colab.ipynb` — Colab-ready Qiskit notebook
+  that re-derives the same physics with real Qiskit/Aer: QRNG balance, GHZ
+  correlation, BB84 QBER (~0% clean, ~25% intercept-resend), CHSH S inside the
+  governance window, and VQE vs exact diagonalisation. Every cell asserts.
