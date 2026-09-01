@@ -62,8 +62,10 @@ Deno.test("track-analytics ignores client-supplied user_agent and uses request h
     }),
   });
 
-  assertEquals(res.status, 200, `expected 200, got ${res.status}: ${await res.text()}`);
-  await res.body?.cancel();
+  // Read the body once up front: the assertion message is evaluated eagerly, so
+  // inlining `await res.text()` there consumed the stream and then failed to cancel it.
+  const body = await res.text();
+  assertEquals(res.status, 200, `expected 200, got ${res.status}: ${body}`);
 
   // Best-effort cross-check via service role if available in this environment.
   if (SERVICE) {

@@ -47,6 +47,7 @@ Deno.test("realtime subscription on quantum_firewall_logs gets no rows for anon"
   await new Promise((r) => setTimeout(r, 1500));
   assertEquals(received, 0);
   await c.removeChannel(ch);
+  await shutdown(c);
 });
 
 Deno.test("password reset endpoint returns constant 200 for unknown email", async () => {
