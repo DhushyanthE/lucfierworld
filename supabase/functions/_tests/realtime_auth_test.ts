@@ -2,6 +2,7 @@
 // Verifies anon and cross-user clients cannot read user-scoped tables.
 import { assertEquals, assert } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shutdown, testClient } from "./_client.ts";
 // Load .env explicitly. The auto-loading `dotenv/load.ts` cross-checks .env
 // against .env.example and throws when any documented VITE_* var is unset,
 // which has nothing to do with what these tests need — so load without the
@@ -13,31 +14,31 @@ const URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const ANON = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
 
 Deno.test("anon cannot SELECT quantum_firewall_logs", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { data, error } = await c.from("quantum_firewall_logs").select("id").limit(1);
   assert(error || (data ?? []).length === 0, "anon should be blocked");
 });
 
 Deno.test("anon cannot SELECT user_secrets", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { data, error } = await c.from("user_secrets").select("user_id").limit(1);
   assert(error || (data ?? []).length === 0, "user_secrets must be deny-all");
 });
 
 Deno.test("anon cannot SELECT quantum_transfer_history", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { data } = await c.from("quantum_transfer_history").select("id").limit(1);
   assertEquals((data ?? []).length, 0);
 });
 
 Deno.test("anon cannot SELECT notifications", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { data } = await c.from("notifications").select("id").limit(1);
   assertEquals((data ?? []).length, 0);
 });
 
 Deno.test("realtime subscription on quantum_firewall_logs gets no rows for anon", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   let received = 0;
   const ch = c.channel("test-fwall")
     .on("postgres_changes", { event: "*", schema: "public", table: "quantum_firewall_logs" },

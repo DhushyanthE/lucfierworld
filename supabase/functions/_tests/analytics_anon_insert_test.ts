@@ -7,6 +7,7 @@
 //     attacker-supplied user_agent in the JSON body is ignored.
 import { assert, assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shutdown, testClient } from "./_client.ts";
 // Load .env explicitly. The auto-loading `dotenv/load.ts` cross-checks .env
 // against .env.example and throws when any documented VITE_* var is unset,
 // which has nothing to do with what these tests need — so load without the
@@ -19,7 +20,7 @@ const ANON = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); // optional, only for verification
 
 Deno.test("anon cannot INSERT into analytics_events", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { error } = await c.from("analytics_events").insert({
     event_name: "anon_should_fail",
     user_id: null,
@@ -31,7 +32,7 @@ Deno.test("anon cannot INSERT into analytics_events", async () => {
 });
 
 Deno.test("anon cannot INSERT into analytics_events even when passing a fake user_id", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { error } = await c.from("analytics_events").insert({
     event_name: "anon_with_fake_uid",
     user_id: "00000000-0000-0000-0000-000000000000",
@@ -66,7 +67,7 @@ Deno.test("track-analytics ignores client-supplied user_agent and uses request h
 
   // Best-effort cross-check via service role if available in this environment.
   if (SERVICE) {
-    const admin = createClient(URL, SERVICE, { auth: { persistSession: false } });
+    const admin = testClient(URL, SERVICE);
     // Poll briefly — edge function insert may be eventually visible.
     let row: { user_agent: string | null; ip_address: string | null } | null = null;
     for (let i = 0; i < 5 && !row; i++) {
