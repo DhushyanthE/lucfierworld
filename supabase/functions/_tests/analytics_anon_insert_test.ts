@@ -67,25 +67,19 @@ Deno.test("track-analytics ignores client-supplied user_agent and uses request h
   const body = await res.text();
   assertEquals(res.status, 200, `expected 200, got ${res.status}: ${body}`);
 
-  // Best-effort cross-check via service role if available in this environment.
-  if (SERVICE) {
-    const admin = testClient(URL, SERVICE);
-    // Poll briefly — edge function insert may be eventually visible.
-    let row: { user_agent: string | null; ip_address: string | null } | null = null;
-    for (let i = 0; i < 5 && !row; i++) {
-      const { data } = await admin
-        .from("analytics_events")
-        .select("user_agent,ip_address")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      row = data?.[0] ?? null;
-      if (!row) await new Promise((r) => setTimeout(r, 400));
-    }
-    assert(row, "edge function should have written a row for the test session");
-    assertNotEquals(row!.user_agent, forgedUA, "client-supplied user_agent must NOT be stored");
-    // ip_address should reflect the forwarded header (we cannot assert exact match
-    // because the platform may rewrite it, but it must not be empty).
-    assert(row!.ip_address, "ip_address should be populated server-side from headers");
-  }
+  // Assert against the row the function itself reports it stored. This is the
+  // authoritative record and needs no service-role key, so the check runs in
+  // every environment instead of silently degrading to a no-op.
+  const stored = JSON.parse(body).data as {
+    session_id: string;
+    user_agent: string | null;
+    ip_address: string | null;
+  };
+  assert(stored, "edge function should return the stored analytics row");
+  assertEquals(stored.session_id, sessionId);
+  assertNotEquals(stored.user_agent, forgedUA, "client-supplied user_agent must NOT be stored");
+  assertEquals(stored.user_agent, realUA, "user_agent must come from the request header");
+  // ip_address is derived server-side; the platform may rewrite the exact value,
+  // so assert only that it was populated rather than pinning a literal.
+  assert(stored.ip_address, "ip_address should be populated server-side from headers");
 });
