@@ -7,6 +7,7 @@
 //     attacker-supplied user_agent in the JSON body is ignored.
 import { assert, assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shutdown, testClient } from "./_client.ts";
 // Load .env explicitly. The auto-loading `dotenv/load.ts` cross-checks .env
 // against .env.example and throws when any documented VITE_* var is unset,
 // which has nothing to do with what these tests need — so load without the
@@ -19,7 +20,7 @@ const ANON = Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); // optional, only for verification
 
 Deno.test("anon cannot INSERT into analytics_events", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { error } = await c.from("analytics_events").insert({
     event_name: "anon_should_fail",
     user_id: null,
@@ -31,7 +32,7 @@ Deno.test("anon cannot INSERT into analytics_events", async () => {
 });
 
 Deno.test("anon cannot INSERT into analytics_events even when passing a fake user_id", async () => {
-  const c = createClient(URL, ANON);
+  const c = testClient(URL, ANON);
   const { error } = await c.from("analytics_events").insert({
     event_name: "anon_with_fake_uid",
     user_id: "00000000-0000-0000-0000-000000000000",
@@ -61,28 +62,24 @@ Deno.test("track-analytics ignores client-supplied user_agent and uses request h
     }),
   });
 
-  assertEquals(res.status, 200, `expected 200, got ${res.status}: ${await res.text()}`);
-  await res.body?.cancel();
+  // Read the body once up front: the assertion message is evaluated eagerly, so
+  // inlining `await res.text()` there consumed the stream and then failed to cancel it.
+  const body = await res.text();
+  assertEquals(res.status, 200, `expected 200, got ${res.status}: ${body}`);
 
-  // Best-effort cross-check via service role if available in this environment.
-  if (SERVICE) {
-    const admin = createClient(URL, SERVICE, { auth: { persistSession: false } });
-    // Poll briefly — edge function insert may be eventually visible.
-    let row: { user_agent: string | null; ip_address: string | null } | null = null;
-    for (let i = 0; i < 5 && !row; i++) {
-      const { data } = await admin
-        .from("analytics_events")
-        .select("user_agent,ip_address")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      row = data?.[0] ?? null;
-      if (!row) await new Promise((r) => setTimeout(r, 400));
-    }
-    assert(row, "edge function should have written a row for the test session");
-    assertNotEquals(row!.user_agent, forgedUA, "client-supplied user_agent must NOT be stored");
-    // ip_address should reflect the forwarded header (we cannot assert exact match
-    // because the platform may rewrite it, but it must not be empty).
-    assert(row!.ip_address, "ip_address should be populated server-side from headers");
-  }
+  // Assert against the row the function itself reports it stored. This is the
+  // authoritative record and needs no service-role key, so the check runs in
+  // every environment instead of silently degrading to a no-op.
+  const stored = JSON.parse(body).data as {
+    session_id: string;
+    user_agent: string | null;
+    ip_address: string | null;
+  };
+  assert(stored, "edge function should return the stored analytics row");
+  assertEquals(stored.session_id, sessionId);
+  assertNotEquals(stored.user_agent, forgedUA, "client-supplied user_agent must NOT be stored");
+  assertEquals(stored.user_agent, realUA, "user_agent must come from the request header");
+  // ip_address is derived server-side; the platform may rewrite the exact value,
+  // so assert only that it was populated rather than pinning a literal.
+  assert(stored.ip_address, "ip_address should be populated server-side from headers");
 });
