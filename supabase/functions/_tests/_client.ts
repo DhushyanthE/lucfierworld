@@ -15,12 +15,12 @@ export function testClient(url: string, key: string): SupabaseClient {
 /**
  * Closes every channel and the underlying websocket so no handles outlive the test.
  *
- * `removeAllChannels` and `disconnect` both schedule internal timers of their own,
- * so yielding afterwards lets realtime-js finish its teardown instead of leaving
- * those timers pending for the test sanitizer to flag.
+ * `removeAllChannels` already disconnects the socket internally, and that path
+ * arms a fallback `setTimeout` it never clears once the socket closes first — a
+ * realtime-js detail, not something callers can cancel. Waiting past that
+ * fallback window lets the timer fire so Deno's sanitizer sees a clean slate.
  */
 export async function shutdown(client: SupabaseClient) {
   await client.removeAllChannels();
-  await client.realtime.disconnect();
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 }
