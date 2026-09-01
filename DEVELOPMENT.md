@@ -713,3 +713,45 @@ is the deployed default is a choice, not something defaulted silently here.
 - Honest roadmap (shorter): `docs/HONEST-ROADMAP-DPR.md`
 - Full DPR: `docs/QuantumSynapse-Fabric-DPR-Complete.md`
 - This document: `docs/DEVELOPMENT.md`
+
+---
+
+## Appendix A. TS/Deno test-case status in this workspace (2026-08-29)
+
+**BUILT & TESTED.** The Deno-side suites were re-run in this workspace after importing the
+verified Colab notebook:
+
+```
+deno test --allow-net --allow-env --allow-read \
+  supabase/functions/_tests/leviathan_test.ts \
+  supabase/functions/_tests/indexer_test.ts \
+  supabase/functions/_tests/variational_test.ts
+# -> 19 passed | 0 failed
+
+deno test --allow-net --allow-env --allow-read \
+  supabase/functions/stripe-webhook/index_test.ts \
+  supabase/functions/stripe-webhook-replay/index_test.ts
+# -> 20 passed | 0 failed
+```
+
+Covered: LeviathanCoin Bell-score governance (`2.0 < S <= 2.828`, must-beat-epoch-best,
+single-use model hash), canonical keccak event topics, `AttestationAccepted` ABI decoding,
+the read-only EVM indexer against a stub JSON-RPC server (method allow-list enforced), the
+variational VQE/QAOA/QML engine, and the Stripe webhook + replay guards.
+
+**Fixed as part of this pass:** `analytics_anon_insert_test.ts` and `realtime_auth_test.ts`
+imported `dotenv/load.ts`, which cross-checks `.env` against `.env.example` and threw
+`MissingEnvVarsError` for every documented `VITE_*` var before a single test ran. Both now
+call `load({ envPath: ".env", export: true, examplePath: null })` instead.
+
+**NOT VERIFIED HERE, and deliberately not marked green:** those two suites plus the
+password-reset test call the hosted backend over the network. The hosted database is
+currently paused, so they fail with DNS/connect errors — an environment state, not a code
+regression. Re-run them once the backend is resumed from Cloud settings.
+
+**Qiskit notebook:** `notebooks/QuantumSynapseFabric_Qiskit_Verified.ipynb` (imported, cells
+were executed upstream before packaging) alongside the earlier
+`notebooks/quantumsynapse_qiskit_colab.ipynb`. Neither is executed in this sandbox — no
+Qiskit/Aer here — so their status is **WRITTEN, NOT VERIFIED in this workspace**; they run
+top-to-bottom in Colab. Nothing in either notebook holds a key, signs a transaction, or
+writes to a chain.
