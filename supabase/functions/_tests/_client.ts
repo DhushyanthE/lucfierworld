@@ -12,8 +12,15 @@ export function testClient(url: string, key: string): SupabaseClient {
   });
 }
 
-/** Closes every channel and the underlying websocket so no handles outlive the test. */
+/**
+ * Closes every channel and the underlying websocket so no handles outlive the test.
+ *
+ * `removeAllChannels` and `disconnect` both schedule internal timers of their own,
+ * so yielding afterwards lets realtime-js finish its teardown instead of leaving
+ * those timers pending for the test sanitizer to flag.
+ */
 export async function shutdown(client: SupabaseClient) {
   await client.removeAllChannels();
-  client.realtime.disconnect();
+  await client.realtime.disconnect();
+  await new Promise((resolve) => setTimeout(resolve, 250));
 }
