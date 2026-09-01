@@ -56,6 +56,7 @@ Deno.test({
   assertEquals(received, 0);
   await c.removeChannel(ch);
   await shutdown(c);
+  },
 });
 
 Deno.test("password reset endpoint returns constant 200 for unknown email", async () => {
