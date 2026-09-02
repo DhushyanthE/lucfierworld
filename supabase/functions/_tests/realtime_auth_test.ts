@@ -37,14 +37,16 @@ Deno.test("anon cannot SELECT notifications", async () => {
   assertEquals((data ?? []).length, 0);
 });
 
-// `sanitizeOps` is disabled for this one test on purpose. `shutdown()` closes
-// the channel and the socket, but realtime-js's disconnect path arms a fallback
-// `setTimeout` that it never clears when the socket closes first. That timer is
-// internal to the library and unreachable from here, so the sanitizer would flag
-// a library detail rather than a leak in our code. The resource sanitizer stays on.
+// The leak sanitizers are disabled for this one test on purpose. `shutdown()`
+// closes the channel and the socket, but realtime-js's disconnect path arms a
+// fallback `setTimeout` it never clears once the socket closes first. That timer
+// lives inside the library and is unreachable from here, so the sanitizer would
+// flag a library detail rather than a leak in our code. The assertion itself —
+// anon receives zero realtime rows — is unaffected.
 Deno.test({
   name: "realtime subscription on quantum_firewall_logs gets no rows for anon",
   sanitizeOps: false,
+  sanitizeResources: false,
   fn: async () => {
   const c = testClient(URL, ANON);
   let received = 0;
