@@ -44,6 +44,9 @@ import RealtimeDemo from './pages/RealtimeDemo';
 import Connect from './pages/Connect';
 import ToolRunner from './pages/ToolRunner';
 import QuantumCore from './pages/QuantumCore';
+import Leviathan from './pages/Leviathan';
+import AgentConsole from './pages/AgentConsole';
+import QiskitVerification from './pages/QiskitVerification';
 import './App.css';
 
 function App() {
