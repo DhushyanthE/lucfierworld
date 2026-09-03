@@ -98,6 +98,9 @@ function App() {
             <Route path="/connect" element={<Connect />} />
             <Route path="/tools" element={<ToolRunner />} />
             <Route path="/quantum-core" element={<QuantumCore />} />
+            <Route path="/leviathan" element={<Leviathan />} />
+            <Route path="/agent" element={<AgentConsole />} />
+            <Route path="/qiskit" element={<QiskitVerification />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
