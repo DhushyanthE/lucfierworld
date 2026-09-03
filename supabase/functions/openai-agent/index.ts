@@ -90,14 +90,46 @@ async function runTool(name: string, args: Record<string, unknown>): Promise<unk
 }
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = Deno.env.get("OPENAI_MODEL")?.trim() || "gpt-4o-mini";
+const FALLBACK_MODEL = "google/gemini-3.6-flash";
 
-async function callOpenAI(apiKey: string, messages: unknown[], stream: boolean) {
-  return await fetch(OPENAI_URL, {
+/**
+ * Calls OpenAI with the server-side key. When that account cannot serve the
+ * request for a billing reason (402, or the 429 `insufficient_quota` shape), the
+ * same request is retried once against the Lovable AI gateway so the agent still
+ * answers instead of returning a dead error to the browser. Any other status is
+ * returned as-is — rate limits and bad requests are not billing problems.
+ */
+async function callModel(apiKey: string, messages: unknown[], stream: boolean) {
+  const body = (model: string) => JSON.stringify({ model, messages, tools: TOOLS, stream });
+
+  const res = await fetch(OPENAI_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, messages, tools: TOOLS, stream }),
+    body: body(MODEL),
   });
+  if (res.ok) return { res, provider: "openai", model: MODEL };
+
+  const detail = await res.text();
+  const outOfCredit = res.status === 402 ||
+    (res.status === 429 && /insufficient_quota|credit/i.test(detail));
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY")?.trim();
+  if (!outOfCredit || !lovableKey) {
+    return { res: new Response(detail, { status: res.status }), provider: "openai", model: MODEL };
+  }
+
+  console.warn("openai billing failure, falling back to Lovable AI gateway");
+  const fb = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      "Lovable-API-Key": lovableKey,
+      "Content-Type": "application/json",
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+    body: body(FALLBACK_MODEL),
+  });
+  return { res: fb, provider: "lovable-ai", model: FALLBACK_MODEL };
 }
 
 Deno.serve(async (req) => {
