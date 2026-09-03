@@ -167,42 +167,49 @@ Deno.serve(async (req) => {
   try {
     // First pass is never streamed: the model may ask for a tool, and a tool
     // round-trip cannot be resolved mid-stream.
-    let res = await callOpenAI(apiKey, messages, false);
-    if (!res.ok) {
-      const detail = await res.text();
-      console.error("openai error", res.status, detail);
-      return json({ error: `OpenAI returned ${res.status}`, detail }, res.status);
+    let call = await callModel(apiKey, messages, false);
+    if (!call.res.ok) {
+      const detail = await call.res.text();
+      console.error("model error", call.res.status, detail);
+      return json(
+        { error: `${call.provider} returned ${call.res.status}`, detail },
+        call.res.status,
+      );
     }
-    let data = await res.json();
+    let data = await call.res.json();
     let choice = data.choices?.[0];
 
     let hops = 0;
     while (choice?.message?.tool_calls?.length && hops < 4) {
       hops++;
       messages.push(choice.message);
-      for (const call of choice.message.tool_calls) {
+      for (const toolCall of choice.message.tool_calls) {
         let args: Record<string, unknown> = {};
         try {
-          args = JSON.parse(call.function.arguments || "{}");
+          args = JSON.parse(toolCall.function.arguments || "{}");
         } catch { /* malformed arguments -> run with defaults */ }
-        const result = await runTool(call.function.name, args);
+        const result = await runTool(toolCall.function.name, args);
         messages.push({
           role: "tool",
-          tool_call_id: call.id,
+          tool_call_id: toolCall.id,
           content: JSON.stringify(result),
         });
       }
-      res = await callOpenAI(apiKey, messages, false);
-      if (!res.ok) {
-        const detail = await res.text();
-        return json({ error: `OpenAI returned ${res.status}`, detail }, res.status);
+      call = await callModel(apiKey, messages, false);
+      if (!call.res.ok) {
+        const detail = await call.res.text();
+        return json(
+          { error: `${call.provider} returned ${call.res.status}`, detail },
+          call.res.status,
+        );
       }
-      data = await res.json();
+      data = await call.res.json();
       choice = data.choices?.[0];
     }
 
     return json({
       reply: choice?.message?.content ?? "",
+      provider: call.provider,
       tool_hops: hops,
       model: data.model ?? MODEL,
       path: url.pathname,
