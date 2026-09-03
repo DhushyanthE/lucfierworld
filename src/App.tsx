@@ -44,6 +44,9 @@ import RealtimeDemo from './pages/RealtimeDemo';
 import Connect from './pages/Connect';
 import ToolRunner from './pages/ToolRunner';
 import QuantumCore from './pages/QuantumCore';
+import Leviathan from './pages/Leviathan';
+import AgentConsole from './pages/AgentConsole';
+import QiskitVerification from './pages/QiskitVerification';
 import './App.css';
 
 function App() {
@@ -95,6 +98,9 @@ function App() {
             <Route path="/connect" element={<Connect />} />
             <Route path="/tools" element={<ToolRunner />} />
             <Route path="/quantum-core" element={<QuantumCore />} />
+            <Route path="/leviathan" element={<Leviathan />} />
+            <Route path="/agent" element={<AgentConsole />} />
+            <Route path="/qiskit" element={<QiskitVerification />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
