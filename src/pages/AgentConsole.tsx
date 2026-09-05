@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { SERVICE_URLS } from "@/config/env";
+import { supabase } from "@/integrations/supabase/client";
+
 
 /**
  * Browser console for the OpenAI agent, which runs entirely in the
@@ -40,13 +42,22 @@ export default function AgentConsole() {
     setBusy(true);
     setError(null);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Sign in first — the agent runs on paid credits and requires a session.");
+      }
       const res = await fetch(AGENT_FN, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ messages: next, stream: false }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ? JSON.stringify(data.error) : `HTTP ${res.status}`);
+
       setMessages([...next, { role: "assistant", content: data.reply || "(empty response)" }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "agent request failed");
