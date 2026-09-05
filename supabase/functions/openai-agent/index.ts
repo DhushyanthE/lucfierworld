@@ -146,10 +146,37 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Paid model calls require a signed-in user: without this gate anyone with the
+  // function URL could drain AI credits.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!token) {
+    return json({ error: "authentication required: sign in to use the agent" }, 401);
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+  if (!supabaseUrl || !anonKey) {
+    return json({ error: "auth backend is not configured on the server" }, 500);
+  }
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+  });
+  if (!userRes.ok) {
+    return json({ error: "invalid or expired session" }, 401);
+  }
+  const user = await userRes.json();
+  if (!user?.id) {
+    return json({ error: "invalid or expired session" }, 401);
+  }
+
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
   if (!apiKey) {
-    return json({ error: "OPENAI_API_KEY is not configured on the server." }, 401);
+    return json({ error: "OPENAI_API_KEY is not configured on the server." }, 500);
   }
+
 
   let parsed;
   try {

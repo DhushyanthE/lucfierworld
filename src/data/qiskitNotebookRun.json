@@ -1,0 +1,49 @@
+{
+  "notebook": "QuantumSynapseFabric_Qiskit_Verified.ipynb",
+  "ran_at": "2026-09-05T02:51:25.257372+00:00",
+  "runtime": "Python 3.11 + Qiskit 2.5.2 / qiskit-aer 0.17.2 (Colab-equivalent runtime)",
+  "libraries": [
+    "qiskit==2.5.2",
+    "qiskit-aer==0.17.2",
+    "nbformat",
+    "nbclient",
+    "ipykernel"
+  ],
+  "cells": [
+    {
+      "index": 1,
+      "title": "!pip install -q qiskit==2.5.2 qiskit-aer==0.17.2",
+      "status": "passed",
+      "output": "",
+      "error": null
+    },
+    {
+      "index": 2,
+      "title": "import random",
+      "status": "passed",
+      "output": "AerSimulator ready.",
+      "error": null
+    },
+    {
+      "index": 4,
+      "title": "def qrng(num_bits: int) -> str:",
+      "status": "passed",
+      "output": "QRNG result: 00101010 -> integer 42\nPASS",
+      "error": null
+    },
+    {
+      "index": 6,
+      "title": "def ghz_counts(num_qubits: int, shots: int) -> dict:",
+      "status": "passed",
+      "output": "GHZ counts: {'1111': 263, '0000': 237}\nPASS: all 500 shots were fully correlated (all-0s or all-1s only)",
+      "error": null
+    },
+    {
+      "index": 8,
+      "title": "def run_single_shot(qc):",
+      "status": "passed",
+      "output": "QBER without eavesdropper: 0.0%\nQBER with eavesdropper:    27.1%\nPASS: eavesdropper correctly pushes QBER past the detection threshold",
+      "error": null
+    }
+  ]
+}
