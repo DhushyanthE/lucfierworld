@@ -47,6 +47,7 @@ import QuantumCore from './pages/QuantumCore';
 import Leviathan from './pages/Leviathan';
 import AgentConsole from './pages/AgentConsole';
 import QiskitVerification from './pages/QiskitVerification';
+import QuantumResults from './pages/QuantumResults';
 import './App.css';
 
 function App() {
