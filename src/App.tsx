@@ -47,6 +47,7 @@ import QuantumCore from './pages/QuantumCore';
 import Leviathan from './pages/Leviathan';
 import AgentConsole from './pages/AgentConsole';
 import QiskitVerification from './pages/QiskitVerification';
+import QuantumResults from './pages/QuantumResults';
 import './App.css';
 
 function App() {
@@ -101,6 +102,7 @@ function App() {
             <Route path="/leviathan" element={<Leviathan />} />
             <Route path="/agent" element={<AgentConsole />} />
             <Route path="/qiskit" element={<QiskitVerification />} />
+            <Route path="/quantum-results" element={<QuantumResults />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
