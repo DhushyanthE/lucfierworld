@@ -102,6 +102,7 @@ function App() {
             <Route path="/leviathan" element={<Leviathan />} />
             <Route path="/agent" element={<AgentConsole />} />
             <Route path="/qiskit" element={<QiskitVerification />} />
+            <Route path="/quantum-results" element={<QuantumResults />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
