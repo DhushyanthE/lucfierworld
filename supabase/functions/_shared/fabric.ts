@@ -123,7 +123,7 @@ export function runFabric(opts: { rounds?: number; eavesdropper?: boolean; signa
   const keys = mlDsa.keygen();
   const payload = { decision, qkd_qber_percent: qkd.qber_percent, qkd_key_fingerprint: qkd.key_hex ? sha3(qkd.key_hex).slice(0, 16) : null, timestamp: Date.now() };
   const record = signPayload(payload, keys.secret_key_b64, keys.public_key_b64);
-  const toCheck = opts.tamper ? { ...record, payload: { ...payload, decision: { ...decision, action: "approve" } } } : record;
+  const toCheck = opts.tamper ? { ...record, payload: { ...payload, decision: { ...decision, action: decision.action === "approve" ? "reject" : "approve" } } } : record;
   const consensus = cellularConsensus(toCheck, qkd.secure, opts.cells ?? 9, "0".repeat(128));
   return {
     qkd, decision, record: { hash: record.hash, signature_bytes: Math.round(record.signature_b64.length * 3 / 4), tampered: !!opts.tamper },
