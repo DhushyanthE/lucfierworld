@@ -11,8 +11,8 @@
  *      block only if >= 2/3 of cells agree AND the QKD channel was secure.
  *      Cells are software nodes — nothing here runs in biological tissue.
  */
-import { sha3_512 } from "npm:@noble/hashes@1.5.0/sha3.js";
-import { bytesToHex } from "npm:@noble/hashes@1.5.0/utils.js";
+import { sha3_512 } from "npm:@noble/hashes@2.3.0/sha3.js";
+import { bytesToHex } from "npm:@noble/hashes@2.3.0/utils.js";
 import { randomBit, Statevector } from "./statevector.ts";
 import { mlDsa } from "./pqc.ts";
 
