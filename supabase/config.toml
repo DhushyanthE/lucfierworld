@@ -142,3 +142,6 @@ verify_jwt = false
 
 [functions.blockchain-indexer]
 verify_jwt = false
+
+[functions.agi-bio-fabric]
+verify_jwt = false
