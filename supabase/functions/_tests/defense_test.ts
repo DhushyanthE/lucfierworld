@@ -38,3 +38,32 @@ Deno.test("audit chain changes with previous head", () => {
   const f = analyzeTelemetry(clean, "2026-01-01T00:00:00.000Z");
   assert(auditHash("a", f) !== auditHash("b", f));
 });
+
+import { reviewDefensiveFinding } from "../_shared/defense-review.ts";
+
+Deno.test("severe signed telemetry escalates only to a human", () => {
+  const t = { ...clean, failed_auth: 20, new_processes: 25, outbound_spike: 1,
+    file_entropy: 1, privilege_change: true, known_ioc_match: true };
+  const f = analyzeTelemetry(t, "2026-01-01T00:00:00.000Z");
+  const review = reviewDefensiveFinding(f, t);
+  assertEquals(review.verified, true);
+  assertEquals(review.yes, 9);
+  assertEquals(review.quorum_required, 7);
+  assertEquals(review.decision, "escalate_to_human");
+  assertEquals(review.executable, false);
+});
+
+Deno.test("tampered signed finding fails closed", () => {
+  const f = analyzeTelemetry(clean, "2026-01-01T00:00:00.000Z");
+  const review = reviewDefensiveFinding({ ...f, score: 1 }, clean);
+  assertEquals(review.verified, false);
+  assertEquals(review.yes, 0);
+  assertEquals(review.quorum_met, false);
+});
+
+Deno.test("changing evidence after signing fails verification", () => {
+  const f = analyzeTelemetry(clean, "2026-01-01T00:00:00.000Z");
+  const review = reviewDefensiveFinding(f, { ...clean, known_ioc_match: true });
+  assertEquals(review.verified, false);
+  assertEquals(review.decision, "needs_manual_review");
+});
