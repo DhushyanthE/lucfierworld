@@ -17,6 +17,7 @@
  */
 import { canonical, sha3, verifyRecord, type SignedRecord } from "./fabric.ts";
 import { mlDsa } from "./pqc.ts";
+import { fieldCoherence, harmonicResonance, phaseLabel, resonanceVector } from "./resonance.ts";
 
 export const BELL_MIN = 2.0;
 export const BELL_MAX = 2.828;
@@ -163,10 +164,36 @@ export function runRounds(opts: RunRoundOptions = {}) {
       };
     });
 
-    // Highest score wins; ties are deterministic by lexicographic cell id.
+    // Dharmic Resonance Engine: every proposal becomes a six-axis state vector.
+    // The harmonic score is bottleneck-sensitive: stake cannot overpower a weak
+    // security/quality dimension.
+    const resonanceVectors = proposals.map((p) => {
+      const vector = resonanceVector({
+        bellGate: bellGate(p.bell_score),
+        hashOk: true,
+        signatureOk: true,
+        qkdOk: qkdSecure,
+        latencyMs: p.latency_ms,
+        onTimeLimitMs: ON_TIME_LIMIT_MS,
+        reputation: p.cell.reputation,
+        stakeWeight: stakeWeight(p.cell.stake, maxStake, p.cell.slashes),
+        slashes: p.cell.slashes,
+        prevHash,
+        round,
+        cellId: p.cell.id,
+      });
+      const resonance = harmonicResonance(vector);
+      return { cell: p.cell.id, vector, resonance, phase: phaseLabel(resonance) };
+    });
+    const resonanceByCell = new Map(resonanceVectors.map((x) => [x.cell, x]));
+
+    // Highest resonance wins; ties are deterministic by lexicographic cell id.
     const ranked = [...proposals].sort((a, b) =>
-      b.score - a.score || a.cell.id.localeCompare(b.cell.id)
+      (resonanceByCell.get(b.cell.id)?.resonance ?? 0) -
+        (resonanceByCell.get(a.cell.id)?.resonance ?? 0) ||
+      a.cell.id.localeCompare(b.cell.id)
     );
+    const networkCoherence = fieldCoherence(resonanceVectors.map((x) => x.vector));
     const leader = ranked[0];
 
     // Fault injection targets the winning candidate so the rejection path is observable.
@@ -210,20 +237,21 @@ export function runRounds(opts: RunRoundOptions = {}) {
     });
 
     const quorum = strictQuorum(votes, cells.length);
-    const beatsBest = leader.score > best;
+    const leaderResonance = resonanceByCell.get(leader.cell.id)?.resonance ?? 0;
+    const beatsBest = leaderResonance > best;
     const candidateValid = leaderVerification.valid &&
       bellGate(checkedBell) > 0 &&
       checked.payload.prev_hash === prevHash &&
       checked.payload.round === round &&
       qkdSecure;
-    const accepted = candidateValid && quorum.met && beatsBest && leader.score > 0;
+    const accepted = candidateValid && quorum.met && beatsBest && leaderResonance > 0;
 
     const roundHash = sha3(
       canonical({
         round,
         prev_hash: prevHash,
         leader: leader.cell.id,
-        leader_score: leader.score,
+        leader_score: leaderResonance,
         payload_digest: leader.hash,
       }),
     );
@@ -234,11 +262,11 @@ export function runRounds(opts: RunRoundOptions = {}) {
       rejectionReason = firstVoteReason ??
         (!quorum.met ? "strict_quorum_not_met" :
           !beatsBest ? "did_not_beat_network_best" :
-            leader.score <= 0 ? "zero_dharmic_score" : "candidate_rejected");
+            leaderResonance <= 0 ? "zero_resonance" : "candidate_rejected");
     }
 
     if (accepted) {
-      best = leader.score;
+      best = leaderResonance;
       head = roundHash;
     }
 
@@ -259,7 +287,11 @@ export function runRounds(opts: RunRoundOptions = {}) {
     history.push({
       round,
       leader: leader.cell.id,
-      leader_score: leader.score,
+      leader_score: leaderResonance,
+      legacy_dharmic_score: leader.score,
+      resonance_phase: phaseLabel(leaderResonance),
+      field_coherence: networkCoherence,
+      resonance_vector: resonanceByCell.get(leader.cell.id)?.vector ?? null,
       network_best: best,
       previous_hash: prevHash,
       round_hash: roundHash,
@@ -281,6 +313,9 @@ export function runRounds(opts: RunRoundOptions = {}) {
         cell: p.cell.id,
         bell_score: p.bell_score,
         score: p.score,
+        resonance_score: resonanceByCell.get(p.cell.id)?.resonance ?? 0,
+        resonance_phase: resonanceByCell.get(p.cell.id)?.phase ?? "COLLAPSED",
+        resonance_vector: resonanceByCell.get(p.cell.id)?.vector ?? null,
         latency_ms: p.latency_ms,
         on_time: p.on_time,
         hash: p.hash,
@@ -298,7 +333,8 @@ export function runRounds(opts: RunRoundOptions = {}) {
   const lastByCell = new Map(latestPayloads.map((p: any) => [p.cell, p]));
 
   return {
-    rule: "DharmicScore = BellGate(2.0<S<=2.828) x reputation x stakeWeight; winner must beat network best and receive STRICTLY >2/3 distinct ML-DSA-87-verified votes.",
+    rule: "DRE v1: six-axis Dharmic Resonance (quantum, integrity, temporal, reputation, stake, deterministic challenge) uses a bottleneck-sensitive harmonic score; winner must beat network best and receive STRICTLY >2/3 distinct ML-DSA-87-verified votes.",
+    engine: "DRE-v1",
     qkd_secure: qkdSecure,
     cells: cells.map((c) => {
       const last: any = lastByCell.get(c.id);
@@ -311,6 +347,9 @@ export function runRounds(opts: RunRoundOptions = {}) {
         public_key_bytes: Math.round((c.public_key_b64.length * 3) / 4),
         last_bell_score: last?.bell_score ?? null,
         last_dharmic_score: last?.score ?? null,
+        last_resonance_score: last?.resonance_score ?? null,
+        last_resonance_phase: last?.resonance_phase ?? null,
+        last_resonance_vector: last?.resonance_vector ?? null,
         last_signature_valid: last?.signature_valid ?? null,
         last_vote: last?.vote ?? null,
         last_latency_ms: last?.latency_ms ?? null,
@@ -323,6 +362,6 @@ export function runRounds(opts: RunRoundOptions = {}) {
     total_locked_lvth: cells.reduce((sum, c) => sum + c.stake, 0),
     accepted_rounds: history.filter((x) => x.accepted).length,
     rejected_rounds: history.filter((x) => !x.accepted).length,
-    status: "Simulation. Cells are software nodes using real SHA3-512 + ML-DSA-87 primitives; this is not biological computation, physical QKD, or proof that a payload is truthful.",
+    status: "Dharmic Resonance Engine is a project-specific research simulation. Cells are software nodes using SHA3-512 + ML-DSA-87 primitives; resonance is an experimental consensus metric, not a physical law, biological computation, or proof that a payload is truthful.",
   };
 }
