@@ -102,6 +102,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
   };
 
   return (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
     <Card className="bg-black/70 border-purple-500/20 shadow-lg">
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
@@ -180,7 +181,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="w-full">
           <TabsList className="bg-gray-800 w-full justify-start flex-wrap">
             <TabsTrigger value="charts" className="data-[state=active]:bg-purple-600">
               Charts
@@ -211,7 +212,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               Quantum Analysis
             </TabsTrigger>
           </TabsList>
-        </Tabs>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -297,5 +298,6 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
         )}
       </CardContent>
     </Card>
+    </Tabs>
   );
 }
