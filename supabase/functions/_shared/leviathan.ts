@@ -48,12 +48,14 @@ export const LEVIATHAN_EVENTS = {
   Transfer: "Transfer(address,address,uint256)",
   AttestationAccepted: "AttestationAccepted(address,uint64,uint32,bytes32,uint256)",
   AttestationRejected: "AttestationRejected(address,uint64,string)",
+  DharmicRoundFinalized: "DharmicRoundFinalized(uint256,address,uint256,bytes32,bytes32,bytes32,uint32,uint32,uint256)",
 } as const;
 
 export const LEVIATHAN_TOPICS: Record<keyof typeof LEVIATHAN_EVENTS, string> = {
   Transfer: eventTopic(LEVIATHAN_EVENTS.Transfer),
   AttestationAccepted: eventTopic(LEVIATHAN_EVENTS.AttestationAccepted),
   AttestationRejected: eventTopic(LEVIATHAN_EVENTS.AttestationRejected),
+  DharmicRoundFinalized: eventTopic(LEVIATHAN_EVENTS.DharmicRoundFinalized),
 };
 
 export type RawLog = { topics: string[]; data: string; blockNumber?: string };

@@ -1,112 +1,328 @@
 /**
- * Proof of Dharmic State (PoDS) — consensus over simulated cell nodes.
+ * Proof of Dharmic State (PoDS) — research consensus over simulated cell nodes.
  *
- * Score per cell = bellGate(S) * reputation * stakeWeight, where
- *   bellGate:    0 unless 2.0 < S <= 2.828 (classical / Tsirelson bounds), else (S-2)/0.828
- *   reputation:  starts 1.0; +0.05 for a valid on-time result, -0.2 rejected, -0.1 late; clamped 0..2
- *   stakeWeight: sqrt(stake / maxStake) minus 0.25 per slash, floored at 0
- * Round: every cell signs its proposal (ML-DSA-87 over SHA3-512). The highest
- * score proposal wins only if it beats the network best AND > 2/3 of cells
- * independently verify its signature + Bell bounds. Mirrors LeviathanCoin.sol.
- * Cells are software nodes — a simulation, not biological tissue.
+ * DharmicScore = BellGate(S) * reputation * stakeWeight
+ *   BellGate(S) = 0 unless 2.0 < S <= 2.828, otherwise (S - 2) / 0.828
+ *   reputation = [0, 2], +0.05 valid/on-time, -0.10 late, -0.20 invalid/rejected
+ *   stakeWeight = max(0, sqrt(stake / maxStake) - 0.25 * slashes)
+ *
+ * A round finalizes only when the highest-scoring candidate:
+ *   - has a valid canonical SHA3-512 digest and ML-DSA-87 signature,
+ *   - is inside the Bell/CHSH bounds,
+ *   - links to the current round/head,
+ *   - is accepted by STRICTLY more than 2/3 of distinct cells,
+ *   - strictly beats the previous network-best score.
+ *
+ * Cells are software nodes. This is not biological computation or physical QKD.
  */
-import { canonical, sha3 } from "./fabric.ts";
+import { canonical, sha3, verifyRecord, type SignedRecord } from "./fabric.ts";
 import { mlDsa } from "./pqc.ts";
 
 export const BELL_MIN = 2.0;
-export const BELL_MAX = 2 * Math.SQRT2; // 2.828...
+export const BELL_MAX = 2.828;
+export const ON_TIME_LIMIT_MS = 500;
 
 export interface Cell {
-  id: string; stake: number; reputation: number; slashes: number;
-  public_key_b64: string; secret_key_b64: string; honest: boolean;
+  id: string;
+  stake: number;
+  reputation: number;
+  slashes: number;
+  public_key_b64: string;
+  secret_key_b64: string;
 }
 
-export const bellGate = (s: number) => (s > BELL_MIN && s <= 2.828 ? (s - BELL_MIN) / (2.828 - BELL_MIN) : 0);
+export interface DharmicVote {
+  cell: string;
+  accept: boolean;
+  hash_ok: boolean;
+  signature_ok: boolean;
+  bell_ok: boolean;
+  link_ok: boolean;
+  round_ok: boolean;
+  qkd_ok: boolean;
+}
+
+export interface RunRoundOptions {
+  cells?: number;
+  rounds?: number;
+  lateCell?: number;
+  forgeSignature?: boolean;
+  tamperPayload?: boolean;
+  impossibleBell?: boolean;
+  replayRound?: boolean;
+  qkdSecure?: boolean;
+}
+
+export const bellGate = (s: number) =>
+  s > BELL_MIN && s <= BELL_MAX ? (s - BELL_MIN) / (BELL_MAX - BELL_MIN) : 0;
+
 export const stakeWeight = (stake: number, maxStake: number, slashes: number) =>
   Math.max(0, Math.sqrt(maxStake > 0 ? stake / maxStake : 0) - 0.25 * slashes);
-export const dharmicScore = (s: number, c: Pick<Cell, "stake" | "reputation" | "slashes">, maxStake: number) =>
-  Math.round(bellGate(s) * c.reputation * stakeWeight(c.stake, maxStake, c.slashes) * 1e4) / 1e4;
+
+export const dharmicScore = (
+  s: number,
+  c: Pick<Cell, "stake" | "reputation" | "slashes">,
+  maxStake: number,
+) => Math.round(bellGate(s) * c.reputation * stakeWeight(c.stake, maxStake, c.slashes) * 1e4) / 1e4;
+
+export function strictQuorum(votes: Array<{ cell: string; accept: boolean }>, totalCells: number) {
+  const distinct = new Map<string, boolean>();
+  for (const vote of votes) {
+    // A duplicate id can never add a second approval.
+    distinct.set(vote.cell, (distinct.get(vote.cell) ?? false) || vote.accept);
+  }
+  const yes = [...distinct.values()].filter(Boolean).length;
+  return { yes, distinct: distinct.size, met: yes * 3 > totalCells * 2 };
+}
+
 const clampRep = (r: number) => Math.min(2, Math.max(0, Math.round(r * 1000) / 1000));
 
 export function makeCells(n: number, seed = 7): Cell[] {
   if (!Number.isInteger(n) || n < 3 || n > 16) throw new Error("cells must be 3..16");
   let s = seed;
-  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; };
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 2 ** 32;
+  };
   return Array.from({ length: n }, (_, i) => {
     const k = mlDsa.keygen();
     return {
-      id: `cell-${i}`, stake: Math.round(100 + rnd() * 900), reputation: 1, slashes: 0,
-      public_key_b64: k.public_key_b64, secret_key_b64: k.secret_key_b64,
-      honest: i !== n - 1, // last cell is adversarial: claims impossible Bell scores
+      id: `cell-${i}`,
+      stake: Math.round(100 + rnd() * 900),
+      reputation: 1,
+      slashes: 0,
+      public_key_b64: k.public_key_b64,
+      secret_key_b64: k.secret_key_b64,
     };
   });
 }
 
-function measuredBell(honest: boolean, r: () => number) {
-  // honest cells: noisy measurement near Tsirelson; adversary claims > bound
-  return honest ? Math.round((2.55 + r() * 0.27) * 1000) / 1000 : Math.round((2.9 + r() * 0.3) * 1000) / 1000;
+function measuredBell(r: () => number) {
+  return Math.round((2.55 + r() * 0.27) * 1000) / 1000;
 }
 
-export function runRounds(opts: { cells?: number; rounds?: number; lateCell?: number }) {
-  const rounds = opts.rounds ?? 5;
-  if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20) throw new Error("rounds must be 1..20");
-  const cells = makeCells(opts.cells ?? 7);
+function latency(r: () => number) {
+  return Math.round(60 + r() * 180);
+}
+
+function reasonForVote(v: DharmicVote) {
+  if (!v.qkd_ok) return "insecure_qkd";
+  if (!v.hash_ok) return "tampered_payload";
+  if (!v.signature_ok) return "invalid_signature";
+  if (!v.bell_ok) return "invalid_bell_score";
+  if (!v.link_ok || !v.round_ok) return "invalid_round_link";
+  return null;
+}
+
+export function runRounds(opts: RunRoundOptions = {}) {
+  const roundCount = opts.rounds ?? 5;
+  if (!Number.isInteger(roundCount) || roundCount < 1 || roundCount > 20) {
+    throw new Error("rounds must be 1..20");
+  }
+
+  const cells = makeCells(opts.cells ?? 9);
   const maxStake = Math.max(...cells.map((c) => c.stake));
-  let best = 0, prev = "0".repeat(128);
+  const qkdSecure = opts.qkdSecure !== false;
+  let best = 0;
+  let head = "0".repeat(128);
   let seed = 99;
-  const r = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 2 ** 32; };
-  const history = [];
+  const r = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return seed / 2 ** 32;
+  };
+  const history: any[] = [];
 
-  for (let round = 1; round <= rounds; round++) {
-    const proposals = cells.map((c) => {
-      const bell = measuredBell(c.honest, r);
-      const late = opts.lateCell !== undefined && cells.indexOf(c) === opts.lateCell && round % 2 === 0;
-      const payload = { round, cell: c.id, bell_score: bell, prev_hash: prev, late };
+  for (let round = 1; round <= roundCount; round++) {
+    const prevHash = head;
+    const proposals = cells.map((cell, index) => {
+      let bell = measuredBell(r);
+      if (opts.impossibleBell && index === cells.length - 1) bell = 2.95;
+      const isLate = opts.lateCell === index;
+      const latencyMs = isLate ? 900 + round : latency(r);
+      const onTime = latencyMs <= ON_TIME_LIMIT_MS;
+      const payload: Record<string, unknown> = {
+        round,
+        cell: cell.id,
+        bell_score: bell,
+        prev_hash: prevHash,
+        latency_ms: latencyMs,
+        on_time: onTime,
+      };
       const hash = sha3(canonical(payload));
-      const signature_b64 = mlDsa.sign(c.secret_key_b64, hash).signature_b64;
-      return { cell: c, payload, hash, signature_b64, score: late ? 0 : dharmicScore(bell, c, maxStake) };
+      const signature_b64 = mlDsa.sign(cell.secret_key_b64, hash).signature_b64;
+      return {
+        cell,
+        payload,
+        hash,
+        signature_b64,
+        public_key_b64: cell.public_key_b64,
+        score: dharmicScore(bell, cell, maxStake),
+        bell_score: bell,
+        latency_ms: latencyMs,
+        on_time: onTime,
+      };
     });
-    const ranked = [...proposals].sort((a, b) => b.score - a.score);
-    const leader = ranked[0];
-    const votes = cells.map((v) => {
-      const sigOk = mlDsa.verify(leader.cell.public_key_b64, leader.hash, leader.signature_b64);
-      const hashOk = sha3(canonical(leader.payload)) === leader.hash;
-      return { cell: v.id, accept: sigOk && hashOk && bellGate(leader.payload.bell_score) > 0 };
-    });
-    const yes = votes.filter((v) => v.accept).length;
-    const quorum = yes * 3 > cells.length * 2;
-    const beatsBest = leader.score > best;
-    const accepted = quorum && beatsBest && leader.score > 0;
-    let block_hash: string | null = null;
-    if (accepted) { best = leader.score; block_hash = sha3(prev + leader.hash); prev = block_hash; }
 
-    // reputation updates
-    for (const p of proposals) {
-      if (p.payload.late) p.cell.reputation = clampRep(p.cell.reputation - 0.1);
-      else if (bellGate(p.payload.bell_score) === 0) { p.cell.reputation = clampRep(p.cell.reputation - 0.2); p.cell.slashes++; }
-      else p.cell.reputation = clampRep(p.cell.reputation + 0.05);
+    // Highest score wins; ties are deterministic by lexicographic cell id.
+    const ranked = [...proposals].sort((a, b) =>
+      b.score - a.score || a.cell.id.localeCompare(b.cell.id)
+    );
+    const leader = ranked[0];
+
+    // Fault injection targets the winning candidate so the rejection path is observable.
+    const checked: SignedRecord = {
+      payload: { ...leader.payload },
+      hash: leader.hash,
+      signature_b64: leader.signature_b64,
+      public_key_b64: leader.public_key_b64,
+    };
+
+    if (opts.tamperPayload) {
+      checked.payload = { ...checked.payload, tampered_after_signing: true };
+    }
+    if (opts.replayRound && round > 1) {
+      checked.payload = { ...checked.payload, round: round - 1 };
+    }
+    if (opts.forgeSignature) {
+      const forged = mlDsa.keygen();
+      checked.signature_b64 = mlDsa.sign(forged.secret_key_b64, checked.hash).signature_b64;
+    }
+
+    const leaderVerification = verifyRecord(checked);
+    const checkedBell = Number(checked.payload.bell_score);
+    const votes: DharmicVote[] = cells.map((validator) => {
+      const hashOk = leaderVerification.hash_matches;
+      const signatureOk = leaderVerification.signature_valid;
+      const bellOk = bellGate(checkedBell) > 0;
+      const linkOk = checked.payload.prev_hash === prevHash;
+      const roundOk = checked.payload.round === round;
+      const qkdOk = qkdSecure;
+      return {
+        cell: validator.id,
+        accept: hashOk && signatureOk && bellOk && linkOk && roundOk && qkdOk,
+        hash_ok: hashOk,
+        signature_ok: signatureOk,
+        bell_ok: bellOk,
+        link_ok: linkOk,
+        round_ok: roundOk,
+        qkd_ok: qkdOk,
+      };
+    });
+
+    const quorum = strictQuorum(votes, cells.length);
+    const beatsBest = leader.score > best;
+    const candidateValid = leaderVerification.valid &&
+      bellGate(checkedBell) > 0 &&
+      checked.payload.prev_hash === prevHash &&
+      checked.payload.round === round &&
+      qkdSecure;
+    const accepted = candidateValid && quorum.met && beatsBest && leader.score > 0;
+
+    const roundHash = sha3(
+      canonical({
+        round,
+        prev_hash: prevHash,
+        leader: leader.cell.id,
+        leader_score: leader.score,
+        payload_digest: leader.hash,
+      }),
+    );
+
+    let rejectionReason: string | null = null;
+    if (!accepted) {
+      const firstVoteReason = reasonForVote(votes[0]);
+      rejectionReason = firstVoteReason ??
+        (!quorum.met ? "strict_quorum_not_met" :
+          !beatsBest ? "did_not_beat_network_best" :
+            leader.score <= 0 ? "zero_dharmic_score" : "candidate_rejected");
+    }
+
+    if (accepted) {
+      best = leader.score;
+      head = roundHash;
+    }
+
+    const voteByCell = new Map(votes.map((v) => [v.cell, v.accept]));
+    for (const proposal of proposals) {
+      const isLeader = proposal.cell.id === leader.cell.id;
+      const leaderInvalid = isLeader && !candidateValid;
+      if (!proposal.on_time) {
+        proposal.cell.reputation = clampRep(proposal.cell.reputation - 0.1);
+      } else if (bellGate(proposal.bell_score) === 0 || leaderInvalid) {
+        proposal.cell.reputation = clampRep(proposal.cell.reputation - 0.2);
+        proposal.cell.slashes += 1;
+      } else {
+        proposal.cell.reputation = clampRep(proposal.cell.reputation + 0.05);
+      }
     }
 
     history.push({
-      round, leader: leader.cell.id, leader_score: leader.score, network_best: best,
-      accept_votes: yes, quorum, beats_best: beatsBest, accepted, block_hash,
+      round,
+      leader: leader.cell.id,
+      leader_score: leader.score,
+      network_best: best,
+      previous_hash: prevHash,
+      round_hash: roundHash,
+      block_hash: accepted ? roundHash : null,
+      payload_digest: leader.hash,
+      signature_valid: leaderVerification.signature_valid,
+      hash_matches: leaderVerification.hash_matches,
+      accept_votes: quorum.yes,
+      total_cells: cells.length,
+      distinct_voters: quorum.distinct,
+      quorum_required: Math.floor((cells.length * 2) / 3) + 1,
+      quorum: quorum.met,
+      beats_best: beatsBest,
+      qkd_secure: qkdSecure,
+      accepted,
+      rejection_reason: rejectionReason,
+      votes,
       payloads: proposals.map((p) => ({
-        cell: p.cell.id, bell_score: p.payload.bell_score, score: p.score, late: p.payload.late,
-        hash: p.hash.slice(0, 32), signature_bytes: Math.round((p.signature_b64.length * 3) / 4),
-        within_bell_bounds: bellGate(p.payload.bell_score) > 0,
+        cell: p.cell.id,
+        bell_score: p.bell_score,
+        score: p.score,
+        latency_ms: p.latency_ms,
+        on_time: p.on_time,
+        hash: p.hash,
+        signature_preview: p.signature_b64.slice(0, 72),
+        signature_bytes: Math.round((p.signature_b64.length * 3) / 4),
+        signature_valid: p.cell.id === leader.cell.id ? leaderVerification.signature_valid : true,
+        hash_matches: p.cell.id === leader.cell.id ? leaderVerification.hash_matches : true,
+        within_bell_bounds: bellGate(p.bell_score) > 0,
+        vote: voteByCell.get(p.cell.id) ?? false,
       })),
     });
   }
 
+  const latestPayloads = history.length ? history[history.length - 1].payloads : [];
+  const lastByCell = new Map(latestPayloads.map((p: any) => [p.cell, p]));
+
   return {
-    rule: "score = BellGate(2.0<S<=2.828) x reputation x stake weight; highest wins if it beats network best AND >2/3 cells verify ML-DSA-87 signature",
-    cells: cells.map((c) => ({
-      id: c.id, stake: c.stake, reputation: c.reputation, slashes: c.slashes,
-      honest: c.honest, stake_weight: Math.round(stakeWeight(c.stake, maxStake, c.slashes) * 1e4) / 1e4,
-      public_key_bytes: Math.round((c.public_key_b64.length * 3) / 4),
-    })),
+    rule: "DharmicScore = BellGate(2.0<S<=2.828) x reputation x stakeWeight; winner must beat network best and receive STRICTLY >2/3 distinct ML-DSA-87-verified votes.",
+    qkd_secure: qkdSecure,
+    cells: cells.map((c) => {
+      const last: any = lastByCell.get(c.id);
+      return {
+        id: c.id,
+        stake: c.stake,
+        reputation: c.reputation,
+        slashes: c.slashes,
+        stake_weight: Math.round(stakeWeight(c.stake, maxStake, c.slashes) * 1e4) / 1e4,
+        public_key_bytes: Math.round((c.public_key_b64.length * 3) / 4),
+        last_bell_score: last?.bell_score ?? null,
+        last_dharmic_score: last?.score ?? null,
+        last_signature_valid: last?.signature_valid ?? null,
+        last_vote: last?.vote ?? null,
+        last_latency_ms: last?.latency_ms ?? null,
+        last_on_time: last?.on_time ?? null,
+      };
+    }),
     rounds: history,
     network_best: best,
-    status: "Simulation. Cells are software nodes with real ML-DSA-87 keys; LeviathanCoin.sol enforces the same rule on-chain once deployed.",
+    chain_head: head,
+    total_locked_lvth: cells.reduce((sum, c) => sum + c.stake, 0),
+    accepted_rounds: history.filter((x) => x.accepted).length,
+    rejected_rounds: history.filter((x) => !x.accepted).length,
+    status: "Simulation. Cells are software nodes using real SHA3-512 + ML-DSA-87 primitives; this is not biological computation, physical QKD, or proof that a payload is truthful.",
   };
 }

@@ -112,9 +112,9 @@ export function cellularConsensus(rec: SignedRecord, qkdSecure: boolean, cells: 
     return { cell: `cell-${i}`, accept: v.valid && qkdSecure };
   });
   const yes = votes.filter((v) => v.accept).length;
-  const accepted = yes * 3 >= cells * 2;
+  const accepted = yes * 3 > cells * 2;
   const block = accepted ? { prev_hash: prevHash, record_hash: rec.hash, block_hash: sha3(prevHash + rec.hash) } : null;
-  return { rule: ">= 2/3 cells verify SHA3-512 + ML-DSA-87 AND QKD QBER <= 11%", cells, accept_votes: yes, accepted, block, votes };
+  return { rule: "STRICTLY > 2/3 distinct cells verify SHA3-512 + ML-DSA-87 AND QKD QBER <= 11%", cells, accept_votes: yes, accepted, block, votes };
 }
 
 export function runFabric(opts: { rounds?: number; eavesdropper?: boolean; signal?: number[]; cells?: number; tamper?: boolean }) {
