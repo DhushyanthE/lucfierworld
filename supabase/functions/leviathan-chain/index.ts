@@ -4,7 +4,7 @@
  * Routes (relative to /functions/v1/leviathan-chain):
  *   GET  /                          configuration status
  *   GET  /state?address=0x..        totalSupply, attestationCount, optional balance
- *   GET  /attestations?window=500   recent AttestationAccepted events, decoded
+ *   GET  /attestations?window=500   recent AttestationAccepted events\n *   GET  /dharmic?window=2000       recent PoDS finalization logs
  *
  * SAFETY BOUNDARY: only eth_call / eth_getLogs / eth_chainId / eth_blockNumber
  * are ever sent. No signer, no private key, no eth_sendRawTransaction. When no
@@ -94,10 +94,7 @@ Deno.serve(async (req) => {
       if (holder && !ADDRESS_RE.test(holder)) {
         return json({ error: "address must be a 20-byte hex address" }, 400);
       }
-      const [supplyHex, countHex] = await Promise.all([
-        ethCall(config.rpcUrl, config.contractAddress, selector("totalSupply()")),
-        ethCall(config.rpcUrl, config.contractAddress, selector("attestationCount()")),
-      ]);
+      const [supplyHex, countHex, dharmicRoundHex, dharmicBestHex, dharmicHeadHex, validatorCountHex] = await Promise.all([\n        ethCall(config.rpcUrl, config.contractAddress, selector("totalSupply()")),\n        ethCall(config.rpcUrl, config.contractAddress, selector("attestationCount()")),\n        ethCall(config.rpcUrl, config.contractAddress, selector("dharmicRound()")),\n        ethCall(config.rpcUrl, config.contractAddress, selector("dharmicBestMilli()")),\n        ethCall(config.rpcUrl, config.contractAddress, selector("dharmicHead()")),\n        ethCall(config.rpcUrl, config.contractAddress, selector("validatorCount()")),\n      ]);
       let balanceWei: bigint | null = null;
       if (holder) {
         const data = selector("balanceOf(address)") + holder.slice(2).toLowerCase().padStart(64, "0");
@@ -109,11 +106,21 @@ Deno.serve(async (req) => {
         symbol: "LVTH",
         decimals: 18,
         total_supply_wei: toBigInt(supplyHex).toString(),
-        attestation_count: Number(toBigInt(countHex)),
+        attestation_count: Number(toBigInt(countHex)),\n        dharmic_round: Number(toBigInt(dharmicRoundHex)),\n        dharmic_best_milli: toBigInt(dharmicBestHex).toString(),\n        dharmic_head: dharmicHeadHex,\n        validator_count: Number(toBigInt(validatorCountHex)),
         holder: holder ?? null,
         balance_wei: balanceWei === null ? null : balanceWei.toString(),
         read_only: true,
       });
+    }
+
+    if (path === "/dharmic") {
+      const window = Number(url.searchParams.get("window") ?? 2000);
+      const result = await indexEvents({
+        config: { rpcUrl: config.rpcUrl, contractAddress: config.contractAddress },
+        blockWindow: Number.isFinite(window) ? window : 2000,
+        topics: [eventTopic(LEVIATHAN_EVENTS.DharmicRoundFinalized)],
+      });
+      return json({ ...result, event: "DharmicRoundFinalized", read_only: true });
     }
 
     if (path === "/attestations") {
