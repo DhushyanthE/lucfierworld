@@ -10,6 +10,7 @@ import { EnhancedPriceAlerts } from "./EnhancedPriceAlerts";
 import { EnhancedPortfolioTracker } from "./EnhancedPortfolioTracker";
 import { HistoricalPerformanceChart } from "./HistoricalPerformanceChart";
 import { Watchlist } from "./Watchlist";
+import { DharmicConsensusPanel } from "./DharmicConsensusPanel";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { usePortfolio } from "@/hooks/usePortfolio";
@@ -203,6 +204,9 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <Star className="h-4 w-4 mr-1" />
               Watchlist
             </TabsTrigger>
+            <TabsTrigger value="dharmic" className="data-[state=active]:bg-purple-600">
+              Dharmic Rounds
+            </TabsTrigger>
             <TabsTrigger value="quantum" className="data-[state=active]:bg-purple-600">
               Quantum Analysis
             </TabsTrigger>
@@ -281,7 +285,11 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
                 onSelectToken={setSelectedToken}
               />
             </TabsContent>
-            
+
+            <TabsContent value="dharmic" className="mt-0">
+              <DharmicConsensusPanel />
+            </TabsContent>
+
             <TabsContent value="quantum" className="mt-0">
               <QuantumAnalysisDashboard selectedToken={selectedToken} tokens={tokens} />
             </TabsContent>
