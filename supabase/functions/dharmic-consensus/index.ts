@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
           event: "rounds",
           payload: {
             at: new Date().toISOString(),
-            network_best: result.network_best,
+            engine: result.engine,\n            network_best: result.network_best,\n            field_coherence: result.rounds.at(-1)?.field_coherence ?? null,
             chain_head: result.chain_head,
             accepted_rounds: result.accepted_rounds,
             rejected_rounds: result.rejected_rounds,

@@ -59,7 +59,7 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
   const latest = res?.rounds?.at?.(-1) ?? null;
   const metrics = useMemo(
     () => [
-      ["Network best", res?.network_best ?? live?.network_best ?? "—"],
+      ["Resonance best", res?.network_best ?? live?.network_best ?? "—"],
       ["Accepted", res?.accepted_rounds ?? live?.accepted_rounds ?? "—"],
       ["Rejected", res?.rejected_rounds ?? live?.rejected_rounds ?? "—"],
       ["Validators", res?.cells?.length ?? 9],
@@ -75,9 +75,9 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-base">Proof of Dharmic State</CardTitle>
+              <CardTitle className="text-base">Proof of Dharmic State · Resonance Engine</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                Research consensus over software cell nodes. SHA3-512 + ML-DSA-87 are cryptographic primitives; this UI does not represent living cells or physical QKD.
+                DRE v1 turns every software cell into a six-axis state vector: quantum, integrity, temporal coherence, reputation, stake and deterministic challenge. A harmonic resonance score makes weak dimensions visible instead of hiding them behind a large stake.
               </p>
             </div>
             <div className="flex gap-2">
@@ -135,7 +135,7 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
                   <thead className="text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="p-2">Cell</th><th>Bell S</th><th>Reputation</th><th>Locked LVTH</th>
-                      <th>Slashes</th><th>Dharmic score</th><th>ML-DSA-87</th><th>Vote</th><th>Latency</th>
+                      <th>Slashes</th><th>Legacy score</th><th>Resonance</th><th>Phase</th><th>ML-DSA-87</th><th>Vote</th><th>Latency</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -147,6 +147,8 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
                         <td>{c.stake}</td>
                         <td>{c.slashes}</td>
                         <td>{c.last_dharmic_score ?? "—"}</td>
+                        <td className="font-semibold">{c.last_resonance_score ?? "—"}</td>
+                        <td><Badge variant="secondary">{c.last_resonance_phase ?? "—"}</Badge></td>
                         <td><Badge variant={c.last_signature_valid === false ? "destructive" : "outline"}>{c.last_signature_valid === false ? "invalid" : "verified"}</Badge></td>
                         <td>{c.last_vote === null ? "—" : c.last_vote ? "yes" : "no"}</td>
                         <td className={c.last_on_time === false ? "text-destructive" : ""}>{c.last_latency_ms ?? "—"} ms {c.last_on_time === false ? "late" : ""}</td>
@@ -170,7 +172,7 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">Round {round.round}</span>
                     <Badge variant={round.accepted ? "default" : "destructive"}>{round.accepted ? "accepted" : "rejected"}</Badge>
-                    <span>winner {round.leader} · score {round.leader_score}</span>
+                    <span>winner {round.leader} · resonance {round.leader_score}</span>\n                    <Badge variant="secondary">{round.resonance_phase}</Badge>\n                    <span>field coherence {round.field_coherence}</span>
                     <span>quorum {round.accept_votes}/{round.total_cells} (need {round.quorum_required})</span>
                     {!round.accepted && <span className="text-destructive">{round.rejection_reason}</span>}
                   </div>
@@ -178,7 +180,7 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
                     <span className="break-all">previous {round.previous_hash}</span>
                     <span className="break-all">round hash {round.round_hash}</span>
                     <span className="break-all">payload digest {round.payload_digest}</span>
-                    <span>signature {round.signature_valid ? "verified" : "invalid"} · hash {round.hash_matches ? "canonical" : "mismatch"} · QKD gate {round.qkd_secure ? "secure" : "rejected"}</span>
+                    <span>signature {round.signature_valid ? "verified" : "invalid"} · hash {round.hash_matches ? "canonical" : "mismatch"} · QKD gate {round.qkd_secure ? "secure" : "rejected"}</span>\n                    {round.resonance_vector && <span>vector Q:{round.resonance_vector.quantum} I:{round.resonance_vector.integrity} T:{round.resonance_vector.temporal} R:{round.resonance_vector.reputation} S:{round.resonance_vector.stake} C:{round.resonance_vector.challenge}</span>}
                   </div>
                   {detailed && (
                     <div className="grid gap-1 text-xs">
@@ -186,7 +188,7 @@ export function DharmicConsensusPanel({ detailed = false }: { detailed?: boolean
                         <div key={p.cell} className="grid grid-cols-[70px_80px_90px_90px_1fr] gap-2 border-t pt-1">
                           <span>{p.cell}</span>
                           <span className={p.within_bell_bounds ? "" : "text-destructive"}>S={p.bell_score}</span>
-                          <span>score {p.score}</span>
+                          <span>R {p.resonance_score}</span>
                           <span>{p.vote ? "vote yes" : "vote no"}</span>
                           <span className="break-all text-muted-foreground">ML-DSA-87 {p.signature_preview}… · SHA3 {p.hash.slice(0, 40)}…</span>
                         </div>
