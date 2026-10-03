@@ -10,6 +10,7 @@ import { EnhancedPriceAlerts } from "./EnhancedPriceAlerts";
 import { EnhancedPortfolioTracker } from "./EnhancedPortfolioTracker";
 import { HistoricalPerformanceChart } from "./HistoricalPerformanceChart";
 import { Watchlist } from "./Watchlist";
+import { DharmicConsensusPanel } from "./DharmicConsensusPanel";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { usePortfolio } from "@/hooks/usePortfolio";
@@ -101,6 +102,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
   };
 
   return (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
     <Card className="bg-black/70 border-purple-500/20 shadow-lg">
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
@@ -179,7 +181,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="w-full">
           <TabsList className="bg-gray-800 w-full justify-start flex-wrap">
             <TabsTrigger value="charts" className="data-[state=active]:bg-purple-600">
               Charts
@@ -203,11 +205,14 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
               <Star className="h-4 w-4 mr-1" />
               Watchlist
             </TabsTrigger>
+            <TabsTrigger value="dharmic" className="data-[state=active]:bg-purple-600">
+              Dharmic Rounds
+            </TabsTrigger>
             <TabsTrigger value="quantum" className="data-[state=active]:bg-purple-600">
               Quantum Analysis
             </TabsTrigger>
           </TabsList>
-        </Tabs>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -281,7 +286,11 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
                 onSelectToken={setSelectedToken}
               />
             </TabsContent>
-            
+
+            <TabsContent value="dharmic" className="mt-0">
+              <DharmicConsensusPanel />
+            </TabsContent>
+
             <TabsContent value="quantum" className="mt-0">
               <QuantumAnalysisDashboard selectedToken={selectedToken} tokens={tokens} />
             </TabsContent>
@@ -289,5 +298,6 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
         )}
       </CardContent>
     </Card>
+    </Tabs>
   );
 }

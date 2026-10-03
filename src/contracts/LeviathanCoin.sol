@@ -152,4 +152,51 @@ contract LeviathanCoin {
         return bellScoreMilli > BELL_CLASSICAL_LIMIT_MILLI
             && bellScoreMilli <= BELL_TSIRELSON_LIMIT_MILLI;
     }
+
+    // --- Proof of Dharmic State (PoDS) --------------------------------------
+    // score = bellGate(S) * reputation * stakeWeight. Mirrors
+    // supabase/functions/_shared/dharmic.ts. Reputation/score are milli-units.
+
+    mapping(address => uint256) public stakeOf;
+    mapping(address => uint32) public reputationMilli; // 0..2000, default 1000 on first stake
+    mapping(address => uint32) public slashCount;
+    uint256 public dharmicRound;
+    uint256 public dharmicBestMilli;
+    uint256 public validatorCount;
+
+    event Staked(address indexed cell, uint256 amount);
+    event DharmicRoundFinalized(uint256 indexed round, address indexed leader, uint256 scoreMilli, uint32 acceptVotes, uint32 cells);
+    event CellSlashed(address indexed cell, uint32 slashes);
+
+    function stake(uint256 amount) external {
+        _transfer(msg.sender, address(this), amount);
+        if (stakeOf[msg.sender] == 0) { reputationMilli[msg.sender] = 1000; validatorCount++; }
+        stakeOf[msg.sender] += amount;
+        emit Staked(msg.sender, amount);
+    }
+
+    /**
+     * Governor finalizes a round after off-chain cells have verified the
+     * leader's ML-DSA-87 signature. On-chain checks: Bell bounds, > 2/3 quorum,
+     * strictly beats network best.
+     */
+    function finalizeDharmicRound(address leader, uint32 bellScoreMilli, uint32 acceptVotes, uint32 cells, uint256 scoreMilli)
+        external
+    {
+        if (msg.sender != governor) revert NotGovernor();
+        require(stakeOf[leader] > 0, "leader not staked");
+        require(cells > 0 && uint256(acceptVotes) * 3 > uint256(cells) * 2, "no 2/3 quorum");
+        if (bellScoreMilli <= BELL_CLASSICAL_LIMIT_MILLI || bellScoreMilli > BELL_TSIRELSON_LIMIT_MILLI) {
+            slashCount[leader] += 1;
+            reputationMilli[leader] = reputationMilli[leader] > 200 ? reputationMilli[leader] - 200 : 0;
+            emit CellSlashed(leader, slashCount[leader]);
+            return;
+        }
+        require(scoreMilli > dharmicBestMilli, "must beat network best");
+        dharmicBestMilli = scoreMilli;
+        dharmicRound += 1;
+        uint32 rep = reputationMilli[leader] + 50;
+        reputationMilli[leader] = rep > 2000 ? 2000 : rep;
+        emit DharmicRoundFinalized(dharmicRound, leader, scoreMilli, acceptVotes, cells);
+    }
 }

@@ -49,6 +49,7 @@ import AgentConsole from './pages/AgentConsole';
 import QiskitVerification from './pages/QiskitVerification';
 import QuantumResults from './pages/QuantumResults';
 import QuantumFabric from './pages/QuantumFabric';
+import CellularBlockchain from './pages/CellularBlockchain';
 import './App.css';
 
 function App() {
@@ -105,6 +106,7 @@ function App() {
             <Route path="/qiskit" element={<QiskitVerification />} />
             <Route path="/quantum-results" element={<QuantumResults />} />
             <Route path="/fabric" element={<QuantumFabric />} />
+            <Route path="/cells" element={<CellularBlockchain />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
