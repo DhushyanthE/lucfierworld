@@ -145,3 +145,6 @@ verify_jwt = false
 
 [functions.agi-bio-fabric]
 verify_jwt = false
+
+[functions.defense-sentinel]
+verify_jwt = true

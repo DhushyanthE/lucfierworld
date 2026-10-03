@@ -50,13 +50,12 @@ import QiskitVerification from './pages/QiskitVerification';
 import QuantumResults from './pages/QuantumResults';
 import QuantumFabric from './pages/QuantumFabric';
 import CellularBlockchain from './pages/CellularBlockchain';
+import DefenseCommand from './pages/DefenseCommand';
 import './App.css';
 
 function App() {
   const [count, setCount] = useState(0); // Force rebuild
 
-  // Note: The hash router is used because it works well with Lovable's preview pane
-  // For production, you might want to use BrowserRouter instead
   return (
     <TranslationProvider initialLanguage="en">
       <WalletProvider>
@@ -107,6 +106,7 @@ function App() {
             <Route path="/quantum-results" element={<QuantumResults />} />
             <Route path="/fabric" element={<QuantumFabric />} />
             <Route path="/cells" element={<CellularBlockchain />} />
+            <Route path="/defense" element={<DefenseCommand />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
