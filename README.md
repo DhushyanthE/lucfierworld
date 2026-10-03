@@ -1,69 +1,56 @@
-# Welcome to your Lovable project
+# QuantumSynapse Fabric
 
-## Project info
+QuantumSynapse Fabric is a research platform combining quantum simulation, post-quantum cryptography, AI-assisted analysis, an EVM token, a read-only chain indexer, and the BBB8 / Proof of Dharmic State research consensus UI.
 
-**URL**: https://lovable.dev/projects/a4e1cd9c-af6c-4d1f-8bb8-7103d050b0bd
+## Current architecture
 
-## How can I edit this code?
+- **Frontend:** React + TypeScript + Vite + Tailwind/shadcn.
+- **Backend:** Supabase Auth, Realtime and Edge Functions.
+- **Quantum research:** statevector simulation, BB84/QKD simulation, VQE/QAOA and Bell/CHSH validation.
+- **Post-quantum crypto:** ML-DSA-87 signed records plus SHA3-512 canonical digests.
+- **BBB8 / cellular consensus:** nine software cell nodes and Proof of Dharmic State. These are simulations, not living biological nodes or physical QKD.
+- **LeviathanCoin:** ERC-20-compatible EVM contract with Bell-gated attestations and PoDS round commitments.
+- **Indexer boundary:** read-only. It may query chain state and logs; it never signs or broadcasts transactions.
+- **AI agent:** server-side OpenAI API integration with read-only tools. No alternate AI-provider fallback is used.
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/a4e1cd9c-af6c-4d1f-8bb8-7103d050b0bd) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Run locally
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Build:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+```
 
-**Use GitHub Codespaces**
+## Main routes
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `/fabric` — BBB8 quantum / AI / signature / consensus pipeline.
+- `/cells` — cellular blockchain and Proof of Dharmic State rounds.
+- `/market` — market dashboard and PoDS network summary.
+- `/leviathan` — live LeviathanCoin state, balances and wallet-signed transfers when a contract is configured.
+- `/agent` — OpenAI-backed read-only project agent.
 
-## What technologies are used for this project?
+## Live-chain configuration
 
-This project is built with .
+The app never invents chain state. Configure the server with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+EVM_RPC_URL=<https EVM RPC endpoint>
+LEVIATHAN_CONTRACT_ADDRESS=<deployed contract address>
+```
 
-## How can I deploy this project?
+Until both values exist, the Leviathan/indexer UI reports that the chain is not configured.
 
-Simply open [Lovable](https://lovable.dev/projects/a4e1cd9c-af6c-4d1f-8bb8-7103d050b0bd) and click on Share -> Publish.
+Deployment itself requires a wallet funded with the target network's native gas token. Keep private keys outside the repository. The application/indexer remains read-only; user transfers are signed by the user's browser wallet.
 
-## I want to use a custom domain - is that possible?
+## OpenAI agent
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Set `OPENAI_API_KEY` only as a server-side secret. Optionally set `OPENAI_MODEL`. The browser never receives the API key. If the API account has no quota, the function returns the OpenAI error rather than silently switching providers.
+
+## Scientific boundary
+
+QuantumSynapse Fabric is a research prototype. The cellular nodes are software abstractions; PoDS is an experimental policy; BB84/Bell operations in the application are simulations unless explicitly connected to physical hardware. SHA3-512 and ML-DSA-87 are real cryptographic primitives, but their use does not make the overall application “unhackable.”
