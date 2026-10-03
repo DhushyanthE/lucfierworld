@@ -164,8 +164,33 @@ contract LeviathanCoin {
     uint256 public dharmicBestMilli;
     uint256 public validatorCount;
 
+    struct DharmicRecord {
+        uint256 round;
+        address leader;
+        uint256 scoreMilli;
+        bytes32 payloadDigest;
+        bytes32 previousRoundHash;
+        bytes32 roundHash;
+        uint32 acceptVotes;
+        uint32 cells;
+        uint256 timestamp;
+    }
+
+    mapping(uint256 => DharmicRecord) private dharmicRecords;
+    bytes32 public dharmicHead;
+
     event Staked(address indexed cell, uint256 amount);
-    event DharmicRoundFinalized(uint256 indexed round, address indexed leader, uint256 scoreMilli, uint32 acceptVotes, uint32 cells);
+    event DharmicRoundFinalized(
+        uint256 indexed round,
+        address indexed leader,
+        uint256 scoreMilli,
+        bytes32 indexed payloadDigest,
+        bytes32 previousRoundHash,
+        bytes32 roundHash,
+        uint32 acceptVotes,
+        uint32 cells,
+        uint256 timestamp
+    );
     event CellSlashed(address indexed cell, uint32 slashes);
 
     function stake(uint256 amount) external {
@@ -180,23 +205,67 @@ contract LeviathanCoin {
      * leader's ML-DSA-87 signature. On-chain checks: Bell bounds, > 2/3 quorum,
      * strictly beats network best.
      */
-    function finalizeDharmicRound(address leader, uint32 bellScoreMilli, uint32 acceptVotes, uint32 cells, uint256 scoreMilli)
-        external
-    {
+    function finalizeDharmicRound(
+        address leader,
+        uint32 bellScoreMilli,
+        uint32 acceptVotes,
+        uint32 cells,
+        uint256 scoreMilli,
+        bytes32 payloadDigest,
+        bytes32 previousRoundHash
+    ) external {
         if (msg.sender != governor) revert NotGovernor();
         require(stakeOf[leader] > 0, "leader not staked");
-        require(cells > 0 && uint256(acceptVotes) * 3 > uint256(cells) * 2, "no 2/3 quorum");
+        require(cells > 0 && uint256(acceptVotes) * 3 > uint256(cells) * 2, "strict quorum not met");
+        require(payloadDigest != bytes32(0), "payload digest required");
+        require(previousRoundHash == dharmicHead, "round link mismatch");
+
         if (bellScoreMilli <= BELL_CLASSICAL_LIMIT_MILLI || bellScoreMilli > BELL_TSIRELSON_LIMIT_MILLI) {
             slashCount[leader] += 1;
             reputationMilli[leader] = reputationMilli[leader] > 200 ? reputationMilli[leader] - 200 : 0;
             emit CellSlashed(leader, slashCount[leader]);
             return;
         }
+
         require(scoreMilli > dharmicBestMilli, "must beat network best");
+
+        uint256 nextRound = dharmicRound + 1;
+        bytes32 roundHash = keccak256(
+            abi.encode(nextRound, leader, scoreMilli, payloadDigest, previousRoundHash, acceptVotes, cells)
+        );
+
+        dharmicRound = nextRound;
         dharmicBestMilli = scoreMilli;
-        dharmicRound += 1;
+        dharmicHead = roundHash;
+        dharmicRecords[nextRound] = DharmicRecord({
+            round: nextRound,
+            leader: leader,
+            scoreMilli: scoreMilli,
+            payloadDigest: payloadDigest,
+            previousRoundHash: previousRoundHash,
+            roundHash: roundHash,
+            acceptVotes: acceptVotes,
+            cells: cells,
+            timestamp: block.timestamp
+        });
+
         uint32 rep = reputationMilli[leader] + 50;
         reputationMilli[leader] = rep > 2000 ? 2000 : rep;
-        emit DharmicRoundFinalized(dharmicRound, leader, scoreMilli, acceptVotes, cells);
+
+        emit DharmicRoundFinalized(
+            nextRound,
+            leader,
+            scoreMilli,
+            payloadDigest,
+            previousRoundHash,
+            roundHash,
+            acceptVotes,
+            cells,
+            block.timestamp
+        );
     }
-}
+
+    function dharmicRecordAt(uint256 round) external view returns (DharmicRecord memory) {
+        require(round > 0 && round <= dharmicRound, "no such round");
+        return dharmicRecords[round];
+    }}
