@@ -268,4 +268,5 @@ contract LeviathanCoin {
     function dharmicRecordAt(uint256 round) external view returns (DharmicRecord memory) {
         require(round > 0 && round <= dharmicRound, "no such round");
         return dharmicRecords[round];
-    }}
+    }
+}
