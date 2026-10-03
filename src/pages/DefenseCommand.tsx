@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,19 +20,6 @@ const initial = {
 export default function DefenseCommand() {
   const [telemetry, setTelemetry] = useState(initial);
   const [result, setResult] = useState<any>(null);
-  const [events, setEvents] = useState<any[]>([]);
-  const [bridge, setBridge] = useState("connecting");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const ch = supabase.channel("defense-sentinel")
-      .on("broadcast", { event: "finding" }, ({ payload }) => {
-        setEvents((e) => [payload, ...e].slice(0, 20));
-      })
-      .subscribe((s) => setBridge(s === "SUBSCRIBED" ? "live" : s.toLowerCase()));
-    return () => { supabase.removeChannel(ch); };
-  }, []);
-
   const analyze = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("defense-sentinel", {
@@ -62,7 +49,7 @@ export default function DefenseCommand() {
         <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">QuantumSynapse / Defensive Cyber Resilience</div>
         <h1 className="text-3xl font-bold mt-2">Sentinel Command</h1>
         <p className="text-muted-foreground mt-2 max-w-4xl">
-          Defensive telemetry triage with post-quantum signed findings, realtime distribution and a hash-linked audit trail. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
+          Defensive telemetry triage with post-quantum signed findings, nine-perspective policy review and session-local hash-linked audit. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
         </p>
       </header>
 
@@ -89,7 +76,7 @@ export default function DefenseCommand() {
         <Card>
           <CardHeader><CardTitle>Command boundary</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <Badge variant="outline">Realtime: {bridge}</Badge>
+            <Badge variant="outline">Private realtime: pending</Badge>
             <p>Autonomous action: <b>disabled</b></p>
             <p>Human approval: <b>mandatory</b></p>
             <p>Indexer: <b>read-only</b></p>
@@ -112,16 +99,21 @@ export default function DefenseCommand() {
         </CardContent>
       </Card>}
 
-      <Card>
-        <CardHeader><CardTitle>Realtime audit stream</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {!events.length && <p className="text-sm text-muted-foreground">No realtime findings received yet.</p>}
-          {events.map((e, i) => <div key={i} className="border rounded p-2 text-xs">
-            {e.finding?.source} · {e.finding?.severity} · {e.finding?.recommendation}
-            <div className="break-all text-muted-foreground">{e.audit_hash}</div>
-          </div>)}
+      {result?.review && <Card>
+        <CardHeader><CardTitle>Defensive verification perspectives</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Badge variant="outline">{result.review.mode}</Badge>
+          <p>{result.review.yes}/{result.review.votes.length} policy checks; strict threshold {result.review.quorum_required}. Decision: {result.review.decision}</p>
+          <p className="text-sm text-muted-foreground">These perspectives run in one server process; they are not independent distributed validators. No containment action is executed.</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {result.review.votes.map((v: any) => <div key={v.cell} className="rounded border p-2 text-xs">
+              <strong>{v.cell}</strong> · {v.accept ? "accepted" : "not accepted"}
+              <div className="text-muted-foreground">{v.rationale}</div>
+            </div>)}
+          </div>
+          <p className="text-xs text-muted-foreground">Audit linkage is session-local and untrusted until server-managed persistence is deployed.</p>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
