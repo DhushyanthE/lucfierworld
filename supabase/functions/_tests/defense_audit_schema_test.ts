@@ -1,7 +1,7 @@
 import { assert } from "jsr:@std/assert@1";
 
 Deno.test("defense audit migration preserves fail-closed invariants", async () => {
-  const sql = await Deno.readTextFile(new URL("../../migrations/20261003183000_defense_audit_events.sql", import.meta.url));
+  const sql = await Deno.readTextFile(new URL("../../../migrations/20261003183000_defense_audit_events.sql", import.meta.url));
   assert(sql.includes("enable row level security"));
   assert(sql.includes("auth.uid() = user_id"));
   assert(sql.includes("human_approval_required = true"));
