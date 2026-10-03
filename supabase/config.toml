@@ -148,3 +148,6 @@ verify_jwt = false
 
 [functions.defense-sentinel]
 verify_jwt = true
+
+[functions.integration-gateway]
+verify_jwt = true
