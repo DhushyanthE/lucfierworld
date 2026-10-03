@@ -24,7 +24,7 @@ async function authenticate(req:Request){
  if(!url||!key||!token?.startsWith("Bearer ")) return null;
  const sb=createClient(url,key,{global:{headers:{Authorization:token}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data,error}=await sb.auth.getUser(token.slice(7));
- return error?null:data.user;
+ return error||!data.user?null:{ user:data.user, client:sb };
 }
 
 Deno.serve(async req=>{
@@ -40,13 +40,27 @@ Deno.serve(async req=>{
  if(!url.pathname.endsWith("/defense/analyze")) return reply({error:"unknown route"},404);
  const body=await req.json().catch(()=>null);
  if(!valid(body)) return reply({error:"invalid telemetry"},400);
- const finding=analyzeTelemetry(body);
+ const { user, client } = auth;\n const finding=analyzeTelemetry(body);
  const review=reviewDefensiveFinding(finding,body);
  const prev=typeof body.previous_audit_hash==="string"&&/^[0-9a-f]{128}$/.test(body.previous_audit_hash)?body.previous_audit_hash:"0".repeat(128);
+ const cid=correlationId(body.source);
+ const audit_hash=auditHash(prev,finding);
+ const { data: persisted, error: persistError } = await client.from("defense_audit_events").insert({
+   user_id:user.id, correlation_id:cid, source:body.source, severity:finding.severity,
+   recommendation:finding.recommendation, score:finding.score, payload_hash:finding.payload_hash,
+   audit_hash, previous_audit_hash:prev, review_engine:review.engine, review_yes:review.yes,
+   review_total:review.votes.length, quorum_met:review.quorum_met,
+   human_approval_required:true, executed:false, reasons:finding.reasons,
+ }).select("id,created_at").single();
+ if(persistError) {
+   console.error("defense audit persistence failed", persistError);
+   return reply({error:"audit persistence failed",correlation_id:cid},503);
+ }
  return reply({
-   envelope:{version:"qs-defense/1",correlation_id:correlationId(body.source),received_at:new Date().toISOString(),source:body.source},
-   pipeline:["authenticated-gateway","sentinel-triage","sha3-512","ml-dsa-87","policy-review","human-command-gate","audit-link"],
-   finding,review,audit:{previous_hash:prev,audit_hash:auditHash(prev,finding),persistence:"session-local-untrusted"},
+   envelope:{version:"qs-defense/1",correlation_id:cid,received_at:new Date().toISOString(),source:body.source},
+   pipeline:["authenticated-gateway","sentinel-triage","sha3-512","ml-dsa-87","policy-review","human-command-gate","durable-audit"],
+   finding,review,audit:{id:persisted.id,previous_hash:prev,audit_hash,persistence:"supabase-postgres-rls",created_at:persisted.created_at},
+   realtime:{table:"defense_audit_events",scope:"RLS owner subscription"},
    execution:{autonomous_action:false,human_approval_required:true,executed:false}
  });
 });
