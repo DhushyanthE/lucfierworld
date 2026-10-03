@@ -49,4 +49,20 @@ The gateway requires a valid Supabase JWT. Findings are recommendations only. No
 7. Keep blockchain observation read-only.
 8. Report simulated/research components as simulations.
 9. Propagate a correlation ID through services.
-10. Add durable RLS-backed audit persistence before production use.
+10. Durable audit persistence uses `defense_audit_events` with owner-scoped RLS, append-only client permissions and Realtime publication.\n11. Subscribe to the audit table with the authenticated user session; RLS limits rows to their owner.\n12. Production deployment still requires migration application, environment secrets, monitoring and CI validation.
+
+
+## Durable defensive audit
+The migration `20261003183000_defense_audit_events.sql` creates an append-only defensive audit table. Authenticated users may insert and read only their own rows. There are deliberately no client update/delete policies. The gateway fails closed with HTTP 503 if persistence fails rather than returning an apparently successful analysis without an audit record.
+
+Supabase Realtime publishes table changes, while Postgres RLS remains the authorization boundary. The old public broadcast pattern is not used for defensive telemetry.
+
+## Technology boundaries
+- Supabase: authentication, Postgres/RLS, Edge Functions and authorized realtime.
+- SHA3-512: integrity digest only.
+- ML-DSA-87: post-quantum signing/verification.
+- Sentinel: defensive anomaly triage.
+- Policy Review: nine policy perspectives in one process, not nine independent machines.
+- Quantum Fabric: research simulation, not physical QKD.
+- EVM: read-only observation/indexing.
+- AI: optional analyst assistance with no execution authority.
