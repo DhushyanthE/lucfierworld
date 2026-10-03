@@ -85,6 +85,8 @@ export default function DefenseCommand() {
         </Card>
       </div>
 
+      {result?.error && <p role="alert" className="text-sm text-destructive">{result.error}</p>}
+
       {f && <Card>
         <CardHeader><CardTitle>Signed defensive finding</CardTitle></CardHeader>
         <CardContent className="space-y-3">
