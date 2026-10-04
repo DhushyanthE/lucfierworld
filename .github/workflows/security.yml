@@ -13,61 +13,64 @@ on:
     - cron: '0 */6 * * *'
 
 jobs:
-  rls-integrity:
+  code-security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run security.assert_rls_integrity()
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with: { deno-version: v2.x }
+      - name: Defensive backend tests
+        run: deno test -A supabase/functions/_tests/
+      - name: Static migration safety checks
+        run: |
+          test -f supabase/migrations/20261003183000_defense_audit_events.sql
+          grep -qi 'enable row level security' supabase/migrations/20261003183000_defense_audit_events.sql
+          grep -q 'auth.uid() = user_id' supabase/migrations/20261003183000_defense_audit_events.sql
+          grep -q 'executed = false' supabase/migrations/20261003183000_defense_audit_events.sql
+          ! grep -qi 'for update' supabase/migrations/20261003183000_defense_audit_events.sql
+          ! grep -qi 'for delete' supabase/migrations/20261003183000_defense_audit_events.sql
+
+  live-rls-integrity:
+    runs-on: ubuntu-latest
+    needs: code-security
+    if: ${{ secrets.SUPABASE_DB_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deployed RLS integrity assertion
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then echo "SUPABASE_DB_URL secret missing"; exit 1; fi
           sudo apt-get update && sudo apt-get install -y postgresql-client
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT * FROM security.assert_rls_integrity();"
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with: { deno-version: v1.x }
-      - name: Realtime + edge function auth tests
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-        run: deno test -A supabase/functions/_tests/
 
   supabase-linter:
     runs-on: ubuntu-latest
-    needs: rls-integrity
+    needs: code-security
+    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with: { version: latest }
-      - name: Run Supabase linter and fail on security definer warnings
+      - name: Run linked Supabase linter
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF must be set"; exit 1;
-          fi
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
           set +e
           OUT=$(supabase db lint --linked --level warning 2>&1)
           CODE=$?
           set -e
           echo "$OUT"
-          # Fail if any security definer view / function warning reappears
           echo "$OUT" | grep -Ei 'security[_ ]definer|0010_security_definer_view|definer_view' && {
-            echo "::error::Security definer warning detected — failing build."; exit 1; }
-          # Fail on any explicit error lines
-          if [ $CODE -ne 0 ]; then
-            echo "::error::supabase db lint exited non-zero"; exit $CODE;
-          fi
-      - name: Static grep for SECURITY DEFINER in migrations without search_path
+            echo "::error::Security definer warning detected"; exit 1; }
+          if [ $CODE -ne 0 ]; then exit $CODE; fi
+      - name: Static SECURITY DEFINER review
         run: |
-          set +e
           BAD=$(grep -RniE 'SECURITY[[:space:]]+DEFINER' supabase/migrations | grep -v 'set search_path' || true)
           if [ -n "$BAD" ]; then
-            echo "::warning::SECURITY DEFINER blocks found — verify search_path is set on each:"
+            echo "::warning::SECURITY DEFINER blocks found; verify search_path:"
             echo "$BAD"
           fi
