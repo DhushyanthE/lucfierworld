@@ -30,8 +30,8 @@ async function authenticate(req:Request){
 
 Deno.serve(async req=>{
  if(req.method==="OPTIONS") return new Response(null,{headers});
- const user=await authenticate(req);
- if(!user) return reply({error:"authentication required"},401);
+ const auth=await authenticate(req);
+ if(!auth) return reply({error:"authentication required"},401);
  const url=new URL(req.url);
  if(req.method==="GET" && url.pathname.endsWith("/health")) {
    return reply({service:"QuantumSynapse Integration Gateway",status:"ok",technologies:integrationRegistry(),
@@ -44,7 +44,13 @@ Deno.serve(async req=>{
  const { user, client } = auth;
  const finding=analyzeTelemetry(body);
  const review=reviewDefensiveFinding(finding,body);
- const head = await loadAuditHead(client, user.id).catch(() => null);
+ let head;
+ try {
+   head = await loadAuditHead(client, user.id);
+ } catch (error) {
+   console.error("audit head lookup failed", error);
+   return reply({error:"audit history unavailable"},503);
+ }
  const prev = head?.audit_hash ?? "0".repeat(128);
  const cid=correlationId(body.source);
  const audit_hash=auditHash(prev,finding);
