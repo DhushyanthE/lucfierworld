@@ -66,3 +66,10 @@ Supabase Realtime publishes table changes, while Postgres RLS remains the author
 - Quantum Fabric: research simulation, not physical QKD.
 - EVM: read-only observation/indexing.
 - AI: optional analyst assistance with no execution authority.
+
+
+## Audit concurrency and trust
+The gateway never accepts a caller-selected previous audit hash. It reads the authenticated user's current head, computes the candidate link, and calls `append_defense_audit_event`. PostgreSQL takes a transaction-scoped advisory lock keyed to that user and rejects a stale previous head. Concurrent requests therefore fail closed rather than silently creating two audit branches. The function is `SECURITY INVOKER`; RLS and `auth.uid()` remain the authorization boundary.
+
+## Deployment checklist
+Repository development is complete when code-security CI passes. Deployment additionally requires applying both defense-audit migrations, setting the Edge Function environment, configuring `SUPABASE_DB_URL`, `SUPABASE_ACCESS_TOKEN`, and `SUPABASE_PROJECT_REF` as GitHub Actions secrets, deploying `integration-gateway`, and running the live RLS/linter jobs. Secrets must be configured in the deployment platforms rather than committed to source.
