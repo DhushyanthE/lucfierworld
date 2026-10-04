@@ -46,7 +46,7 @@ async function callFunction(path: string, body?: unknown, method: "GET" | "POST"
 function result(payload: unknown, ok = true) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
-    structuredContent: payload as Record<string, unknown>,
+    structuredContent: payload as any,
     ...(ok ? {} : { isError: true as const }),
   };
 }
