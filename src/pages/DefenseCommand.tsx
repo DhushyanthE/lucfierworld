@@ -20,6 +20,7 @@ const initial = {
 export default function DefenseCommand() {
   const [telemetry, setTelemetry] = useState(initial);
   const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const analyze = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("defense-sentinel", {
