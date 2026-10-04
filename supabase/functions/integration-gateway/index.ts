@@ -3,6 +3,7 @@ import { correlationId } from "../_shared/backend-contracts.ts";
 import { integrationRegistry } from "../_shared/integration-registry.ts";
 import { analyzeTelemetry, auditHash, type Telemetry } from "../_shared/defense.ts";
 import { reviewDefensiveFinding } from "../_shared/defense-review.ts";
+import { loadAuditHead, persistAuditEvent } from "../_shared/defense-audit.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": Deno.env.get("DEFENSE_ALLOWED_ORIGIN") || "http://localhost:8080",
@@ -42,18 +43,21 @@ Deno.serve(async req=>{
  if(!valid(body)) return reply({error:"invalid telemetry"},400);
  const { user, client } = auth;\n const finding=analyzeTelemetry(body);
  const review=reviewDefensiveFinding(finding,body);
- const prev=typeof body.previous_audit_hash==="string"&&/^[0-9a-f]{128}$/.test(body.previous_audit_hash)?body.previous_audit_hash:"0".repeat(128);
+ const head = await loadAuditHead(client, user.id).catch(() => null);\n const prev = head?.audit_hash ?? "0".repeat(128);
  const cid=correlationId(body.source);
  const audit_hash=auditHash(prev,finding);
- const { data: persisted, error: persistError } = await client.from("defense_audit_events").insert({
+ let persisted;
+ try {
+   persisted = await persistAuditEvent(client, {
+
    user_id:user.id, correlation_id:cid, source:body.source, severity:finding.severity,
    recommendation:finding.recommendation, score:finding.score, payload_hash:finding.payload_hash,
    audit_hash, previous_audit_hash:prev, review_engine:review.engine, review_yes:review.yes,
    review_total:review.votes.length, quorum_met:review.quorum_met,
    human_approval_required:true, executed:false, reasons:finding.reasons,
- }).select("id,created_at").single();
- if(persistError) {
-   console.error("defense audit persistence failed", persistError);
+ });
+ } catch (error) {
+   console.error("defense audit persistence failed", error);
    return reply({error:"audit persistence failed",correlation_id:cid},503);
  }
  return reply({
