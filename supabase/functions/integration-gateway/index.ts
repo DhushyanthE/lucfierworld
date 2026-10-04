@@ -41,9 +41,11 @@ Deno.serve(async req=>{
  if(!url.pathname.endsWith("/defense/analyze")) return reply({error:"unknown route"},404);
  const body=await req.json().catch(()=>null);
  if(!valid(body)) return reply({error:"invalid telemetry"},400);
- const { user, client } = auth;\n const finding=analyzeTelemetry(body);
+ const { user, client } = auth;
+ const finding=analyzeTelemetry(body);
  const review=reviewDefensiveFinding(finding,body);
- const head = await loadAuditHead(client, user.id).catch(() => null);\n const prev = head?.audit_hash ?? "0".repeat(128);
+ const head = await loadAuditHead(client, user.id).catch(() => null);
+ const prev = head?.audit_hash ?? "0".repeat(128);
  const cid=correlationId(body.source);
  const audit_hash=auditHash(prev,finding);
  let persisted;
