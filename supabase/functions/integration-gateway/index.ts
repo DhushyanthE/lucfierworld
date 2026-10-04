@@ -71,7 +71,7 @@ Deno.serve(async req=>{
  return reply({
    envelope:{version:"qs-defense/1",correlation_id:cid,received_at:new Date().toISOString(),source:body.source},
    pipeline:["authenticated-gateway","sentinel-triage","sha3-512","ml-dsa-87","policy-review","human-command-gate","durable-audit"],
-   finding,review,audit:{id:persisted.id,previous_hash:prev,audit_hash,persistence:"supabase-postgres-rls",created_at:persisted.created_at},
+   finding,review,audit:{id:persisted.id,previous_hash:prev,audit_hash,persistence:"supabase-postgres-rls-atomic",created_at:persisted.created_at},
    realtime:{table:"defense_audit_events",scope:"RLS owner subscription"},
    execution:{autonomous_action:false,human_approval_required:true,executed:false}
  });
