@@ -124,3 +124,28 @@ jobs:
             echo "::warning::SECURITY DEFINER blocks found; verify search_path:"
             echo "$BAD"
           fi
+
+
+  live-sentinel-smoke:
+    runs-on: ubuntu-latest
+    needs: [code-security, live-rls-integrity, supabase-linter]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with: { deno-version: v2.x }
+      - name: Require authenticated live test configuration
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_TEST_JWT: ${{ secrets.SUPABASE_TEST_JWT }}
+        run: |
+          test -n "$VITE_SUPABASE_URL" || { echo "::error::VITE_SUPABASE_URL is required"; exit 1; }
+          test -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || { echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY is required"; exit 1; }
+          test -n "$SUPABASE_TEST_JWT" || { echo "::error::SUPABASE_TEST_JWT is required for the authenticated Sentinel smoke test"; exit 1; }
+      - name: Send live Sentinel telemetry and verify persisted audit
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_TEST_JWT: ${{ secrets.SUPABASE_TEST_JWT }}
+        run: deno run --node-modules-dir=auto -A scripts/live-sentinel-smoke.ts
