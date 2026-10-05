@@ -84,7 +84,10 @@ Deno.serve(async (req) => {
       const { ethers } = await import("npm:ethers@6");
       const k = Deno.env.get("DEPLOYER_PRIVATE_KEY")?.trim();
       if (!k || !config.rpcUrl) return json({ configured: false });
-      const address = new ethers.Wallet(k).address;
+      if (!/^(0x)?[0-9a-fA-F]{64}$/.test(k)) {
+        return json({ configured: false, error: "DEPLOYER_PRIVATE_KEY is not a valid 32-byte hex wallet key" }, 400);
+      }
+      const address = new ethers.Wallet(k.startsWith("0x") ? k : `0x${k}`).address;
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
       const bal = await provider.getBalance(address);
       return json({ address, balance_eth: ethers.formatEther(bal), chain_id: Number((await provider.getNetwork()).chainId) });
@@ -157,8 +160,7 @@ Deno.serve(async (req) => {
 
     return json({ error: `no route for ${req.method} ${path}` }, 404);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "unexpected error";
-    console.error("leviathan-chain error:", message);
-    return json({ error: message, configured: true }, 502);
+    console.error("leviathan-chain error:", e instanceof Error ? e.name : "unknown");
+    return json({ error: "chain request failed", configured: true }, 502);
   }
 });
