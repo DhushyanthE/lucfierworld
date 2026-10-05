@@ -22,7 +22,7 @@ const defaultWalletContext: WalletContextProps = {
   walletAddress: null,
   currentWallet: null,
   balance: '0',
-  chainId: 1,
+  chainId: 11155111,
   connectWallet: async () => false,
   disconnectWallet: () => {}
 };
@@ -35,7 +35,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [currentWallet, setCurrentWallet] = useState<WalletType | null>(null);
   const [balance, setBalance] = useState('0');
-  const [chainId, setChainId] = useState(1);
+  const [chainId, setChainId] = useState(11155111);
 
   useEffect(() => {
     // Try to reconnect on component mount
@@ -164,9 +164,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               const balanceWei = parseInt(balanceHex, 16);
               const balanceEth = balanceWei / 1e18;
               
+              const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' }) as string;
               setWalletAddress(accounts[0]);
               setBalance(balanceEth.toFixed(4));
-              setChainId(1); // Default to ETH mainnet
+              setChainId(parseInt(chainIdHex, 16));
               setIsConnected(true);
               setCurrentWallet(walletType);
               
@@ -174,19 +175,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               return true;
             }
           } else {
-            // Fallback to mock connection for demo purposes
-            const mockAddress = '0x' + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-            const mockBalance = (Math.random() * 10).toFixed(4);
-            
-            setWalletAddress(mockAddress);
-            setBalance(mockBalance);
-            setChainId(1);
-            setIsConnected(true);
-            setCurrentWallet(walletType);
-            
-            localStorage.setItem('currentWallet', walletType);
-            toast.success("Connected to Trust Wallet (Demo Mode)");
-            return true;
+            toast.error("Trust Wallet EVM provider is unavailable", {
+              description: "Open this app inside Trust Wallet or enable its EVM browser provider."
+            });
+            return false;
           }
         } catch (error: any) {
           toast.error(`Error connecting to Trust Wallet: ${error.message || "Unknown error"}`);
@@ -194,19 +186,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       }
       else {
-        // For demo or other wallet types
-        // Simulate a connection
-        const mockAddress = '0x' + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-        const mockBalance = (Math.random() * 10).toFixed(4);
-        
-        setIsConnected(true);
-        setWalletAddress(mockAddress);
-        setCurrentWallet(walletType);
-        setBalance(mockBalance);
-        setChainId(1); // Ethereum mainnet
-        
-        localStorage.setItem('currentWallet', walletType);
-        return true;
+        toast.error(`${walletType} connection is not configured`, {
+          description: "No wallet address or balance will be simulated."
+        });
+        return false;
       }
       
       return false;

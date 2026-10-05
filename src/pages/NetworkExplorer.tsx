@@ -6,6 +6,28 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, Cpu, Shield, Zap, Network, Eye, ChevronRight, Hash, Clock, Award } from 'lucide-react';
+import { SERVICE_URLS } from '@/config/env';
+
+const CHAIN_FN = `${SERVICE_URLS.FUNCTIONS_BASE}/leviathan-chain`;
+
+interface LiveChainState {
+  configured: boolean;
+  contract?: string | null;
+  chain_id?: number;
+  network?: string;
+  total_supply_wei?: string;
+  attestation_count?: number;
+  dharmic_round?: number;
+  dharmic_head?: string;
+  validator_count?: number;
+  explorer_url?: string | null;
+  explorer_base_url?: string | null;
+}
+
+interface LiveChainEvents {
+  configured: boolean;
+  events?: { block_number: number; transaction_hash: string; topic0: string }[];
+}
 
 interface BlockData {
   height: number;
@@ -205,6 +227,8 @@ function BlockInspector({ block }: { block: BlockData }) {
 }
 
 export default function NetworkExplorer() {
+  const [chainState, setChainState] = useState<LiveChainState | null>(null);
+  const [chainEvents, setChainEvents] = useState<LiveChainEvents | null>(null);
   const [blocks, setBlocks] = useState<BlockData[]>(() => {
     const initial: BlockData[] = [];
     for (let i = 0; i < 8; i++) initial.push(generateBlock(1045200 - i));
@@ -216,6 +240,33 @@ export default function NetworkExplorer() {
 
   const latestBlock = blocks[0];
   const activeModel = 'QmX7bK9...d91A';
+
+  useEffect(() => {
+    if (!SERVICE_URLS.FUNCTIONS_BASE) return;
+    let cancelled = false;
+    const loadChain = async () => {
+      try {
+        const [stateResponse, eventsResponse] = await Promise.all([
+          fetch(`${CHAIN_FN}/state`, { cache: 'no-store' }),
+          fetch(`${CHAIN_FN}/attestations?window=2000`, { cache: 'no-store' }),
+        ]);
+        const [state, events] = await Promise.all([stateResponse.json(), eventsResponse.json()]);
+        if (!cancelled) {
+          setChainState(state as LiveChainState);
+          setChainEvents(events as LiveChainEvents);
+        }
+      } catch {
+        if (!cancelled) {
+          setChainState(null);
+          setChainEvents(null);
+        }
+      }
+    };
+    void loadChain();
+    const id = window.setInterval(() => void loadChain(), 15_000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, []);
+
   const epochEarner = 'KTR_WALLET_772...';
 
   useEffect(() => {
@@ -235,10 +286,80 @@ export default function NetworkExplorer() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Live Telemetry Bar */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base">LeviathanCoin Sepolia explorer</CardTitle>
+              <Badge variant="outline">{chainState?.network ?? 'not configured'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Chain ID</p>
+                <p className="font-mono font-bold">{chainState?.chain_id ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Attestations</p>
+                <p className="font-mono font-bold">{chainState?.attestation_count ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Dharmic round</p>
+                <p className="font-mono font-bold">{chainState?.dharmic_round ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Validators</p>
+                <p className="font-mono font-bold">{chainState?.validator_count ?? '—'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Contract</p>
+              {chainState?.explorer_url ? (
+                <a href={chainState.explorer_url} target="_blank" rel="noreferrer" className="font-mono text-sm break-all underline">
+                  {chainState.contract}
+                </a>
+              ) : (
+                <code className="text-sm break-all">{chainState?.contract ?? 'not configured'}</code>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Recent on-chain attestations</p>
+              {chainEvents?.events?.length ? (
+                <div className="space-y-1">
+                  {chainEvents.events.slice(0, 6).map((event) => (
+                    <div key={event.transaction_hash + event.block_number} className="flex items-center gap-2 text-xs">
+                      <Badge variant="secondary">#{event.block_number}</Badge>
+                      {chainState?.explorer_base_url ? (
+                        <a
+                          href={`${chainState.explorer_base_url}/tx/${event.transaction_hash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono truncate underline"
+                        >
+                          {event.transaction_hash}
+                        </a>
+                      ) : <code className="truncate">{event.transaction_hash}</code>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No recent attestation logs in the scan window.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div>
+          <h2 className="text-lg font-semibold">Research topology simulation</h2>
+          <p className="text-sm text-muted-foreground">
+            The cards below are simulation/visualization data. The Sepolia card above is the real chain read.
+          </p>
+        </div>
+
+        {/* Simulation Telemetry Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Network TPS', value: latestBlock.tps.toLocaleString(), icon: <Zap className="h-4 w-4 text-primary" />, badge: 'Live' },
+            { label: 'Simulated TPS', value: latestBlock.tps.toLocaleString(), icon: <Zap className="h-4 w-4 text-primary" />, badge: 'Simulation' },
             { label: 'Active AI Model', value: activeModel, icon: <Cpu className="h-4 w-4 text-blue-400" />, badge: 'IPFS' },
             { label: 'Bell Score (S)', value: latestBlock.bellScore.toFixed(3), icon: <Activity className="h-4 w-4 text-green-400" />, badge: latestBlock.bellScore > 2.5 ? 'Quantum ✓' : 'Classical' },
             { label: 'Epoch Royalty Earner', value: epochEarner, icon: <Award className="h-4 w-4 text-yellow-400" />, badge: 'Tier 3' },
@@ -262,7 +383,7 @@ export default function NetworkExplorer() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Network className="h-4 w-4 text-primary" /> Live Shard Topology
+                  <Network className="h-4 w-4 text-primary" /> Research Shard Topology
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Auto-Stream</span>
@@ -302,7 +423,7 @@ export default function NetworkExplorer() {
           </Card>
         </div>
 
-        {/* Latest Blocks */}
+        {/* Simulated Blocks */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">

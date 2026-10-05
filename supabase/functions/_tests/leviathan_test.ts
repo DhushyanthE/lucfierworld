@@ -42,6 +42,8 @@ Deno.test("event topics match the canonical keccak256 signature hashes", () => {
   assert(LEVIATHAN_TOPICS.AttestationAccepted.startsWith("0x"));
   assertEquals(LEVIATHAN_TOPICS.AttestationAccepted.length, 66);
   assert(LEVIATHAN_TOPICS.AttestationAccepted !== LEVIATHAN_TOPICS.AttestationRejected);
+  assert(LEVIATHAN_TOPICS.Swap.startsWith("0x"));
+  assertEquals(LEVIATHAN_TOPICS.Swap.length, 66);
 });
 
 Deno.test("classical Bell scores are rejected, never silently accepted", () => {
@@ -119,4 +121,13 @@ Deno.test("indexed LeviathanCoin logs decode end-to-end through the read-only in
   const decoded = decodeAttestationAccepted(acceptedLog(2820, 9));
   assertEquals(decoded!.bellScore, 2.82);
   assertEquals(verifyBellScore(decoded!.bellScore).accepted, true);
+});
+
+
+Deno.test("Leviathan chain reader never loads a deployer private key", async () => {
+  const source = await Deno.readTextFile(new URL("../leviathan-chain/index.ts", import.meta.url));
+  assert(!source.includes('Deno.env.get("DEPLOYER_PRIVATE_KEY")'));
+  assert(source.includes('Deno.env.get("LEVIATHAN_DEPLOYER_ADDRESS")'));
+  assert(source.includes('path === "/market"'));
+  assert(source.includes('path === "/wallet"'));
 });
