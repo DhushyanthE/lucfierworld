@@ -80,6 +80,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (path === "/deployer") {
+      const { ethers } = await import("npm:ethers@6");
+      const k = Deno.env.get("DEPLOYER_PRIVATE_KEY")?.trim();
+      if (!k || !config.rpcUrl) return json({ configured: false });
+      const address = new ethers.Wallet(k).address;
+      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const bal = await provider.getBalance(address);
+      return json({ address, balance_eth: ethers.formatEther(bal), chain_id: Number((await provider.getNetwork()).chainId) });
+    }
+
     if (!config.rpcUrl || !config.contractAddress) {
       return json({
         ...notConfigured({ rpcUrl: config.rpcUrl, contractAddress: config.contractAddress }),
