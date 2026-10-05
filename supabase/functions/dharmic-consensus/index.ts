@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       impossibleBell: body.impossible_bell === true,
       replayRound: body.replay_round === true,
       qkdSecure: body.qkd_secure !== false,
+      stakes: body.stakes && typeof body.stakes === "object" ? body.stakes as Record<string, number> : undefined,
     });
 
     let realtime = "unavailable";
@@ -46,7 +47,9 @@ Deno.serve(async (req) => {
           event: "rounds",
           payload: {
             at: new Date().toISOString(),
-            engine: result.engine,\n            network_best: result.network_best,\n            field_coherence: result.rounds.at(-1)?.field_coherence ?? null,
+            engine: result.engine,
+            network_best: result.network_best,
+            field_coherence: result.rounds.at(-1)?.field_coherence ?? null,
             chain_head: result.chain_head,
             accepted_rounds: result.accepted_rounds,
             rejected_rounds: result.rejected_rounds,
