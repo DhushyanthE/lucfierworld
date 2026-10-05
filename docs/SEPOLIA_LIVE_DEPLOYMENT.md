@@ -96,3 +96,17 @@ The public read-only Edge Function exposes:
 The `/wallet`, `/network-explorer`, `/crypto-market`, and `/leviathan`
 views consume those live endpoints. Simulation-only explorer content is labeled
 as simulation and is kept separate from Sepolia data.
+
+
+## Required GitHub deployment/security secrets
+
+Configure these in repository/environment secrets; never paste them into source or chat:
+
+- `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` in the protected `sepolia` environment.
+- `SUPABASE_DB_URL` for the live RLS assertion.
+- `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF` for linked lint, Edge Function deployment, and post-deploy backend wiring.
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and a short-lived `SUPABASE_TEST_JWT` for the authenticated Sentinel smoke test.
+
+The security workflow intentionally fails when the live RLS or linter credentials are absent. The Sentinel smoke test sends a high-signal defensive telemetry sample through `integration-gateway`, verifies its SHA3-512 digest and ML-DSA-87 signature, requires nine policy votes, and reads the persisted `defense_audit_events` row back through owner RLS.
+
+After the manual Sepolia deployment succeeds, the workflow writes only the public deployer and contract addresses into the Supabase Edge Function environment, deploys `leviathan-chain`, and confirms that `/wallet` and `/market` report the newly deployed contract. The deployment private key never enters the Edge Function environment.
