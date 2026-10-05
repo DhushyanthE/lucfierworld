@@ -68,7 +68,8 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::SUPABASE_DB_URL is not configured; live RLS validation was not executed."
+            echo "::error::SUPABASE_DB_URL is required; live RLS validation must run before merge."
+            exit 1
           fi
       - name: Run deployed RLS integrity assertion
         if: steps.config.outputs.configured == 'true'
@@ -94,7 +95,8 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF is missing; linked linter was not executed."
+            echo "::error::SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF are required; linked lint must run before merge."
+            exit 1
           fi
       - name: Setup Supabase CLI
         if: steps.config.outputs.configured == 'true'
