@@ -36,6 +36,7 @@ const POLL_MS = 15_000;
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const SEPOLIA_CHAIN_HEX = "0xaa36a7";
 const EXCHANGE_IFACE = new Interface([
+  "function addLiquidity(uint256 maxLvthAmount,uint256 minShares) payable returns (uint256,uint256)",
   "function swapExactETHForLVTH(uint256 minLvthOut,uint256 deadline) payable returns (uint256)",
   "function swapExactLVTHForETH(uint256 lvthIn,uint256 minEthOut,uint256 deadline) returns (uint256)",
 ]);
@@ -132,6 +133,10 @@ export default function Leviathan() {
   const [minReceive, setMinReceive] = useState("");
   const [tradeSending, setTradeSending] = useState(false);
   const [tradeTxHash, setTradeTxHash] = useState<string | null>(null);
+  const [liquidityLvth, setLiquidityLvth] = useState("");
+  const [liquidityEth, setLiquidityEth] = useState("");
+  const [liquiditySending, setLiquiditySending] = useState(false);
+  const [liquidityTxHash, setLiquidityTxHash] = useState<string | null>(null);
 
   const holderRef = useRef<string>("");
 
@@ -272,6 +277,47 @@ export default function Leviathan() {
       toast.error("Swap failed", { description: message });
     } finally {
       setTradeSending(false);
+    }
+  };
+
+  const addLiquidity = async () => {
+    const eth = getWallet();
+    setError(null);
+    setLiquidityTxHash(null);
+    try {
+      if (!eth) throw new Error("No EVM wallet detected in this browser.");
+      if (!state?.configured || !state.contract) throw new Error("LeviathanCoin is not configured.");
+      const chain = (await eth.request({ method: "eth_chainId" })) as string;
+      if (chain.toLowerCase() !== SEPOLIA_CHAIN_HEX) throw new Error("Switch your wallet to Sepolia before adding liquidity.");
+      const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      const from = accounts?.[0];
+      if (!from) throw new Error("Wallet did not return an account.");
+      const maxLvth = toWei(liquidityLvth);
+      const ethAmount = toWei(liquidityEth);
+      if (maxLvth <= 0n || ethAmount <= 0n) throw new Error("Both LVTH and ETH liquidity must be greater than zero.");
+
+      setLiquiditySending(true);
+      const data = EXCHANGE_IFACE.encodeFunctionData("addLiquidity", [maxLvth, 0n]);
+      const hash = (await eth.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from,
+          to: state.contract,
+          value: "0x" + ethAmount.toString(16),
+          data,
+        }],
+      })) as string;
+      setLiquidityTxHash(hash);
+      toast.success("Liquidity transaction submitted", { description: hash });
+      setLiquidityLvth("");
+      setLiquidityEth("");
+      window.setTimeout(() => void load(from), 15_000);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "the wallet rejected the liquidity transaction";
+      setError(message);
+      toast.error("Liquidity transaction failed", { description: message });
+    } finally {
+      setLiquiditySending(false);
     }
   };
 
