@@ -50,6 +50,7 @@ import QiskitVerification from './pages/QiskitVerification';
 import QuantumResults from './pages/QuantumResults';
 import QuantumFabric from './pages/QuantumFabric';
 import CellularBlockchain from './pages/CellularBlockchain';
+import Staking from './pages/Staking';
 import DefenseCommand from './pages/DefenseCommand';
 import './App.css';
 
@@ -106,6 +107,7 @@ function App() {
             <Route path="/quantum-results" element={<QuantumResults />} />
             <Route path="/fabric" element={<QuantumFabric />} />
             <Route path="/cells" element={<CellularBlockchain />} />
+            <Route path="/staking" element={<Staking />} />
             <Route path="/defense" element={<DefenseCommand />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

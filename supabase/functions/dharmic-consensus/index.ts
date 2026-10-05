@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       impossibleBell: body.impossible_bell === true,
       replayRound: body.replay_round === true,
       qkdSecure: body.qkd_secure !== false,
+      stakes: body.stakes && typeof body.stakes === "object" ? body.stakes as Record<string, number> : undefined,
     });
 
     let realtime = "unavailable";

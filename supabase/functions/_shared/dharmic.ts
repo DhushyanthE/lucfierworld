@@ -52,6 +52,8 @@ export interface RunRoundOptions {
   impossibleBell?: boolean;
   replayRound?: boolean;
   qkdSecure?: boolean;
+  /** Extra LVTH staked per cell id (e.g. {"cell-0": 500}). */
+  stakes?: Record<string, number>;
 }
 
 export const bellGate = (s: number) =>
@@ -122,6 +124,11 @@ export function runRounds(opts: RunRoundOptions = {}) {
   }
 
   const cells = makeCells(opts.cells ?? 9);
+  for (const c of cells) {
+    const add = Number(opts.stakes?.[c.id] ?? 0);
+    if (!Number.isFinite(add) || add < 0 || add > 1e9) throw new Error("stake must be 0..1e9");
+    c.stake += Math.round(add);
+  }
   const maxStake = Math.max(...cells.map((c) => c.stake));
   const qkdSecure = opts.qkdSecure !== false;
   let best = 0;
