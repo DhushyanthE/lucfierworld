@@ -269,4 +269,167 @@ contract LeviathanCoin {
         require(round > 0 && round <= dharmicRound, "no such round");
         return dharmicRecords[round];
     }
+
+    // --- Native ETH / LVTH exchange -----------------------------------------
+    // Constant-product AMM embedded in the token contract. Liquidity and swaps
+    // are fully on-chain; callers provide minimum outputs to enforce slippage.
+    uint256 public constant SWAP_FEE_BPS = 30; // 0.30%
+    uint256 public reserveLVTH;
+    uint256 public reserveETH;
+    uint256 public cumulativeVolumeLVTH;
+    uint256 public cumulativeVolumeETH;
+    uint256 public totalLiquidityShares;
+    mapping(address => uint256) public liquidityShares;
+    uint256 private exchangeLock = 1;
+
+    event LiquidityAdded(address indexed provider, uint256 lvthAmount, uint256 ethAmount, uint256 shares);
+    event LiquidityRemoved(address indexed provider, uint256 lvthAmount, uint256 ethAmount, uint256 shares);
+    event Swap(
+        address indexed trader,
+        bool ethToLvth,
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 reserveETHAfter,
+        uint256 reserveLVTHAfter
+    );
+
+    modifier exchangeNonReentrant() {
+        require(exchangeLock == 1, "exchange: reentrant");
+        exchangeLock = 2;
+        _;
+        exchangeLock = 1;
+    }
+
+    receive() external payable {
+        revert("exchange: use addLiquidity or swap");
+    }
+
+    function _sqrt(uint256 y) private pure returns (uint256 z) {
+        if (y == 0) return 0;
+        z = y;
+        uint256 x = y / 2 + 1;
+        while (x < z) {
+            z = x;
+            x = (y / x + x) / 2;
+        }
+    }
+
+    function _amountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
+        private
+        pure
+        returns (uint256)
+    {
+        require(amountIn > 0, "exchange: zero input");
+        require(reserveIn > 0 && reserveOut > 0, "exchange: no liquidity");
+        uint256 amountInWithFee = amountIn * (10_000 - SWAP_FEE_BPS);
+        return (amountInWithFee * reserveOut) / (reserveIn * 10_000 + amountInWithFee);
+    }
+
+    function addLiquidity(uint256 maxLvthAmount, uint256 minShares)
+        external
+        payable
+        exchangeNonReentrant
+        returns (uint256 shares, uint256 lvthAmount)
+    {
+        require(msg.value > 0 && maxLvthAmount > 0, "exchange: liquidity required");
+
+        if (totalLiquidityShares == 0) {
+            lvthAmount = maxLvthAmount;
+            shares = _sqrt(msg.value * lvthAmount);
+            require(shares > 0, "exchange: tiny liquidity");
+        } else {
+            lvthAmount = (msg.value * reserveLVTH) / reserveETH;
+            require(lvthAmount > 0 && lvthAmount <= maxLvthAmount, "exchange: ratio/slippage");
+            shares = (msg.value * totalLiquidityShares) / reserveETH;
+        }
+
+        require(shares > 0, "exchange: tiny liquidity");
+        require(shares >= minShares, "exchange: shares below minimum");
+        _transfer(msg.sender, address(this), lvthAmount);
+        reserveETH += msg.value;
+        reserveLVTH += lvthAmount;
+        totalLiquidityShares += shares;
+        liquidityShares[msg.sender] += shares;
+        emit LiquidityAdded(msg.sender, lvthAmount, msg.value, shares);
+    }
+
+    function removeLiquidity(uint256 shares, uint256 minLvthOut, uint256 minEthOut)
+        external
+        exchangeNonReentrant
+        returns (uint256 lvthOut, uint256 ethOut)
+    {
+        require(shares > 0 && shares <= liquidityShares[msg.sender], "exchange: invalid shares");
+        lvthOut = (shares * reserveLVTH) / totalLiquidityShares;
+        ethOut = (shares * reserveETH) / totalLiquidityShares;
+        require(lvthOut >= minLvthOut && ethOut >= minEthOut, "exchange: slippage");
+
+        liquidityShares[msg.sender] -= shares;
+        totalLiquidityShares -= shares;
+        reserveLVTH -= lvthOut;
+        reserveETH -= ethOut;
+
+        _transfer(address(this), msg.sender, lvthOut);
+        (bool ok, ) = payable(msg.sender).call{value: ethOut}("");
+        require(ok, "exchange: ETH transfer failed");
+        emit LiquidityRemoved(msg.sender, lvthOut, ethOut, shares);
+    }
+
+    function swapExactETHForLVTH(uint256 minLvthOut, uint256 deadline)
+        external
+        payable
+        exchangeNonReentrant
+        returns (uint256 lvthOut)
+    {
+        require(block.timestamp <= deadline, "exchange: expired");
+        lvthOut = _amountOut(msg.value, reserveETH, reserveLVTH);
+        require(lvthOut >= minLvthOut, "exchange: slippage");
+
+        reserveETH += msg.value;
+        reserveLVTH -= lvthOut;
+        cumulativeVolumeETH += msg.value;
+        cumulativeVolumeLVTH += lvthOut;
+        _transfer(address(this), msg.sender, lvthOut);
+        emit Swap(msg.sender, true, msg.value, lvthOut, reserveETH, reserveLVTH);
+    }
+
+    function swapExactLVTHForETH(uint256 lvthIn, uint256 minEthOut, uint256 deadline)
+        external
+        exchangeNonReentrant
+        returns (uint256 ethOut)
+    {
+        require(block.timestamp <= deadline, "exchange: expired");
+        ethOut = _amountOut(lvthIn, reserveLVTH, reserveETH);
+        require(ethOut >= minEthOut, "exchange: slippage");
+
+        _transfer(msg.sender, address(this), lvthIn);
+        reserveLVTH += lvthIn;
+        reserveETH -= ethOut;
+        cumulativeVolumeLVTH += lvthIn;
+        cumulativeVolumeETH += ethOut;
+
+        (bool ok, ) = payable(msg.sender).call{value: ethOut}("");
+        require(ok, "exchange: ETH transfer failed");
+        emit Swap(msg.sender, false, lvthIn, ethOut, reserveETH, reserveLVTH);
+    }
+
+    function marketState()
+        external
+        view
+        returns (
+            uint256 lvthReserve,
+            uint256 ethReserve,
+            uint256 priceWeiPerLVTH,
+            uint256 volumeLVTH,
+            uint256 volumeETH,
+            uint256 liquidity
+        )
+    {
+        lvthReserve = reserveLVTH;
+        ethReserve = reserveETH;
+        priceWeiPerLVTH = reserveLVTH == 0 ? 0 : (reserveETH * 1e18) / reserveLVTH;
+        volumeLVTH = cumulativeVolumeLVTH;
+        volumeETH = cumulativeVolumeETH;
+        liquidity = totalLiquidityShares;
+    }
+
 }

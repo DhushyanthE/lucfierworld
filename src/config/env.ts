@@ -32,8 +32,8 @@ export const SERVICE_URLS = {
 
 // Wallet configuration
 export const WALLET_CONFIG = {
-  NETWORK_ID: import.meta.env.VITE_NETWORK_ID || "0x1",
-  REQUIRED_NETWORK: "mainnet",
+  NETWORK_ID: import.meta.env.VITE_NETWORK_ID || "0xaa36a7",
+  REQUIRED_NETWORK: "sepolia",
   AUTO_CONNECT: true,
   SUPPORTED_WALLETS: ["metamask", "walletconnect"],
   GAS_LIMIT_MULTIPLIER: 1.2

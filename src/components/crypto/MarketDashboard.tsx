@@ -14,7 +14,20 @@ import { DharmicConsensusPanel } from "./DharmicConsensusPanel";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { usePortfolio } from "@/hooks/usePortfolio";
+import { SERVICE_URLS } from "@/config/env";
 import { Loader2, Wifi, WifiOff, RefreshCw, TrendingUp, TrendingDown, Zap, Bell, Briefcase, ChartLine, Star } from "lucide-react";
+
+type LvthMarket = {
+  configured: boolean;
+  contract?: string;
+  network?: string;
+  price_eth_per_lvth?: string;
+  reserve_lvth?: string;
+  reserve_eth?: string;
+  cumulative_volume_lvth?: string;
+  cumulative_volume_eth?: string;
+  explorer_url?: string | null;
+};
 
 interface MarketDashboardProps {
   onConnectWallet?: () => void;
@@ -25,6 +38,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
   const [selectedToken, setSelectedToken] = useState("QNTM");
   const [fallbackTokens, setFallbackTokens] = useState<CryptoPrice[]>([]);
   const [isLoadingFallback, setIsLoadingFallback] = useState(true);
+  const [lvthMarket, setLvthMarket] = useState<LvthMarket | null>(null);
 
   // Real-time WebSocket connection
   const {
@@ -83,6 +97,24 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
     
     return () => clearInterval(intervalId);
   }, [isConnected]);
+
+  // LVTH market is read directly from the deployed LeviathanCoin AMM.
+  useEffect(() => {
+    if (!SERVICE_URLS.FUNCTIONS_BASE) return;
+    let cancelled = false;
+    const loadLvth = async () => {
+      try {
+        const response = await fetch(`${SERVICE_URLS.FUNCTIONS_BASE}/leviathan-chain/market`, { cache: "no-store" });
+        const data = await response.json();
+        if (!cancelled && response.ok) setLvthMarket(data as LvthMarket);
+      } catch {
+        if (!cancelled) setLvthMarket(null);
+      }
+    };
+    void loadLvth();
+    const id = window.setInterval(() => void loadLvth(), 15_000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, []);
 
   // Auto-connect on mount
   useEffect(() => {
@@ -180,6 +212,32 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
             )}
           </div>
         </div>
+
+        {lvthMarket?.configured && (
+          <div className="grid gap-2 rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 text-sm sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">LVTH / ETH</div>
+              <div className="font-semibold text-white">{lvthMarket.price_eth_per_lvth ?? "0"} ETH</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">LVTH reserve</div>
+              <div className="font-semibold text-white">{lvthMarket.reserve_lvth ?? "0"} LVTH</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Cumulative volume</div>
+              <div className="font-semibold text-white">{lvthMarket.cumulative_volume_lvth ?? "0"} LVTH</div>
+              <div className="text-xs text-muted-foreground">{lvthMarket.cumulative_volume_eth ?? "0"} ETH</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">{lvthMarket.network ?? "chain"}</div>
+              {lvthMarket.explorer_url ? (
+                <a href={lvthMarket.explorer_url} target="_blank" rel="noreferrer" className="text-purple-300 underline">
+                  Contract explorer
+                </a>
+              ) : <span className="text-muted-foreground">Explorer unavailable</span>}
+            </div>
+          </div>
+        )}
 
         <div className="w-full">
           <TabsList className="bg-gray-800 w-full justify-start flex-wrap">

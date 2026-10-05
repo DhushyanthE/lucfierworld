@@ -18,6 +18,7 @@ import {
   YAxis,
 } from "recharts";
 import { SERVICE_URLS } from "@/config/env";
+import { Interface } from "ethers";
 
 /**
  * LeviathanCoin console — wallet, explorer, market and transfer views over the
@@ -33,9 +34,18 @@ const CHAIN_FN = `${SERVICE_URLS.FUNCTIONS_BASE}/leviathan-chain`;
 const TRANSFER_SELECTOR = "0xa9059cbb"; // transfer(address,uint256)
 const POLL_MS = 15_000;
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const SEPOLIA_CHAIN_HEX = "0xaa36a7";
+const EXCHANGE_IFACE = new Interface([
+  "function swapExactETHForLVTH(uint256 minLvthOut,uint256 deadline) payable returns (uint256)",
+  "function swapExactLVTHForETH(uint256 lvthIn,uint256 minEthOut,uint256 deadline) returns (uint256)",
+]);
 
 type ChainState = {
   configured: boolean;
+  chain_id?: number;
+  network?: string;
+  explorer_url?: string | null;
+  explorer_base_url?: string | null;
   contract?: string | null;
   total_supply_wei?: string;
   attestation_count?: number;
@@ -49,6 +59,28 @@ type ChainEvents = {
   events?: { block_number: number; transaction_hash: string; topic0: string }[];
   events_indexed_this_run?: number;
   reason?: string;
+};
+
+type BackendWallet = {
+  configured: boolean;
+  address?: string | null;
+  balance_eth?: string;
+  chain_id?: number;
+  network?: string;
+  explorer_url?: string | null;
+  explorer_base_url?: string | null;
+  missing?: string[];
+};
+
+type LvthMarket = {
+  configured: boolean;
+  price_eth_per_lvth?: string;
+  reserve_lvth?: string;
+  reserve_eth?: string;
+  cumulative_volume_lvth?: string;
+  cumulative_volume_eth?: string;
+  explorer_url?: string | null;
+  explorer_base_url?: string | null;
 };
 
 type Sample = { t: number; label: string; supply: number; attestations: number };
@@ -84,6 +116,8 @@ export default function Leviathan() {
   const [address, setAddress] = useState("");
   const [state, setState] = useState<ChainState | null>(null);
   const [events, setEvents] = useState<ChainEvents | null>(null);
+  const [backendWallet, setBackendWallet] = useState<BackendWallet | null>(null);
+  const [market, setMarket] = useState<LvthMarket | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +127,11 @@ export default function Leviathan() {
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [tradeDirection, setTradeDirection] = useState<"ethToLvth" | "lvthToEth">("ethToLvth");
+  const [tradeAmount, setTradeAmount] = useState("");
+  const [minReceive, setMinReceive] = useState("");
+  const [tradeSending, setTradeSending] = useState(false);
+  const [tradeTxHash, setTradeTxHash] = useState<string | null>(null);
 
   const holderRef = useRef<string>("");
 
@@ -103,12 +142,16 @@ export default function Leviathan() {
     if (!quiet) setError(null);
     try {
       const q = who ? `?address=${who}` : "";
-      const [s, e] = await Promise.all([
-        fetch(`${CHAIN_FN}/state${q}`).then((r) => r.json()),
-        fetch(`${CHAIN_FN}/attestations?window=2000`).then((r) => r.json()),
+      const [s, e, w, m] = await Promise.all([
+        fetch(`${CHAIN_FN}/state${q}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${CHAIN_FN}/attestations?window=2000`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${CHAIN_FN}/wallet`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${CHAIN_FN}/market`, { cache: "no-store" }).then((r) => r.json()),
       ]);
       setState(s as ChainState);
       setEvents(e as ChainEvents);
+      setBackendWallet(w as BackendWallet);
+      setMarket(m as LvthMarket);
       if ((s as ChainState).configured && (s as ChainState).total_supply_wei) {
         const now = Date.now();
         setSamples((prev) =>
@@ -187,6 +230,51 @@ export default function Leviathan() {
     }
   };
 
+  const executeSwap = async () => {
+    const eth = getWallet();
+    setError(null);
+    setTradeTxHash(null);
+    try {
+      if (!eth) throw new Error("No EVM wallet detected in this browser.");
+      if (!state?.configured || !state.contract) throw new Error("LeviathanCoin is not configured.");
+      const chain = (await eth.request({ method: "eth_chainId" })) as string;
+      if (chain.toLowerCase() !== SEPOLIA_CHAIN_HEX) throw new Error("Switch your wallet to Sepolia before trading.");
+      const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      const from = accounts?.[0];
+      if (!from) throw new Error("Wallet did not return an account.");
+      const amountIn = toWei(tradeAmount);
+      const minimum = toWei(minReceive || "0");
+      if (amountIn <= 0n) throw new Error("Trade amount must be greater than zero.");
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+      setTradeSending(true);
+
+      const tx = tradeDirection === "ethToLvth"
+        ? {
+            from,
+            to: state.contract,
+            value: "0x" + amountIn.toString(16),
+            data: EXCHANGE_IFACE.encodeFunctionData("swapExactETHForLVTH", [minimum, deadline]),
+          }
+        : {
+            from,
+            to: state.contract,
+            data: EXCHANGE_IFACE.encodeFunctionData("swapExactLVTHForETH", [amountIn, minimum, deadline]),
+          };
+
+      const hash = (await eth.request({ method: "eth_sendTransaction", params: [tx] })) as string;
+      setTradeTxHash(hash);
+      toast.success("Swap submitted", { description: hash });
+      setTradeAmount("");
+      window.setTimeout(() => void load(from), 15_000);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "the wallet rejected the swap";
+      setError(message);
+      toast.error("Swap failed", { description: message });
+    } finally {
+      setTradeSending(false);
+    }
+  };
+
   const notConfigured = state && state.configured === false;
   const balance = fromWei(state?.balance_wei);
 
@@ -251,6 +339,24 @@ export default function Leviathan() {
                 {balance ?? "—"}{" "}
                 <span className="text-base text-muted-foreground">LVTH</span>
               </p>
+              <div className="rounded-md border p-3 text-sm">
+                <p className="font-medium">Backend Sepolia wallet</p>
+                {backendWallet?.configured ? (
+                  <>
+                    <code className="block break-all">{backendWallet.address}</code>
+                    <p className="text-muted-foreground">{backendWallet.balance_eth ?? "0"} Sepolia ETH</p>
+                    {backendWallet.explorer_url && (
+                      <a href={backendWallet.explorer_url} target="_blank" rel="noreferrer" className="underline">
+                        Open wallet on explorer
+                      </a>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Missing {backendWallet?.missing?.join(" and ") || "backend wallet configuration"}.
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -270,7 +376,16 @@ export default function Leviathan() {
                   {events.events.map((e) => (
                     <li key={`${e.transaction_hash}-${e.block_number}`} className="flex gap-3">
                       <Badge variant="outline">#{e.block_number}</Badge>
-                      <code className="truncate">{e.transaction_hash}</code>
+                      {state?.explorer_base_url ? (
+                        <a
+                          href={`${state.explorer_base_url}/tx/${e.transaction_hash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate underline"
+                        >
+                          {e.transaction_hash}
+                        </a>
+                      ) : <code className="truncate">{e.transaction_hash}</code>}
                     </li>
                   ))}
                 </ul>
@@ -345,16 +460,74 @@ export default function Leviathan() {
             </CardContent>
           </Card>
 
-          <Alert>
-            <AlertTitle>No price or trading volume exists yet</AlertTitle>
-            <AlertDescription>
-              LVTH has no liquidity pool and is not listed on any exchange, so there is no market
-              price and no trade volume to report — any figure here would be invented. What is
-              real and shown above: circulating supply, attestation count and the mint rate, read
-              live from the contract. Once a pool exists, price and volume can be derived from its
-              swap events.
-            </AlertDescription>
-          </Alert>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <Card>
+              <CardHeader><CardTitle className="text-base">LVTH price</CardTitle></CardHeader>
+              <CardContent className="text-xl font-semibold">{market?.price_eth_per_lvth ?? "0"} ETH</CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">LVTH reserve</CardTitle></CardHeader>
+              <CardContent className="text-xl font-semibold">{market?.reserve_lvth ?? "0"} LVTH</CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">ETH reserve</CardTitle></CardHeader>
+              <CardContent className="text-xl font-semibold">{market?.reserve_eth ?? "0"} ETH</CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Cumulative volume</CardTitle></CardHeader>
+              <CardContent className="text-sm">
+                <div>{market?.cumulative_volume_lvth ?? "0"} LVTH</div>
+                <div>{market?.cumulative_volume_eth ?? "0"} ETH</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Trade LVTH on Sepolia</CardTitle>
+              <CardDescription>
+                Swaps execute against the LeviathanCoin constant-product pool. Your wallet signs every trade.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={tradeDirection === "ethToLvth" ? "default" : "outline"}
+                  onClick={() => setTradeDirection("ethToLvth")}
+                >
+                  ETH → LVTH
+                </Button>
+                <Button
+                  variant={tradeDirection === "lvthToEth" ? "default" : "outline"}
+                  onClick={() => setTradeDirection("lvthToEth")}
+                >
+                  LVTH → ETH
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Amount in ({tradeDirection === "ethToLvth" ? "ETH" : "LVTH"})</Label>
+                  <Input value={tradeAmount} onChange={(e) => setTradeAmount(e.target.value)} placeholder="0.01" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Minimum receive ({tradeDirection === "ethToLvth" ? "LVTH" : "ETH"})</Label>
+                  <Input value={minReceive} onChange={(e) => setMinReceive(e.target.value)} placeholder="0" />
+                </div>
+              </div>
+              <Button onClick={() => void executeSwap()} disabled={tradeSending || !market?.configured}>
+                {tradeSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit swap
+              </Button>
+              {market?.explorer_url && (
+                <a href={market.explorer_url} target="_blank" rel="noreferrer" className="block text-sm underline">
+                  Open LeviathanCoin on Sepolia explorer
+                </a>
+              )}
+              {tradeTxHash && (
+                <code className="block break-all text-xs">{tradeTxHash}</code>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="transfer">

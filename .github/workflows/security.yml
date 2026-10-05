@@ -9,6 +9,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/functions/**'
+      - '.github/workflows/security.yml'
   schedule:
     - cron: '0 */6 * * *'
 
@@ -21,7 +22,27 @@ jobs:
         uses: denoland/setup-deno@v1
         with: { deno-version: v2.x }
       - name: Defensive backend tests
-        run: deno test -A supabase/functions/_tests/
+        run: |
+          TESTS=$(find supabase/functions/_tests -name '*_test.ts' ! -name 'realtime_auth_test.ts' -print)
+          deno test --node-modules-dir=auto -A $TESTS
+      - name: Detect live auth test configuration
+        id: auth_config
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -n "$VITE_SUPABASE_URL" ] && [ -n "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Live Supabase auth/realtime test configuration is missing."
+          fi
+      - name: Live auth and Realtime boundary tests
+        if: steps.auth_config.outputs.configured == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: deno test --node-modules-dir=auto -A supabase/functions/_tests/realtime_auth_test.ts
       - name: Static migration safety checks
         run: |
           test -f supabase/migrations/20261003183000_defense_audit_events.sql
@@ -30,30 +51,57 @@ jobs:
           grep -q 'executed = false' supabase/migrations/20261003183000_defense_audit_events.sql
           ! grep -qi 'for update' supabase/migrations/20261003183000_defense_audit_events.sql
           ! grep -qi 'for delete' supabase/migrations/20261003183000_defense_audit_events.sql
+          test -f supabase/migrations/20261005070000_revoke_anon_sensitive_grants.sql
+          grep -qi 'revoke select, insert, update, delete' supabase/migrations/20261005070000_revoke_anon_sensitive_grants.sql
 
   live-rls-integrity:
     runs-on: ubuntu-latest
     needs: code-security
-    if: ${{ secrets.SUPABASE_DB_URL != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Detect live database configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -n "$SUPABASE_DB_URL" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_DB_URL is not configured; live RLS validation was not executed."
+          fi
       - name: Run deployed RLS integrity assertion
+        if: steps.config.outputs.configured == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT * FROM security.assert_rls_integrity();"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.role_table_grants WHERE grantee='anon' AND table_schema='public' AND table_name='defense_audit_events' AND privilege_type IN ('SELECT','INSERT','UPDATE','DELETE')) THEN RAISE EXCEPTION 'anon has direct grants on defense_audit_events'; END IF; END \$\$;"
 
   supabase-linter:
     runs-on: ubuntu-latest
     needs: code-security
-    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Detect linked Supabase configuration
+        id: config
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF is missing; linked linter was not executed."
+          fi
       - name: Setup Supabase CLI
+        if: steps.config.outputs.configured == 'true'
         uses: supabase/setup-cli@v1
         with: { version: latest }
       - name: Run linked Supabase linter
+        if: steps.config.outputs.configured == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

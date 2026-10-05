@@ -49,6 +49,7 @@ export const LEVIATHAN_EVENTS = {
   AttestationAccepted: "AttestationAccepted(address,uint64,uint32,bytes32,uint256)",
   AttestationRejected: "AttestationRejected(address,uint64,string)",
   DharmicRoundFinalized: "DharmicRoundFinalized(uint256,address,uint256,bytes32,bytes32,bytes32,uint32,uint32,uint256)",
+  Swap: "Swap(address,bool,uint256,uint256,uint256,uint256)",
 } as const;
 
 export const LEVIATHAN_TOPICS: Record<keyof typeof LEVIATHAN_EVENTS, string> = {
@@ -56,6 +57,7 @@ export const LEVIATHAN_TOPICS: Record<keyof typeof LEVIATHAN_EVENTS, string> = {
   AttestationAccepted: eventTopic(LEVIATHAN_EVENTS.AttestationAccepted),
   AttestationRejected: eventTopic(LEVIATHAN_EVENTS.AttestationRejected),
   DharmicRoundFinalized: eventTopic(LEVIATHAN_EVENTS.DharmicRoundFinalized),
+  Swap: eventTopic(LEVIATHAN_EVENTS.Swap),
 };
 
 export type RawLog = { topics: string[]; data: string; blockNumber?: string };

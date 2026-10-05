@@ -1,0 +1,85 @@
+name: leviathan-live
+on:
+  pull_request:
+    paths:
+      - 'src/contracts/LeviathanCoin.sol'
+      - 'src/pages/Leviathan.tsx'
+      - 'src/components/crypto/MarketDashboard.tsx'
+      - 'supabase/functions/leviathan-chain/**'
+      - 'supabase/functions/_shared/leviathan.ts'
+      - 'scripts/**'
+      - 'package.json'
+      - '.github/workflows/leviathan-live.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/contracts/LeviathanCoin.sol'
+      - 'src/pages/Leviathan.tsx'
+      - 'src/components/crypto/MarketDashboard.tsx'
+      - 'supabase/functions/leviathan-chain/**'
+      - 'supabase/functions/_shared/leviathan.ts'
+      - 'scripts/**'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      initial_supply:
+        description: Initial LVTH supply
+        required: false
+        default: '1000000'
+      liquidity_lvth:
+        description: LVTH to seed in the pool
+        required: false
+        default: '0'
+      liquidity_eth:
+        description: Sepolia ETH to seed in the pool
+        required: false
+        default: '0'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - name: Compile LeviathanCoin
+        run: npm run contract:compile
+      - name: Build frontend
+        run: npm run build
+      - name: Deno Leviathan tests
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+      - run: deno test -A supabase/functions/_tests/leviathan_test.ts
+
+  deploy-sepolia:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: sepolia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Deploy and optionally seed liquidity
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
+          LEVIATHAN_INITIAL_SUPPLY: ${{ inputs.initial_supply }}
+          LEVIATHAN_INITIAL_LIQUIDITY_LVTH: ${{ inputs.liquidity_lvth }}
+          LEVIATHAN_INITIAL_LIQUIDITY_ETH: ${{ inputs.liquidity_eth }}
+        run: |
+          test -n "$SEPOLIA_RPC_URL"
+          test -n "$SEPOLIA_PRIVATE_KEY"
+          npm run deploy:sepolia | tee deployment.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leviathan-sepolia-deployment
+          path: deployment.json
+          retention-days: 7
