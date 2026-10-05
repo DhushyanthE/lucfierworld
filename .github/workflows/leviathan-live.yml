@@ -78,8 +78,41 @@ jobs:
           test -n "$SEPOLIA_RPC_URL"
           test -n "$SEPOLIA_PRIVATE_KEY"
           npm run deploy:sepolia | tee deployment.json
+          node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("deployment.json","utf8"));if(!d.contract||!d.deployer)process.exit(1);fs.appendFileSync(process.env.GITHUB_ENV, "LEVIATHAN_DEPLOYER_ADDRESS="+d.deployer+"\\nLEVIATHAN_CONTRACT_ADDRESS="+d.contract+"\\n");'
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - name: Wire live Sepolia addresses into the read-only backend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PROJECT_REF"
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+            EVM_RPC_URL="$SEPOLIA_RPC_URL" \
+            LEVIATHAN_DEPLOYER_ADDRESS="$LEVIATHAN_DEPLOYER_ADDRESS" \
+            LEVIATHAN_CONTRACT_ADDRESS="$LEVIATHAN_CONTRACT_ADDRESS" \
+            SEPOLIA_EXPLORER_BASE_URL="https://sepolia.etherscan.io"
+          supabase functions deploy leviathan-chain --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+      - name: Confirm backend wallet and market point to the deployment
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          BASE="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/leviathan-chain"
+          for n in 1 2 3 4 5 6; do
+            WALLET=$(curl -fsS "$BASE/wallet") && MARKET=$(curl -fsS "$BASE/market") && break
+            sleep 5
+          done
+          echo "$WALLET" | tee backend-wallet.json
+          echo "$MARKET" | tee backend-market.json
+          node -e 'const fs=require("fs");const w=JSON.parse(fs.readFileSync("backend-wallet.json"));const m=JSON.parse(fs.readFileSync("backend-market.json"));if(w.address?.toLowerCase()!==process.env.LEVIATHAN_DEPLOYER_ADDRESS.toLowerCase())throw new Error("backend deployer mismatch");if(m.contract?.toLowerCase()!==process.env.LEVIATHAN_CONTRACT_ADDRESS.toLowerCase())throw new Error("backend contract mismatch");console.log("backend confirmed",w.address,w.balance_eth,m.contract,m.price_eth_per_lvth);'
       - uses: actions/upload-artifact@v4
         with:
           name: leviathan-sepolia-deployment
-          path: deployment.json
+          path: |
+            deployment.json
+            backend-wallet.json
+            backend-market.json
           retention-days: 7
