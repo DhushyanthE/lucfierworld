@@ -1,7 +1,7 @@
 import { assert } from "jsr:@std/assert@1";
 
 Deno.test("defense audit migration preserves fail-closed invariants", async () => {
-  const sql = await Deno.readTextFile(new URL("../../../migrations/20261003183000_defense_audit_events.sql", import.meta.url));
+  const sql = await Deno.readTextFile(new URL("../../migrations/20261003183000_defense_audit_events.sql", import.meta.url));
   assert(sql.includes("enable row level security"));
   assert(sql.includes("auth.uid() = user_id"));
   assert(sql.includes("human_approval_required = true"));
@@ -13,7 +13,7 @@ Deno.test("defense audit migration preserves fail-closed invariants", async () =
 
 
 Deno.test("atomic audit migration serializes per-user chain appends", async () => {
-  const sql = await Deno.readTextFile(new URL("../../../migrations/20261004040000_atomic_defense_audit.sql", import.meta.url));
+  const sql = await Deno.readTextFile(new URL("../../migrations/20261004040000_atomic_defense_audit.sql", import.meta.url));
   assert(sql.includes("pg_advisory_xact_lock"));
   assert(sql.includes("auth.uid()"));
   assert(sql.includes("audit head conflict"));
@@ -23,7 +23,7 @@ Deno.test("atomic audit migration serializes per-user chain appends", async () =
 
 
 Deno.test("signed audit migration persists SHA3-256 and ML-DSA evidence", async () => {
-  const sql = await Deno.readTextFile(new URL("../../../migrations/20261007160000_signed_defense_audit.sql", import.meta.url));
+  const sql = await Deno.readTextFile(new URL("../../migrations/20261007160000_signed_defense_audit.sql", import.meta.url));
   assert(sql.includes("payload_sha3_256"));
   assert(sql.includes("signature_b64"));
   assert(sql.includes("public_key_b64"));
