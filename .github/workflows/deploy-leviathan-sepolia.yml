@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - run: npm ci
+      - run: npm install --no-package-lock --no-audit --no-fund
       - name: Deploy LeviathanCoin to Sepolia
         env:
           EVM_RPC_URL: ${{ secrets.EVM_RPC_URL }}
