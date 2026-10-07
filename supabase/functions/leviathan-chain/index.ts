@@ -128,15 +128,26 @@ Deno.serve(async (req) => {
 
     if (path === "/deployer") {
       const { ethers } = await import("npm:ethers@6");
-      const k = Deno.env.get("DEPLOYER_PRIVATE_KEY")?.trim();
-      if (!k || !config.rpcUrl) return json({ configured: false });
-      if (!/^(0x)?[0-9a-fA-F]{64}$/.test(k)) {
-        return json({ configured: false, error: "DEPLOYER_PRIVATE_KEY is not a valid 32-byte hex wallet key" }, 400);
+      const address = Deno.env.get("LEVIATHAN_DEPLOYER_ADDRESS")?.trim() || "";
+      if (!config.rpcUrl || !ADDRESS_RE.test(address)) {
+        return json({
+          configured: false,
+          missing: [
+            ...(config.rpcUrl ? [] : ["EVM_RPC_URL"]),
+            ...(ADDRESS_RE.test(address) ? [] : ["LEVIATHAN_DEPLOYER_ADDRESS"]),
+          ],
+        });
       }
-      const address = new ethers.Wallet(k.startsWith("0x") ? k : `0x${k}`).address;
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const network = await provider.getNetwork();
       const bal = await provider.getBalance(address);
-      return json({ address, balance_eth: ethers.formatEther(bal), chain_id: Number((await provider.getNetwork()).chainId) });
+      return json({
+        configured: true,
+        address,
+        balance_eth: ethers.formatEther(bal),
+        chain_id: Number(network.chainId),
+        network: network.chainId === 11155111n ? "sepolia" : `chain-${network.chainId}`,
+      });
     }
 
     if (!config.rpcUrl || !config.contractAddress) {
