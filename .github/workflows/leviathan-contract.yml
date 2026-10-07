@@ -1,0 +1,39 @@
+name: leviathan-contract
+
+on:
+  push:
+    paths:
+      - 'src/contracts/LeviathanCoin.sol'
+      - 'scripts/check-leviathan-contract.mjs'
+      - 'scripts/deploy-leviathan-sepolia.mjs'
+      - 'supabase/functions/leviathan-chain/**'
+      - 'supabase/functions/_shared/leviathan.ts'
+      - 'src/components/leviathan/**'
+      - 'src/components/crypto/MarketDashboard.tsx'
+      - 'src/components/wallet/QuantumWalletDashboard.tsx'
+      - 'src/pages/NetworkExplorer.tsx'
+      - '.github/workflows/leviathan-contract.yml'
+  pull_request:
+    paths:
+      - 'src/contracts/LeviathanCoin.sol'
+      - 'scripts/check-leviathan-contract.mjs'
+      - 'scripts/deploy-leviathan-sepolia.mjs'
+      - 'supabase/functions/leviathan-chain/**'
+      - 'supabase/functions/_shared/leviathan.ts'
+      - 'src/components/leviathan/**'
+      - 'src/components/crypto/MarketDashboard.tsx'
+      - 'src/components/wallet/QuantumWalletDashboard.tsx'
+      - 'src/pages/NetworkExplorer.tsx'
+
+jobs:
+  contract-and-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run test:leviathan:contract
+      - run: npm run build
