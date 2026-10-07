@@ -22,6 +22,10 @@ drop function if exists public.append_defense_audit_event(
   text,text,text,text,double precision,text,text,text,text,integer,integer,boolean,jsonb
 );
 
+drop function if exists public.append_defense_audit_event(
+  text,text,text,text,double precision,text,text,text,text,integer,integer,boolean,jsonb,text,text
+);
+
 create or replace function public.append_defense_audit_event(
   p_correlation_id text,
   p_source text,
