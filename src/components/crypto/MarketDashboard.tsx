@@ -12,6 +12,7 @@ import { HistoricalPerformanceChart } from "./HistoricalPerformanceChart";
 import { Watchlist } from "./Watchlist";
 import { DharmicConsensusPanel } from "./DharmicConsensusPanel";
 import { LeviathanLiveStatus } from "@/components/leviathan/LeviathanLiveStatus";
+import { LeviathanSwapPanel } from "@/components/leviathan/LeviathanSwapPanel";
 import cryptoApiService, { CryptoPrice } from "@/services/cryptoApiService";
 import { useCryptoWebSocket } from "@/hooks/useCryptoWebSocket";
 import { usePortfolio } from "@/hooks/usePortfolio";
@@ -257,6 +258,7 @@ export function MarketDashboard({ onConnectWallet }: MarketDashboardProps) {
             
             <TabsContent value="market" className="mt-0 space-y-4">
               <LeviathanLiveStatus mode="market" />
+              <LeviathanSwapPanel />
               <MarketOverview tokens={tokens} />
             </TabsContent>
             
