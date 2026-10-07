@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy:leviathan:sepolia": "node scripts/deploy-leviathan-sepolia.mjs"
+    "deploy:leviathan:sepolia": "node scripts/deploy-leviathan-sepolia.mjs",
+    "test:leviathan:contract": "node scripts/check-leviathan-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
