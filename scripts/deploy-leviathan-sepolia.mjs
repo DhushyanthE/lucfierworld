@@ -54,6 +54,20 @@ if (liquidityEth && liquidityLvth) {
   liquidityTx = receipt?.hash ?? tx.hash;
 }
 
+let smokeSwapTx = null;
+let smokeSwapLvthOut = null;
+const smokeSwapEth = process.env.LVTH_SMOKE_SWAP_ETH?.trim();
+if (smokeSwapEth) {
+  const ethIn = ethers.parseEther(smokeSwapEth);
+  const quoted = await contract.quoteEthForLvth(ethIn);
+  if (quoted <= 0n) throw new Error("Smoke swap quote is zero; seed liquidity first");
+  const minOut = (quoted * 9900n) / 10000n;
+  const tx = await contract.swapEthForLvth(minOut, { value: ethIn });
+  const receipt = await tx.wait();
+  smokeSwapTx = receipt?.hash ?? tx.hash;
+  smokeSwapLvthOut = ethers.formatUnits(quoted, 18);
+}
+
 const balanceAfter = await provider.getBalance(wallet.address);
 const result = {
   network: "sepolia",
@@ -67,6 +81,9 @@ const result = {
   initial_liquidity_tx: liquidityTx,
   initial_liquidity_eth: liquidityEth ?? null,
   initial_liquidity_lvth: liquidityLvth ?? null,
+  smoke_swap_eth: smokeSwapEth ?? null,
+  smoke_swap_lvth_quote: smokeSwapLvthOut,
+  smoke_swap_tx: smokeSwapTx,
 };
 
 fs.mkdirSync("artifacts", { recursive: true });
