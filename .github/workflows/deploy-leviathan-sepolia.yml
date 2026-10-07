@@ -1,0 +1,46 @@
+name: deploy-leviathan-sepolia
+
+on:
+  workflow_dispatch:
+    inputs:
+      initial_supply_lvth:
+        description: Initial LVTH supply
+        required: true
+        default: "1000000"
+      initial_liquidity_eth:
+        description: Initial ETH liquidity (optional)
+        required: false
+        default: ""
+      initial_liquidity_lvth:
+        description: Initial LVTH liquidity (optional)
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: sepolia
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Deploy LeviathanCoin to Sepolia
+        env:
+          EVM_RPC_URL: ${{ secrets.EVM_RPC_URL }}
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          LVTH_INITIAL_SUPPLY: ${{ inputs.initial_supply_lvth }}
+          LVTH_INITIAL_LIQUIDITY_ETH: ${{ inputs.initial_liquidity_eth }}
+          LVTH_INITIAL_LIQUIDITY_LVTH: ${{ inputs.initial_liquidity_lvth }}
+        run: |
+          test -n "$EVM_RPC_URL" || { echo "::error::EVM_RPC_URL secret missing"; exit 1; }
+          test -n "$DEPLOYER_PRIVATE_KEY" || { echo "::error::DEPLOYER_PRIVATE_KEY secret missing"; exit 1; }
+          npm run deploy:leviathan:sepolia
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leviathan-sepolia-deployment
+          path: artifacts/leviathan-sepolia.json
