@@ -6,6 +6,8 @@
  */
 import { canonical, sha3 } from "./fabric.ts";
 import { mlDsa } from "./pqc.ts";
+import { sha3_256 } from "npm:@noble/hashes@2.3.0/sha3.js";
+import { bytesToHex } from "npm:@noble/hashes@2.3.0/utils.js";
 import { classify, recommendation, threatScore, type SentinelFinding, type Telemetry } from "./defense.ts";
 
 export type ReviewVote = {
@@ -41,8 +43,6 @@ const POLICY = [
 export function verifyFinding(f: SentinelFinding, telemetry: Telemetry) {
   const { id, payload_hash, payload_sha3_256, signature_b64, public_key_b64, ...signed } = f;
   const digestMatches = sha3(canonical(signed)) === payload_hash;
-  const { sha3_256 } = await import("npm:@noble/hashes@2.3.0/sha3.js");
-  const { bytesToHex } = await import("npm:@noble/hashes@2.3.0/utils.js");
   const digest256Matches = bytesToHex(sha3_256(new TextEncoder().encode(canonical(signed)))) === payload_sha3_256;
   let signatureValid = false;
   try { signatureValid = mlDsa.verify(public_key_b64, payload_sha3_256, signature_b64); }
