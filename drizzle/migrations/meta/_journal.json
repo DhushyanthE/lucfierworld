@@ -22,6 +22,13 @@
       "when": 1791387651846,
       "tag": "0002_defense_audit_table_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791387699510,
+      "tag": "0003_signed_defense_audit_rows",
+      "breakpoints": true
     }
   ]
 }
