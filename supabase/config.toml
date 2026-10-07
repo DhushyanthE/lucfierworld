@@ -151,3 +151,6 @@ verify_jwt = true
 
 [functions.integration-gateway]
 verify_jwt = true
+
+[functions.leviathan-chain]
+verify_jwt = false
