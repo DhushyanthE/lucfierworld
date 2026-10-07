@@ -39,10 +39,13 @@ const POLICY = [
 ] as const;
 
 export function verifyFinding(f: SentinelFinding, telemetry: Telemetry) {
-  const { id, payload_hash, signature_b64, public_key_b64, ...signed } = f;
+  const { id, payload_hash, payload_sha3_256, signature_b64, public_key_b64, ...signed } = f;
   const digestMatches = sha3(canonical(signed)) === payload_hash;
+  const { sha3_256 } = await import("npm:@noble/hashes@2.3.0/sha3.js");
+  const { bytesToHex } = await import("npm:@noble/hashes@2.3.0/utils.js");
+  const digest256Matches = bytesToHex(sha3_256(new TextEncoder().encode(canonical(signed)))) === payload_sha3_256;
   let signatureValid = false;
-  try { signatureValid = mlDsa.verify(public_key_b64, payload_hash, signature_b64); }
+  try { signatureValid = mlDsa.verify(public_key_b64, payload_sha3_256, signature_b64); }
   catch { signatureValid = false; }
   const score = threatScore(telemetry);
   const telemetryMatches =
@@ -51,7 +54,7 @@ export function verifyFinding(f: SentinelFinding, telemetry: Telemetry) {
     signed.severity === classify(score) &&
     signed.recommendation === recommendation(score) &&
     signed.requires_human_approval === true;
-  return digestMatches && signatureValid && telemetryMatches && id === payload_hash.slice(0, 24);
+  return digestMatches && digest256Matches && signatureValid && telemetryMatches && id === payload_hash.slice(0, 24);
 }
 
 export function reviewDefensiveFinding(f: SentinelFinding, telemetry: Telemetry): DefenseReview {
