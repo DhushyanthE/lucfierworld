@@ -5,6 +5,8 @@
  */
 import { canonical, sha3 } from "./fabric.ts";
 import { mlDsa } from "./pqc.ts";
+import { sha3_256 } from "npm:@noble/hashes@2.3.0/sha3.js";
+import { bytesToHex } from "npm:@noble/hashes@2.3.0/utils.js";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 export type Recommendation = "observe" | "review" | "recommend_isolation";
@@ -26,7 +28,8 @@ export interface SentinelFinding {
   recommendation: Recommendation;
   reasons: string[];
   requires_human_approval: true;
-  payload_hash: string;
+  payload_hash: string; // SHA3-512 audit-chain digest
+  payload_sha3_256: string; // signature digest
   signature_b64: string;
   public_key_b64: string;
   created_at: string;
@@ -89,13 +92,16 @@ export function analyzeTelemetry(t: Telemetry, now = new Date().toISOString()): 
     requires_human_approval: true as const,
     created_at: now,
   };
-  const payload_hash = sha3(canonical(unsigned));
+  const canonicalPayload = canonical(unsigned);
+  const payload_hash = sha3(canonicalPayload);
+  const payload_sha3_256 = bytesToHex(sha3_256(new TextEncoder().encode(canonicalPayload)));
   const keys = mlDsa.keygen();
-  const signature_b64 = mlDsa.sign(keys.secret_key_b64, payload_hash).signature_b64;
+  const signature_b64 = mlDsa.sign(keys.secret_key_b64, payload_sha3_256).signature_b64;
   return {
     id: payload_hash.slice(0, 24),
     ...unsigned,
     payload_hash,
+    payload_sha3_256,
     signature_b64,
     public_key_b64: keys.public_key_b64,
   };
