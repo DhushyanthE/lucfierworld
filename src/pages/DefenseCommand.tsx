@@ -24,10 +24,7 @@ export default function DefenseCommand() {
   const analyze = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("defense-sentinel", {
-      body: {
-        ...telemetry,
-        previous_audit_hash: result?.audit?.audit_hash,
-      },
+      body: telemetry,
     });
     setResult(error ? { error: error.message } : data);
     setLoading(false);
@@ -49,8 +46,8 @@ export default function DefenseCommand() {
       <header>
         <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">QuantumSynapse / Defensive Cyber Resilience</div>
         <h1 className="text-3xl font-bold mt-2">Sentinel Command</h1>
-        <p className="text-muted-foreground mt-2 max-w-4xl">
-          Defensive telemetry triage with post-quantum signed findings, nine-perspective policy review and session-local hash-linked audit. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
+          <p className="text-muted-foreground mt-2 max-w-4xl">
+          Defensive telemetry triage with post-quantum signed findings, nine-perspective policy review and an owner-scoped durable audit chain. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
         </p>
       </header>
 

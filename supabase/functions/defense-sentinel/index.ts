@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { analyzeTelemetry, auditHash, type Telemetry } from "../_shared/defense.ts";
 import { reviewDefensiveFinding } from "../_shared/defense-review.ts";
+import { loadAuditHead, persistAuditEvent } from "../_shared/defense-audit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("DEFENSE_ALLOWED_ORIGIN") || "http://localhost:8080",
@@ -40,19 +41,52 @@ Deno.serve(async (req) => {
 
   const finding = analyzeTelemetry(body);
   const review = reviewDefensiveFinding(finding, body);
-  // A caller-supplied previous hash is not a durable ledger. This chain is
-  // session-local and untrusted until a server-managed audit store exists.
-  const prevCandidate = (body as unknown as Record<string, unknown>).previous_audit_hash;
-  const previous = typeof prevCandidate === "string" && /^[0-9a-f]{128}$/.test(prevCandidate)
-    ? prevCandidate : "0".repeat(128);
+  let head;
+  try {
+    head = await loadAuditHead(client, auth.user.id);
+  } catch (error) {
+    console.error("defense audit head lookup failed", error);
+    return json({ error: "audit history unavailable" }, 503);
+  }
+  const previous = head?.audit_hash ?? "0".repeat(128);
   const audit_hash = auditHash(previous, finding);
+  const correlation_id = crypto.randomUUID();
+
+  let persisted;
+  try {
+    persisted = await persistAuditEvent(client, {
+      correlation_id,
+      source: body.source,
+      severity: finding.severity,
+      recommendation: finding.recommendation,
+      score: finding.score,
+      payload_hash: finding.payload_hash,
+      audit_hash,
+      previous_audit_hash: previous,
+      review_engine: review.engine,
+      review_yes: review.yes,
+      review_total: review.votes.length,
+      quorum_met: review.quorum_met,
+      reasons: finding.reasons,
+    });
+  } catch (error) {
+    console.error("defense audit persistence failed", error);
+    return json({ error: "audit persistence failed", correlation_id }, 503);
+  }
 
   // Never broadcast sensitive defense telemetry over an unprotected public
   // Realtime channel. A future private RLS-backed channel can be added.
   return json({
     finding,
     review,
-    audit: { previous_hash: previous, audit_hash, persistence: "session-local-untrusted" },
+    audit: {
+      id: persisted.id,
+      correlation_id,
+      previous_hash: previous,
+      audit_hash,
+      created_at: persisted.created_at,
+      persistence: "durable-postgres-atomic",
+    },
     realtime_bridge: "disabled_pending_private_channel",
     execution: {
       autonomous_action: false,
