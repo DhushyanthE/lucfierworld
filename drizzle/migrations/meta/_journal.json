@@ -8,6 +8,34 @@
       "when": 1791387273849,
       "tag": "0000_defense_audit_events_existing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791387593134,
+      "tag": "0001_atomic_defense_audit_existing",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791387651846,
+      "tag": "0002_defense_audit_table_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791387699510,
+      "tag": "0003_signed_defense_audit_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791387746298,
+      "tag": "0004_restrict_defense_audit_access",
+      "breakpoints": true
     }
   ]
 }

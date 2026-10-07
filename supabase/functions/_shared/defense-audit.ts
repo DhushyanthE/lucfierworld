@@ -32,6 +32,8 @@ export async function persistAuditEvent(client: any, row: Record<string, any>) {
     p_review_total: row.review_total,
     p_quorum_met: row.quorum_met,
     p_reasons: row.reasons,
+    p_signature_b64: row.signature_b64,
+    p_public_key_b64: row.public_key_b64,
   });
   if (error) throw new Error(error.message || "audit persistence failed");
   return data;

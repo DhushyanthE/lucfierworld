@@ -24,10 +24,7 @@ export default function DefenseCommand() {
   const analyze = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("defense-sentinel", {
-      body: {
-        ...telemetry,
-        previous_audit_hash: result?.audit?.audit_hash,
-      },
+      body: telemetry,
     });
     setResult(error ? { error: error.message } : data);
     setLoading(false);
@@ -49,8 +46,8 @@ export default function DefenseCommand() {
       <header>
         <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">QuantumSynapse / Defensive Cyber Resilience</div>
         <h1 className="text-3xl font-bold mt-2">Sentinel Command</h1>
-        <p className="text-muted-foreground mt-2 max-w-4xl">
-          Defensive telemetry triage with post-quantum signed findings, nine-perspective policy review and session-local hash-linked audit. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
+          <p className="text-muted-foreground mt-2 max-w-4xl">
+          Defensive telemetry triage with post-quantum signed findings, nine-perspective policy review and an owner-scoped durable audit chain. Recommendations always require a human operator; this module cannot control weapons or autonomously execute containment.
         </p>
       </header>
 
@@ -98,7 +95,7 @@ export default function DefenseCommand() {
           <p>{f.reasons.join(" · ")}</p>
           <div className="text-xs text-muted-foreground break-all">SHA3-512 payload: {f.payload_hash}</div>
           <div className="text-xs text-muted-foreground break-all">Audit head: {result.audit.audit_hash}</div>
-          <p className="text-sm font-medium">Awaiting human decision — no containment action has been executed.</p>
+          <p className="text-sm font-medium">ML-DSA-87 signature saved with the audit entry — awaiting human decision; no containment action has been executed.</p>
         </CardContent>
       </Card>}
 
@@ -114,7 +111,7 @@ export default function DefenseCommand() {
               <div className="text-muted-foreground">{v.rationale}</div>
             </div>)}
           </div>
-          <p className="text-xs text-muted-foreground">Audit linkage is session-local and untrusted until server-managed persistence is deployed.</p>
+          <p className="text-xs text-muted-foreground">This review and signed finding are saved to your owner-scoped audit chain.</p>
         </CardContent>
       </Card>}
     </div>

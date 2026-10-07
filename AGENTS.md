@@ -1,0 +1,1 @@
+- Sentinel audit writes must use the authenticated user's current audit head and atomic append function, so caller-provided hashes can never establish trusted chain state; persist each finding's digest and signature together.

@@ -275,6 +275,7 @@ export type Database = {
           id: string
           payload_hash: string
           previous_audit_hash: string
+          public_key_b64: string | null
           quorum_met: boolean
           reasons: Json
           recommendation: string
@@ -283,6 +284,7 @@ export type Database = {
           review_yes: number
           score: number
           severity: string
+          signature_b64: string | null
           source: string
           user_id: string
         }
@@ -295,6 +297,7 @@ export type Database = {
           id?: string
           payload_hash: string
           previous_audit_hash: string
+          public_key_b64?: string | null
           quorum_met?: boolean
           reasons?: Json
           recommendation: string
@@ -303,6 +306,7 @@ export type Database = {
           review_yes: number
           score: number
           severity: string
+          signature_b64?: string | null
           source: string
           user_id: string
         }
@@ -315,6 +319,7 @@ export type Database = {
           id?: string
           payload_hash?: string
           previous_audit_hash?: string
+          public_key_b64?: string | null
           quorum_met?: boolean
           reasons?: Json
           recommendation?: string
@@ -323,6 +328,7 @@ export type Database = {
           review_yes?: number
           score?: number
           severity?: string
+          signature_b64?: string | null
           source?: string
           user_id?: string
         }
@@ -1175,49 +1181,99 @@ export type Database = {
       }
     }
     Functions: {
-      append_defense_audit_event: {
-        Args: {
-          p_audit_hash: string
-          p_correlation_id: string
-          p_payload_hash: string
-          p_previous_audit_hash: string
-          p_quorum_met: boolean
-          p_reasons: Json
-          p_recommendation: string
-          p_review_engine: string
-          p_review_total: number
-          p_review_yes: number
-          p_score: number
-          p_severity: string
-          p_source: string
-        }
-        Returns: {
-          audit_hash: string
-          correlation_id: string
-          created_at: string
-          executed: boolean
-          human_approval_required: boolean
-          id: string
-          payload_hash: string
-          previous_audit_hash: string
-          quorum_met: boolean
-          reasons: Json
-          recommendation: string
-          review_engine: string
-          review_total: number
-          review_yes: number
-          score: number
-          severity: string
-          source: string
-          user_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "defense_audit_events"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      append_defense_audit_event:
+        | {
+            Args: {
+              p_audit_hash: string
+              p_correlation_id: string
+              p_payload_hash: string
+              p_previous_audit_hash: string
+              p_quorum_met: boolean
+              p_reasons: Json
+              p_recommendation: string
+              p_review_engine: string
+              p_review_total: number
+              p_review_yes: number
+              p_score: number
+              p_severity: string
+              p_source: string
+            }
+            Returns: {
+              audit_hash: string
+              correlation_id: string
+              created_at: string
+              executed: boolean
+              human_approval_required: boolean
+              id: string
+              payload_hash: string
+              previous_audit_hash: string
+              public_key_b64: string | null
+              quorum_met: boolean
+              reasons: Json
+              recommendation: string
+              review_engine: string
+              review_total: number
+              review_yes: number
+              score: number
+              severity: string
+              signature_b64: string | null
+              source: string
+              user_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "defense_audit_events"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_audit_hash: string
+              p_correlation_id: string
+              p_payload_hash: string
+              p_previous_audit_hash: string
+              p_public_key_b64: string
+              p_quorum_met: boolean
+              p_reasons: Json
+              p_recommendation: string
+              p_review_engine: string
+              p_review_total: number
+              p_review_yes: number
+              p_score: number
+              p_severity: string
+              p_signature_b64: string
+              p_source: string
+            }
+            Returns: {
+              audit_hash: string
+              correlation_id: string
+              created_at: string
+              executed: boolean
+              human_approval_required: boolean
+              id: string
+              payload_hash: string
+              previous_audit_hash: string
+              public_key_b64: string | null
+              quorum_met: boolean
+              reasons: Json
+              recommendation: string
+              review_engine: string
+              review_total: number
+              review_yes: number
+              score: number
+              severity: string
+              signature_b64: string | null
+              source: string
+              user_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "defense_audit_events"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       check_analytics_rate_limit: {
         Args: {
           p_identifier: string
