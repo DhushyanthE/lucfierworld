@@ -20,3 +20,13 @@ Deno.test("atomic audit migration serializes per-user chain appends", async () =
   assert(sql.includes("security invoker"));
   assert(sql.includes("grant execute"));
 });
+
+
+Deno.test("signed audit migration persists SHA3-256 and ML-DSA evidence", async () => {
+  const sql = await Deno.readTextFile(new URL("../../../migrations/20261007160000_signed_defense_audit.sql", import.meta.url));
+  assert(sql.includes("payload_sha3_256"));
+  assert(sql.includes("signature_b64"));
+  assert(sql.includes("public_key_b64"));
+  assert(sql.includes("^[0-9a-f]{64}$"));
+  assert(sql.includes("security invoker"));
+});
