@@ -95,7 +95,7 @@ export default function DefenseCommand() {
           <p>{f.reasons.join(" · ")}</p>
           <div className="text-xs text-muted-foreground break-all">SHA3-512 payload: {f.payload_hash}</div>
           <div className="text-xs text-muted-foreground break-all">Audit head: {result.audit.audit_hash}</div>
-          <p className="text-sm font-medium">Awaiting human decision — no containment action has been executed.</p>
+          <p className="text-sm font-medium">ML-DSA-87 signature saved with the audit entry — awaiting human decision; no containment action has been executed.</p>
         </CardContent>
       </Card>}
 
@@ -111,7 +111,7 @@ export default function DefenseCommand() {
               <div className="text-muted-foreground">{v.rationale}</div>
             </div>)}
           </div>
-          <p className="text-xs text-muted-foreground">Audit linkage is session-local and untrusted until server-managed persistence is deployed.</p>
+          <p className="text-xs text-muted-foreground">This review and signed finding are saved to your owner-scoped audit chain.</p>
         </CardContent>
       </Card>}
     </div>

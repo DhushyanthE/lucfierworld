@@ -68,6 +68,8 @@ Deno.serve(async (req) => {
       review_total: review.votes.length,
       quorum_met: review.quorum_met,
       reasons: finding.reasons,
+      signature_b64: finding.signature_b64,
+      public_key_b64: finding.public_key_b64,
     });
   } catch (error) {
     console.error("defense audit persistence failed", error);
