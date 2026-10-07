@@ -30,3 +30,13 @@ Deno.test("signed audit migration persists SHA3-256 and ML-DSA evidence", async 
   assert(sql.includes("^[0-9a-f]{64}$"));
   assert(sql.includes("security invoker"));
 });
+
+
+Deno.test("anon grant hardening migration matches sensitive-table policy", async () => {
+  const sql = await Deno.readTextFile(new URL("../../migrations/20261007173000_revoke_anon_sensitive_grants.sql", import.meta.url));
+  assert(sql.includes("revoke select, insert, update, delete"));
+  assert(sql.includes("from anon"));
+  assert(sql.includes("security_audit_log"));
+  assert(sql.includes("user_secrets"));
+  assert(sql.includes("to_regclass"));
+});
