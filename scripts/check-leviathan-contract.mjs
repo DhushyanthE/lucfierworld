@@ -7,7 +7,7 @@ const input = {
   sources: { "LeviathanCoin.sol": { content: source } },
   settings: {
     optimizer: { enabled: true, runs: 200 },
-    outputSelection: { "*": { "*": ["abi", "evm.bytecode.object"] } },
+    outputSelection: { "*": { "*": ["abi", "evm.bytecode.object", "evm.deployedBytecode.object"] } },
   },
 };
 const output = JSON.parse(solc.compile(JSON.stringify(input)));
@@ -46,4 +46,8 @@ for (const name of ["Swap", "LiquidityAdded", "LiquidityRemoved"]) {
   if (!events.has(name)) throw new Error(`ABI missing event ${name}`);
 }
 
-console.log(`LeviathanCoin compile OK: ${artifact.evm.bytecode.object.length / 2} byte bytecode`);
+const runtimeBytes = artifact.evm.deployedBytecode.object.length / 2;
+if (runtimeBytes > 24_576) {
+  throw new Error(`Runtime bytecode ${runtimeBytes} exceeds EIP-170 limit 24576`);
+}
+console.log(`LeviathanCoin compile OK: creation=${artifact.evm.bytecode.object.length / 2} bytes runtime=${runtimeBytes} bytes`);
