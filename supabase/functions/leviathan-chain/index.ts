@@ -65,6 +65,36 @@ async function ethCall(rpcUrl: string, to: string, data: string): Promise<string
   return body.result as string;
 }
 
+
+
+async function ethLogs(
+  rpcUrl: string,
+  address: string,
+  fromBlock: number,
+  toBlock: number,
+  topic0: string,
+): Promise<{ data: string }[]> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getLogs",
+      params: [{
+        address,
+        fromBlock: "0x" + fromBlock.toString(16),
+        toBlock: "0x" + toBlock.toString(16),
+        topics: [topic0],
+      }],
+    }),
+  });
+  if (!res.ok) throw new Error(`eth_getLogs failed with HTTP ${res.status}`);
+  const body = await res.json();
+  if (body.error) throw new Error(`eth_getLogs error: ${body.error.message ?? "unknown"}`);
+  return body.result as { data: string }[];
+}
+
 const toBigInt = (hex: string) => (hex && hex !== "0x" ? BigInt(hex) : 0n);
 
 function routePath(url: URL): string {
@@ -167,32 +197,34 @@ Deno.serve(async (req) => {
         ethCall(config.rpcUrl, config.contractAddress, selector("cumulativeLvthVolumeWei()")),
         ethCall(config.rpcUrl, config.contractAddress, selector("totalLiquidityShares()")),
       ]);
-      const swaps = await indexEvents({
-        config: { rpcUrl: config.rpcUrl, contractAddress: config.contractAddress },
-        blockWindow: Number.isFinite(window) ? window : 7200,
-        topics: [eventTopic(LEVIATHAN_EVENTS.Swap)],
-      });
+      const head = Number.parseInt(await rpcRead(config.rpcUrl, "eth_blockNumber"), 16);
+      const fromBlock = Math.max(0, head - window);
+      const swapLogs = await ethLogs(
+        config.rpcUrl,
+        config.contractAddress,
+        fromBlock,
+        head,
+        eventTopic(LEVIATHAN_EVENTS.Swap),
+      );
 
       let recentEthVolume = 0n;
       let recentLvthVolume = 0n;
       let swapCount = 0;
-      if ("events" in swaps) {
-        for (const event of swaps.events) {
-          const data = event.data.replace(/^0x/, "");
-          if (data.length < 64 * 5) continue;
-          const word = (i: number) => BigInt("0x" + data.slice(i * 64, (i + 1) * 64));
-          const ethToLvth = word(0) !== 0n;
-          const amountIn = word(1);
-          const amountOut = word(2);
-          if (ethToLvth) {
-            recentEthVolume += amountIn;
-            recentLvthVolume += amountOut;
-          } else {
-            recentLvthVolume += amountIn;
-            recentEthVolume += amountOut;
-          }
-          swapCount++;
+      for (const event of swapLogs) {
+        const data = event.data.replace(/^0x/, "");
+        if (data.length < 64 * 5) continue;
+        const word = (i: number) => BigInt("0x" + data.slice(i * 64, (i + 1) * 64));
+        const ethToLvth = word(0) !== 0n;
+        const amountIn = word(1);
+        const amountOut = word(2);
+        if (ethToLvth) {
+          recentEthVolume += amountIn;
+          recentLvthVolume += amountOut;
+        } else {
+          recentLvthVolume += amountIn;
+          recentEthVolume += amountOut;
         }
+        swapCount++;
       }
 
       const chainId = Number.parseInt(await rpcRead(config.rpcUrl, "eth_chainId"), 16);
