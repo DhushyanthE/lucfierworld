@@ -23,6 +23,7 @@ export interface Telemetry {
 
 export interface SentinelFinding {
   id: string;
+  source: string;
   score: number;
   severity: Severity;
   recommendation: Recommendation;
