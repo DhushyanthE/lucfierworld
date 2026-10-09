@@ -25,6 +25,7 @@ export async function persistAuditEvent(client: any, row: Record<string, any>) {
     p_recommendation: row.recommendation,
     p_score: row.score,
     p_payload_hash: row.payload_hash,
+    p_payload_sha3_256: null,
     p_audit_hash: row.audit_hash,
     p_previous_audit_hash: row.previous_audit_hash,
     p_review_engine: row.review_engine,
