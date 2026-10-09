@@ -31,7 +31,9 @@ Deno.test("combined defensive indicators produce isolation recommendation", () =
 Deno.test("finding always requires human approval and carries valid ML-DSA signature", () => {
   const f = analyzeTelemetry(clean, "2026-01-01T00:00:00.000Z");
   assertEquals(f.requires_human_approval, true);
-  assert(mlDsa.verify(f.public_key_b64, f.payload_hash, f.signature_b64));
+  assertEquals(f.payload_sha3_256.length, 64);
+  assertEquals(f.payload_hash.length, 128);
+  assert(mlDsa.verify(f.public_key_b64, f.payload_sha3_256, f.signature_b64));
 });
 
 Deno.test("audit chain changes with previous head", () => {

@@ -43,6 +43,13 @@
       "when": 1791556816380,
       "tag": "0005_align_sha3_512_audit_append_function",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791576900000,
+      "tag": "0006_require_sha3_256_and_harden_anon",
+      "breakpoints": true
     }
   ]
 }
