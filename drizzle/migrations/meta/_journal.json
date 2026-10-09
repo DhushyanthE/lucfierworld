@@ -36,6 +36,13 @@
       "when": 1791387746298,
       "tag": "0004_restrict_defense_audit_access",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791556816380,
+      "tag": "0005_align_sha3_512_audit_append_function",
+      "breakpoints": true
     }
   ]
 }
