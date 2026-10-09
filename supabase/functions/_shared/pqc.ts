@@ -48,11 +48,16 @@ export const mlKem = {
 
   encapsulate(publicKeyB64: string) {
     const result = ml_kem1024.encapsulate(fromB64(publicKeyB64));
-    const ciphertext: Uint8Array = (result as { cipherText?: Uint8Array; ciphertext?: Uint8Array })
-      .cipherText ?? (result as { ciphertext: Uint8Array }).ciphertext;
+    const shaped = result as unknown as {
+      cipherText?: Uint8Array;
+      ciphertext?: Uint8Array;
+      sharedSecret: Uint8Array;
+    };
+    const ciphertext = shaped.cipherText ?? shaped.ciphertext;
+    if (!ciphertext) throw new Error("ML-KEM implementation returned no ciphertext");
     return {
       ciphertext_b64: toB64(ciphertext),
-      shared_secret_b64: toB64(result.sharedSecret),
+      shared_secret_b64: toB64(shaped.sharedSecret),
       ciphertext_bytes: ciphertext.length,
     };
   },
