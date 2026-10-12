@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "deploy:leviathan:sepolia": "node scripts/deploy-leviathan-sepolia.mjs",
     "test:leviathan:contract": "node scripts/check-leviathan-contract.mjs",
-    "test:bbb8:e2e": "playwright test e2e/bbb8-lab.spec.ts"
+    "test:bbb8:e2e": "playwright test tests/e2e/bbb8-lab.spec.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
