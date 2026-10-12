@@ -6,6 +6,8 @@ from bbb8_routes import set_service_for_tests
 from bbb8_service import FabricService
 from main import app
 
+TEST_MASTER = b"bbb8-test-keyvault-master-secret-v21-0001"
+
 
 def test_bbb8_run_via_main(tmp_path):
     set_service_for_tests(
