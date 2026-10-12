@@ -120,7 +120,6 @@ jobs:
 
   live-supabase-rls:
     runs-on: ubuntu-latest
-    if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' && vars.BBB8_SUPABASE_RLS_TABLE != '' }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
