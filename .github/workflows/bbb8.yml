@@ -1,0 +1,135 @@
+name: BBB8 Verification
+
+on:
+  push:
+    paths:
+      - "quantum-core/**"
+      - "e2e/bbb8-lab.spec.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.app.json"
+      - ".github/workflows/bbb8.yml"
+  pull_request:
+    paths:
+      - "quantum-core/**"
+      - "e2e/bbb8-lab.spec.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.app.json"
+      - ".github/workflows/bbb8.yml"
+  workflow_dispatch:
+
+jobs:
+  python-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: quantum-core/requirements-test-bbb8.txt
+
+      - name: Install BBB8 dependencies
+        run: python -m pip install -r quantum-core/requirements-test-bbb8.txt
+
+      - name: Dependency integrity
+        run: python -m pip check
+
+      - name: Syntax check
+        working-directory: quantum-core
+        run: |
+          python -m py_compile \
+            bbb8_models.py bbb8_quantum.py bbb8_decision.py bbb8_crypto.py \
+            bbb8_consensus.py bbb8_keyvault.py bbb8_service.py bbb8_routes.py \
+            bbb8_app.py main.py bbb8_entangled_regression.py
+
+      - name: Unit and integration tests with coverage
+        working-directory: quantum-core
+        run: |
+          python -m pytest \
+            test_bbb8.py \
+            test_bbb8_gateways.py \
+            test_bbb8_main.py \
+            test_entangled_optimizer_regression.py \
+            test_bbb8_keyvault.py \
+            test_bbb8_checkpoint.py \
+            test_bbb8_supabase.py \
+            -q --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml
+
+      - name: Upload BBB8 coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbb8-python-coverage
+          path: quantum-core/coverage.xml
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    env:
+      BBB8_DB_PATH: /tmp/bbb8-e2e.sqlite3
+      BBB8_KEYVAULT_MASTER: bbb8-ci-only-keyvault-master-secret-v21-0001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: quantum-core/requirements-test-bbb8.txt
+
+      - name: Install BBB8 backend dependencies
+        run: python -m pip install -r quantum-core/requirements-test-bbb8.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: TypeScript check
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      - name: Vite production build
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start BBB8 backend
+        run: |
+          cd quantum-core
+          python -m uvicorn bbb8_app:app --host 127.0.0.1 --port 8001 > /tmp/bbb8-e2e.log 2>&1 &
+          echo $! > /tmp/bbb8-e2e.pid
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8001/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/bbb8-e2e.log
+          exit 1
+
+      - name: Playwright BBB8 lab
+        run: npm run test:bbb8:e2e
+
+      - name: Backend log on failure
+        if: failure()
+        run: cat /tmp/bbb8-e2e.log || true
+
+  live-supabase-rls:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' && vars.BBB8_SUPABASE_RLS_TABLE != '' }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      BBB8_SUPABASE_RLS_TABLE: ${{ vars.BBB8_SUPABASE_RLS_TABLE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest httpx
+      - name: Live anonymous RLS smoke test
+        run: python -m pytest quantum-core/test_bbb8_supabase.py -q
