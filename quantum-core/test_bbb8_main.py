@@ -14,6 +14,7 @@ def test_bbb8_run_via_main(tmp_path):
         FabricService(
             str(tmp_path / "main.sqlite3"),
             allow_classical_fallback=True,
+            keyvault_master=TEST_MASTER,
         )
     )
     try:
