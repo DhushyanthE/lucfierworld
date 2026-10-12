@@ -24,6 +24,13 @@ class VerifyRequest(BaseModel):
     block: dict
 
 
+class CheckpointRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    network: str
+    height: int = Field(ge=0)
+    head_hash: str = Field(min_length=128, max_length=128)
+
+
 class _State:
     service: FabricService | None = None
 
@@ -69,3 +76,20 @@ def ledger(q: LedgerQuery):
 @router.post("/verify")
 def verify(v: VerifyRequest):
     return get_service().verify(v.block)
+
+
+@router.post("/checkpoint")
+def checkpoint():
+    return get_service().external_checkpoint()
+
+
+@router.post("/checkpoint/verify")
+def verify_checkpoint(v: CheckpointRequest):
+    return {
+        "valid": get_service().verify_external_checkpoint(v.model_dump()),
+        "checkpoint": v.model_dump(),
+        "note": (
+            "This compares a checkpoint with local history; the checkpoint "
+            "source must be authenticated out-of-band."
+        ),
+    }
