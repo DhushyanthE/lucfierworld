@@ -7,6 +7,8 @@ reported as a research limitation rather than described as distributed trust.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import os
 import sqlite3
@@ -36,6 +38,7 @@ from bbb8_crypto import (
     transport_roundtrip,
 )
 from bbb8_decision import analyze
+from bbb8_keyvault import KeyVault, KeyVaultError
 from bbb8_models import RunRequest, RunResponse, StageReport, StatusResponse
 from bbb8_quantum import simulate_channel
 
@@ -58,12 +61,36 @@ def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _resolve_keyvault_master(explicit: bytes | str | None) -> bytes:
+    if explicit is not None:
+        value = explicit.encode("utf-8") if isinstance(explicit, str) else bytes(explicit)
+    else:
+        encoded = os.environ.get("BBB8_KEYVAULT_MASTER_B64", "").strip()
+        raw = os.environ.get("BBB8_KEYVAULT_MASTER", "")
+        if encoded:
+            try:
+                value = base64.b64decode(encoded, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise IntegrityError("BBB8_KEYVAULT_MASTER_B64 is not valid base64") from exc
+        elif raw:
+            value = raw.encode("utf-8")
+        else:
+            raise IntegrityError(
+                "BBB8 signer KeyVault master secret is required; set "
+                "BBB8_KEYVAULT_MASTER_B64 (preferred) or BBB8_KEYVAULT_MASTER"
+            )
+    if len(value) < 32:
+        raise IntegrityError("BBB8 KeyVault master secret must contain at least 32 bytes")
+    return value
+
+
 class FabricService:
     def __init__(
         self,
         db_path: str = DB_PATH,
         *,
         allow_classical_fallback: bool | None = None,
+        keyvault_master: bytes | str | None = None,
     ):
         self.db_path = str(db_path)
         self.allow_classical_fallback = (
@@ -71,6 +98,7 @@ class FabricService:
             if allow_classical_fallback is None
             else bool(allow_classical_fallback)
         )
+        self.keyvault = KeyVault(self.db_path, _resolve_keyvault_master(keyvault_master))
         parent = Path(self.db_path).parent
         parent.mkdir(parents=True, exist_ok=True)
         if os.name == "posix":
@@ -120,11 +148,22 @@ class FabricService:
             CREATE TABLE IF NOT EXISTS cells(
                 idx INTEGER PRIMARY KEY,
                 public_key BLOB NOT NULL,
-                secret_key BLOB NOT NULL,
                 algorithm TEXT NOT NULL
             )
             """
         )
+        cell_columns = self._columns(conn, "cells")
+        if "secret_key" in cell_columns:
+            raise IntegrityError(
+                "legacy plaintext signer-key schema detected. Preserve that database "
+                "for evidence and start a fresh BBB8_DB_PATH with KeyVault enabled; "
+                "SQLite page reuse cannot guarantee secure erasure of the old keys."
+            )
+        required_cell_columns = {"idx", "public_key", "algorithm"}
+        if not required_cell_columns.issubset(cell_columns):
+            raise IntegrityError("unsupported cells schema")
+        self.keyvault.ensure_schema(conn)
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chain(
@@ -150,26 +189,6 @@ class FabricService:
             """
         )
 
-        cell_columns = self._columns(conn, "cells")
-        if "algorithm" not in cell_columns:
-            conn.execute("ALTER TABLE cells ADD COLUMN algorithm TEXT")
-            rows = conn.execute(
-                "SELECT idx, public_key, secret_key FROM cells"
-            ).fetchall()
-            for row in rows:
-                pk = bytes(row["public_key"])
-                sk = bytes(row["secret_key"])
-                if len(pk) > 512 and len(sk) > 512:
-                    algorithm = "ML-DSA-87"
-                elif len(pk) == 32 and len(sk) == 32:
-                    algorithm = "Ed25519-test-fallback"
-                else:
-                    algorithm = "legacy-unsupported"
-                conn.execute(
-                    "UPDATE cells SET algorithm=? WHERE idx=?",
-                    (algorithm, int(row["idx"])),
-                )
-
         outcome_columns = self._columns(conn, "outcomes")
         additions = {
             "request_digest": "TEXT",
@@ -187,44 +206,52 @@ class FabricService:
             self._ensure_schema(conn)
 
             rows = conn.execute(
-                "SELECT idx, public_key, secret_key, algorithm "
-                "FROM cells ORDER BY idx"
+                "SELECT idx, public_key, algorithm FROM cells ORDER BY idx"
             ).fetchall()
             if not rows:
                 fresh = make_registry()
                 for cell in fresh:
                     conn.execute(
-                        "INSERT INTO cells(idx,public_key,secret_key,algorithm) "
-                        "VALUES(?,?,?,?)",
+                        "INSERT INTO cells(idx,public_key,algorithm) VALUES(?,?,?)",
                         (
                             cell.index,
                             cell.identity.public_key,
-                            cell.identity.secret_key,
                             cell.identity.algorithm,
                         ),
                     )
+                    self.keyvault.store_private_key(
+                        cell.cell_id,
+                        cell.identity.secret_key,
+                        conn=conn,
+                    )
                 self.registry = fresh
             else:
-                self.registry = [
-                    Cell(
-                        int(row["idx"]),
-                        SigningIdentity(
-                            bytes(row["public_key"]),
-                            bytes(row["secret_key"]),
-                            str(row["algorithm"]),
-                            str(row["algorithm"]) != "ML-DSA-87",
-                        ),
+                registry: list[Cell] = []
+                for row in rows:
+                    idx = int(row["idx"])
+                    cell_id = f"cell-{idx:02d}"
+                    try:
+                        secret_key = self.keyvault.load_private_key(cell_id, conn=conn)
+                    except KeyVaultError as exc:
+                        raise IntegrityError(
+                            f"encrypted signer key missing or invalid for {cell_id}"
+                        ) from exc
+                    algorithm = str(row["algorithm"])
+                    registry.append(
+                        Cell(
+                            idx,
+                            SigningIdentity(
+                                bytes(row["public_key"]),
+                                secret_key,
+                                algorithm,
+                                algorithm != "ML-DSA-87",
+                            ),
+                        )
                     )
-                    for row in rows
-                ]
+                self.registry = registry
 
             if len(self.registry) != 9:
                 raise IntegrityError("cell registry must contain exactly nine identities")
-            if any(cell.identity.algorithm == "legacy-unsupported" for cell in self.registry):
-                raise IntegrityError(
-                    "legacy signer format cannot be verified; preserve the old DB "
-                    "for evidence and start a new BBB8_DB_PATH"
-                )
 
             if conn.execute("SELECT 1 FROM chain WHERE height=0").fetchone() is None:
                 genesis = {
@@ -645,6 +672,46 @@ class FabricService:
             "blocks": [json.loads(str(row["block_json"])) for row in rows],
             "next_cursor": next_cursor,
         }
+
+    def external_checkpoint(self) -> dict:
+        height, head_hash = self.head()
+        return {
+            "network": NETWORK_ID,
+            "height": height,
+            "head_hash": head_hash,
+        }
+
+    def verify_external_checkpoint(self, checkpoint: dict) -> bool:
+        """Compare a trusted out-of-band checkpoint with local ledger history.
+
+        This function does not authenticate the checkpoint source. The caller
+        must obtain the checkpoint from an independently trusted channel.
+        """
+        if not isinstance(checkpoint, dict):
+            return False
+        if checkpoint.get("network") != NETWORK_ID:
+            return False
+        height = checkpoint.get("height")
+        head_hash = checkpoint.get("head_hash")
+        if not isinstance(height, int) or height < 0:
+            return False
+        if (
+            not isinstance(head_hash, str)
+            or len(head_hash) != 128
+            or any(ch not in "0123456789abcdef" for ch in head_hash)
+        ):
+            return False
+
+        local_height, _ = self.head()
+        if local_height < height:
+            return False
+
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT head_hash FROM chain WHERE height=?",
+                (height,),
+            ).fetchone()
+        return row is not None and str(row["head_hash"]) == head_hash
 
     def verify(self, block: dict) -> dict:
         valid, reason = verify_block(block, self.registry)
