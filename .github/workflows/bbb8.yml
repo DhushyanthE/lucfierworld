@@ -4,16 +4,18 @@ on:
   push:
     paths:
       - "quantum-core/**"
-      - "tests/e2e/bbb8-lab.spec.ts"
+      - "e2e/bbb8-lab.spec.ts"
       - "package.json"
+      - "playwright.bbb8.config.ts"
       - "package-lock.json"
       - "tsconfig.app.json"
       - ".github/workflows/bbb8.yml"
   pull_request:
     paths:
       - "quantum-core/**"
-      - "tests/e2e/bbb8-lab.spec.ts"
+      - "e2e/bbb8-lab.spec.ts"
       - "package.json"
+      - "playwright.bbb8.config.ts"
       - "package-lock.json"
       - "tsconfig.app.json"
       - ".github/workflows/bbb8.yml"
