@@ -28,15 +28,21 @@ python -m pytest \
   test_entangled_optimizer_regression.py -q
 ```
 
-The reconstruction passed 122 tests locally. The local sandbox did not have
-`pqcrypto`, so its local run exercised the explicit Ed25519/X25519 test
-fallback. Normal service policy remains fail-closed on that fallback unless
-`BBB8_ALLOW_CLASSICAL_FALLBACK=1` is explicitly enabled.
+The v21 hosted verification on Python 3.12 installs current `pqcrypto==1.0.0`
+and exercises the ML-DSA-87 / ML-KEM-1024 path. The latest run completed with
+**137 Python tests passed, 0 failed, 1 opt-in Supabase RLS test skipped**.
+The broad `--cov=.` report measured **88%** across production and test modules.
+The isolated Chromium suite completed **4/4 Playwright tests passed**. Root
+TypeScript checking and the Vite production build also passed.
+
+Normal service policy remains fail-closed if PQC is unavailable unless
+`BBB8_ALLOW_CLASSICAL_FALLBACK=1` is explicitly enabled for a test/dev run.
 
 ## Run
 
 ```bash
 cd quantum-core
+BBB8_KEYVAULT_MASTER_B64="$(openssl rand -base64 32)" \
 python -m uvicorn bbb8_app:app --host 127.0.0.1 --port 8001
 ```
 
