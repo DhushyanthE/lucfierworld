@@ -1,4 +1,4 @@
-# QuantumSynapse BBB8 v20.1 — repaired local research package
+# QuantumSynapse BBB8 v21 — complete remediation local research package
 
 This package is the executable BBB8 slice reconstructed from the uploaded v20
 verification material and then re-tested independently.
@@ -47,3 +47,61 @@ Open `/lab` or `/docs`.
 This is a local research simulation. It does not provide physical QKD,
 independent distributed validators, living-cell computation, secure hardware
 key custody, or a production blockchain deployment.
+
+
+## v21 security configuration
+
+BBB8 signer keys are encrypted at rest. The service will not start unless a
+high-entropy KeyVault master secret is supplied.
+
+Preferred:
+
+```bash
+export BBB8_KEYVAULT_MASTER_B64="$(openssl rand -base64 32)"
+```
+
+Development-only alternative:
+
+```bash
+export BBB8_KEYVAULT_MASTER='replace-with-at-least-32-bytes-of-high-entropy-secret'
+```
+
+Do not commit this secret. The master secret is not stored in SQLite.
+
+If an older database still has a plaintext `cells.secret_key` column, v21
+fails closed instead of pretending that an in-place SQLite column rewrite
+securely erased historical key material. Preserve the old DB for evidence and
+start a fresh `BBB8_DB_PATH` with rotated signer identities.
+
+## v21 verification
+
+```bash
+cd quantum-core
+python -m pytest \
+  test_bbb8.py \
+  test_bbb8_gateways.py \
+  test_bbb8_main.py \
+  test_entangled_optimizer_regression.py \
+  test_bbb8_keyvault.py \
+  test_bbb8_checkpoint.py \
+  -q --cov=. --cov-report=term-missing
+```
+
+The live Supabase RLS smoke test is intentionally opt-in:
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_ANON_KEY=... \
+BBB8_SUPABASE_RLS_TABLE=... \
+python -m pytest test_bbb8_supabase.py -q
+```
+
+Browser verification is run by the repository BBB8 GitHub Actions workflow and
+can be repeated locally after starting the backend:
+
+```bash
+npm run test:bbb8:e2e
+```
+
+See `docs/BBB8-v21-Mathematics-Remediation.md` for the implemented formulas,
+failure map, and precise research/security boundaries.
