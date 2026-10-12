@@ -9,7 +9,7 @@ test.describe("BBB8 standalone operator lab", () => {
     const body = await response.json();
     expect(body.status).toBe("ok");
     expect(body.service).toBe("bbb8");
-    expect(body.version).toBe("v20.1");
+    expect(body.version).toBe("v21.0");
   });
 
   test("operator can run an approved research request from the lab", async ({ page }) => {
