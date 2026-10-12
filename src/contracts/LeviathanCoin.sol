@@ -269,4 +269,178 @@ contract LeviathanCoin {
         require(round > 0 && round <= dharmicRound, "no such round");
         return dharmicRecords[round];
     }
+
+    // --- Native LVTH/ETH exchange (Sepolia/testnet focused) -----------------
+    // Constant-product AMM with a 0.30% swap fee. Liquidity and swaps are
+    // explicit user-signed transactions; no agent or backend can move funds.
+
+    uint256 public poolEthReserve;
+    uint256 public poolLvthReserve;
+    uint256 public totalLiquidityShares;
+    mapping(address => uint256) public liquidityShares;
+
+    uint256 public cumulativeEthVolumeWei;
+    uint256 public cumulativeLvthVolumeWei;
+
+    bool private exchangeLocked;
+
+    event LiquidityAdded(
+        address indexed provider,
+        uint256 ethAmount,
+        uint256 lvthAmount,
+        uint256 sharesMinted
+    );
+    event LiquidityRemoved(
+        address indexed provider,
+        uint256 ethAmount,
+        uint256 lvthAmount,
+        uint256 sharesBurned
+    );
+    event Swap(
+        address indexed trader,
+        bool ethToLvth,
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 ethReserve,
+        uint256 lvthReserve
+    );
+
+    modifier nonReentrant() {
+        require(!exchangeLocked, "exchange: reentrant");
+        exchangeLocked = true;
+        _;
+        exchangeLocked = false;
+    }
+
+    function addLiquidity(uint256 maxLvthAmount)
+        external
+        payable
+        nonReentrant
+        returns (uint256 sharesMinted, uint256 lvthUsed)
+    {
+        require(msg.value > 0, "exchange: ETH required");
+        require(maxLvthAmount > 0, "exchange: LVTH required");
+
+        if (totalLiquidityShares == 0) {
+            lvthUsed = maxLvthAmount;
+            sharesMinted = _sqrt(msg.value * lvthUsed);
+        } else {
+            require(poolEthReserve > 0 && poolLvthReserve > 0, "exchange: invalid reserves");
+            lvthUsed = (msg.value * poolLvthReserve) / poolEthReserve;
+            require(lvthUsed > 0 && lvthUsed <= maxLvthAmount, "exchange: LVTH max too low");
+            sharesMinted = (msg.value * totalLiquidityShares) / poolEthReserve;
+        }
+
+        require(sharesMinted > 0, "exchange: zero shares");
+        _transfer(msg.sender, address(this), lvthUsed);
+
+        poolEthReserve += msg.value;
+        poolLvthReserve += lvthUsed;
+        totalLiquidityShares += sharesMinted;
+        liquidityShares[msg.sender] += sharesMinted;
+
+        emit LiquidityAdded(msg.sender, msg.value, lvthUsed, sharesMinted);
+    }
+
+    function removeLiquidity(uint256 shares, uint256 minEthOut, uint256 minLvthOut)
+        external
+        nonReentrant
+        returns (uint256 ethOut, uint256 lvthOut)
+    {
+        require(shares > 0 && shares <= liquidityShares[msg.sender], "exchange: invalid shares");
+        require(totalLiquidityShares > 0, "exchange: no liquidity");
+
+        ethOut = (shares * poolEthReserve) / totalLiquidityShares;
+        lvthOut = (shares * poolLvthReserve) / totalLiquidityShares;
+        require(ethOut >= minEthOut && lvthOut >= minLvthOut, "exchange: slippage");
+        require(ethOut > 0 && lvthOut > 0, "exchange: zero output");
+
+        liquidityShares[msg.sender] -= shares;
+        totalLiquidityShares -= shares;
+        poolEthReserve -= ethOut;
+        poolLvthReserve -= lvthOut;
+
+        _transfer(address(this), msg.sender, lvthOut);
+        (bool ok, ) = payable(msg.sender).call{value: ethOut}("");
+        require(ok, "exchange: ETH transfer failed");
+
+        emit LiquidityRemoved(msg.sender, ethOut, lvthOut, shares);
+    }
+
+    function quoteEthForLvth(uint256 ethIn) public view returns (uint256) {
+        if (ethIn == 0 || poolEthReserve == 0 || poolLvthReserve == 0) return 0;
+        uint256 amountInWithFee = ethIn * 997;
+        return (amountInWithFee * poolLvthReserve) /
+            (poolEthReserve * 1000 + amountInWithFee);
+    }
+
+    function quoteLvthForEth(uint256 lvthIn) public view returns (uint256) {
+        if (lvthIn == 0 || poolEthReserve == 0 || poolLvthReserve == 0) return 0;
+        uint256 amountInWithFee = lvthIn * 997;
+        return (amountInWithFee * poolEthReserve) /
+            (poolLvthReserve * 1000 + amountInWithFee);
+    }
+
+    function swapEthForLvth(uint256 minLvthOut)
+        external
+        payable
+        nonReentrant
+        returns (uint256 lvthOut)
+    {
+        require(msg.value > 0, "exchange: ETH required");
+        lvthOut = quoteEthForLvth(msg.value);
+        require(lvthOut > 0 && lvthOut >= minLvthOut, "exchange: slippage");
+        require(lvthOut < poolLvthReserve, "exchange: insufficient LVTH");
+
+        poolEthReserve += msg.value;
+        poolLvthReserve -= lvthOut;
+        cumulativeEthVolumeWei += msg.value;
+        cumulativeLvthVolumeWei += lvthOut;
+
+        _transfer(address(this), msg.sender, lvthOut);
+        emit Swap(msg.sender, true, msg.value, lvthOut, poolEthReserve, poolLvthReserve);
+    }
+
+    function swapLvthForEth(uint256 lvthIn, uint256 minEthOut)
+        external
+        nonReentrant
+        returns (uint256 ethOut)
+    {
+        require(lvthIn > 0, "exchange: LVTH required");
+        ethOut = quoteLvthForEth(lvthIn);
+        require(ethOut > 0 && ethOut >= minEthOut, "exchange: slippage");
+        require(ethOut < poolEthReserve, "exchange: insufficient ETH");
+
+        _transfer(msg.sender, address(this), lvthIn);
+        poolLvthReserve += lvthIn;
+        poolEthReserve -= ethOut;
+        cumulativeLvthVolumeWei += lvthIn;
+        cumulativeEthVolumeWei += ethOut;
+
+        (bool ok, ) = payable(msg.sender).call{value: ethOut}("");
+        require(ok, "exchange: ETH transfer failed");
+
+        emit Swap(msg.sender, false, lvthIn, ethOut, poolEthReserve, poolLvthReserve);
+    }
+
+    /// ETH wei per 1e18 LVTH units, scaled by 1e18.
+    function spotPriceWeiPerLvth() external view returns (uint256) {
+        if (poolLvthReserve == 0) return 0;
+        return (poolEthReserve * 1e18) / poolLvthReserve;
+    }
+
+    function _sqrt(uint256 y) private pure returns (uint256 z) {
+        if (y == 0) return 0;
+        z = y;
+        uint256 x = y / 2 + 1;
+        while (x < z) {
+            z = x;
+            x = (y / x + x) / 2;
+        }
+    }
+
+    receive() external payable {
+        revert("exchange: use addLiquidity or swapEthForLvth");
+    }
+
 }

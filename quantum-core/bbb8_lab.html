@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QuantumSynapse BBB8 Lab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; background:#0b1020; color:#e8eefc; }
+    textarea, pre { width:100%; box-sizing:border-box; background:#111a30; color:#dbeafe; border:1px solid #334155; border-radius:8px; padding:12px; }
+    button { padding:.65rem 1rem; margin:.3rem .3rem .3rem 0; border:0; border-radius:7px; cursor:pointer; }
+    .note { color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>QuantumSynapse BBB8 Research Lab</h1>
+  <p class="note">Local research simulation only. It does not operate physical QKD hardware, independent validators, or a real blockchain.</p>
+  <textarea id="req" rows="14">{
+  "request_id": "experiment-0001",
+  "quantum": {"pairs": 4096, "seed": 7, "sample_fraction": 0.25, "intercept_resend": false},
+  "observation": {"telemetry": [0.05, 0.10, 0.08], "declared_risk": 0.1},
+  "offline_cells": []
+}</textarea>
+  <div>
+    <button id="run-btn" type="button">Run pipeline</button>
+    <button id="status-btn" type="button">Status</button>
+    <button id="ledger-btn" type="button">Ledger</button>
+    <a href="/docs">OpenAPI</a>
+  </div>
+  <pre id="out">Ready.</pre>
+  <script>
+    const output = document.getElementById("out");
+    const requestInput = document.getElementById("req");
+
+    function showError(error) {
+      output.textContent = JSON.stringify({
+        error: error instanceof Error ? error.message : String(error)
+      }, null, 2);
+    }
+
+    function parseRequest() {
+      return JSON.parse(requestInput.value);
+    }
+
+    async function callApi(path, payload) {
+      output.textContent = "Running...";
+      try {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          data = {error: "response was not valid JSON"};
+        }
+        output.textContent = JSON.stringify({status: response.status, data}, null, 2);
+      } catch (error) {
+        showError(error);
+      }
+    }
+
+    document.getElementById("run-btn").addEventListener("click", () => {
+      try {
+        void callApi("/v1/fabric/run", parseRequest());
+      } catch (error) {
+        showError(error);
+      }
+    });
+    document.getElementById("status-btn").addEventListener("click", () => {
+      void callApi("/v1/fabric/status", {});
+    });
+    document.getElementById("ledger-btn").addEventListener("click", () => {
+      void callApi("/v1/fabric/ledger", {after_height: -1, limit: 20});
+    });
+  </script>
+</body>
+</html>

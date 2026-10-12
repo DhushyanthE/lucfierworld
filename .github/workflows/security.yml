@@ -25,19 +25,35 @@ jobs:
       - name: Static migration safety checks
         run: |
           test -f supabase/migrations/20261003183000_defense_audit_events.sql
+          test -f supabase/migrations/20261004040000_atomic_defense_audit.sql
+          test -f supabase/migrations/20261007160000_signed_defense_audit.sql
           grep -qi 'enable row level security' supabase/migrations/20261003183000_defense_audit_events.sql
           grep -q 'auth.uid() = user_id' supabase/migrations/20261003183000_defense_audit_events.sql
           grep -q 'executed = false' supabase/migrations/20261003183000_defense_audit_events.sql
           ! grep -qi 'for update' supabase/migrations/20261003183000_defense_audit_events.sql
           ! grep -qi 'for delete' supabase/migrations/20261003183000_defense_audit_events.sql
+          grep -q 'payload_sha3_256' supabase/migrations/20261007160000_signed_defense_audit.sql
+          grep -q 'signature_b64' supabase/migrations/20261007160000_signed_defense_audit.sql
+          grep -q 'public_key_b64' supabase/migrations/20261007160000_signed_defense_audit.sql
 
   live-rls-integrity:
     runs-on: ubuntu-latest
     needs: code-security
-    if: ${{ secrets.SUPABASE_DB_URL != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check live database credentials
+        id: gate
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -n "$SUPABASE_DB_URL" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SUPABASE_DB_URL is not configured; live RLS validation skipped."
+          fi
       - name: Run deployed RLS integrity assertion
+        if: steps.gate.outputs.available == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -47,13 +63,26 @@ jobs:
   supabase-linter:
     runs-on: ubuntu-latest
     needs: code-security
-    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check linked Supabase credentials
+        id: gate
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Supabase linked credentials are not configured; linked linter skipped."
+          fi
       - name: Setup Supabase CLI
+        if: steps.gate.outputs.available == 'true'
         uses: supabase/setup-cli@v1
         with: { version: latest }
       - name: Run linked Supabase linter
+        if: steps.gate.outputs.available == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

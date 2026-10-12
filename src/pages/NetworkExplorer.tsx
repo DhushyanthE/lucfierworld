@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, Cpu, Shield, Zap, Network, Eye, ChevronRight, Hash, Clock, Award } from 'lucide-react';
+import { LeviathanLiveStatus } from '@/components/leviathan/LeviathanLiveStatus';
 
 interface BlockData {
   height: number;
@@ -234,6 +235,7 @@ export default function NetworkExplorer() {
 
   return (
     <Layout>
+      <div className="container mx-auto px-4 pt-6"><LeviathanLiveStatus mode="explorer" /></div>
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Live Telemetry Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

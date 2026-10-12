@@ -42,6 +42,8 @@ Deno.test("event topics match the canonical keccak256 signature hashes", () => {
   assert(LEVIATHAN_TOPICS.AttestationAccepted.startsWith("0x"));
   assertEquals(LEVIATHAN_TOPICS.AttestationAccepted.length, 66);
   assert(LEVIATHAN_TOPICS.AttestationAccepted !== LEVIATHAN_TOPICS.AttestationRejected);
+  assertEquals(LEVIATHAN_TOPICS.Swap.length, 66);
+  assert(LEVIATHAN_TOPICS.Swap !== LEVIATHAN_TOPICS.Transfer);
 });
 
 Deno.test("classical Bell scores are rejected, never silently accepted", () => {
@@ -119,4 +121,13 @@ Deno.test("indexed LeviathanCoin logs decode end-to-end through the read-only in
   const decoded = decodeAttestationAccepted(acceptedLog(2820, 9));
   assertEquals(decoded!.bellScore, 2.82);
   assertEquals(verifyBellScore(decoded!.bellScore).accepted, true);
+});
+
+
+Deno.test("leviathan-chain exposes a read-only live market route", async () => {
+  const source = await Deno.readTextFile(new URL("../leviathan-chain/index.ts", import.meta.url));
+  assert(source.includes('path === "/market"'));
+  assert(source.includes('selector("spotPriceWeiPerLvth()")'));
+  assert(source.includes("recent_eth_volume_wei"));
+  assert(source.includes("read_only: true"));
 });

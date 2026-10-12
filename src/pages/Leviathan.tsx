@@ -18,6 +18,8 @@ import {
   YAxis,
 } from "recharts";
 import { SERVICE_URLS } from "@/config/env";
+import { LeviathanLiveStatus } from "@/components/leviathan/LeviathanLiveStatus";
+import { LeviathanSwapPanel } from "@/components/leviathan/LeviathanSwapPanel";
 
 /**
  * LeviathanCoin console — wallet, explorer, market and transfer views over the
@@ -345,16 +347,8 @@ export default function Leviathan() {
             </CardContent>
           </Card>
 
-          <Alert>
-            <AlertTitle>No price or trading volume exists yet</AlertTitle>
-            <AlertDescription>
-              LVTH has no liquidity pool and is not listed on any exchange, so there is no market
-              price and no trade volume to report — any figure here would be invented. What is
-              real and shown above: circulating supply, attestation count and the mint rate, read
-              live from the contract. Once a pool exists, price and volume can be derived from its
-              swap events.
-            </AlertDescription>
-          </Alert>
+          <LeviathanLiveStatus mode="market" />
+          <LeviathanSwapPanel />
         </TabsContent>
 
         <TabsContent value="transfer">

@@ -6,6 +6,7 @@
  *   GET  /state?address=0x..        totalSupply, attestationCount, optional balance
  *   GET  /attestations?window=500   recent AttestationAccepted events
  *   GET  /dharmic?window=2000       recent PoDS finalization logs
+ *   GET  /market?window=7200         live LVTH/ETH AMM price + recent swap volume
  *
  * SAFETY BOUNDARY: only eth_call / eth_getLogs / eth_chainId / eth_blockNumber
  * are ever sent. No signer, no private key, no eth_sendRawTransaction. When no
@@ -35,6 +36,18 @@ function readConfig() {
   return { rpcUrl: base.rpcUrl, contractAddress };
 }
 
+async function rpcRead(rpcUrl: string, method: "eth_chainId" | "eth_blockNumber", params: unknown[] = []): Promise<string> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  if (!res.ok) throw new Error(`${method} failed with HTTP ${res.status}`);
+  const body = await res.json();
+  if (body.error) throw new Error(`${method} error: ${body.error.message ?? "unknown"}`);
+  return body.result as string;
+}
+
 async function ethCall(rpcUrl: string, to: string, data: string): Promise<string> {
   const res = await fetch(rpcUrl, {
     method: "POST",
@@ -50,6 +63,36 @@ async function ethCall(rpcUrl: string, to: string, data: string): Promise<string
   const body = await res.json();
   if (body.error) throw new Error(`eth_call error: ${body.error.message ?? "unknown"}`);
   return body.result as string;
+}
+
+
+
+async function ethLogs(
+  rpcUrl: string,
+  address: string,
+  fromBlock: number,
+  toBlock: number,
+  topic0: string,
+): Promise<{ data: string }[]> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getLogs",
+      params: [{
+        address,
+        fromBlock: "0x" + fromBlock.toString(16),
+        toBlock: "0x" + toBlock.toString(16),
+        topics: [topic0],
+      }],
+    }),
+  });
+  if (!res.ok) throw new Error(`eth_getLogs failed with HTTP ${res.status}`);
+  const body = await res.json();
+  if (body.error) throw new Error(`eth_getLogs error: ${body.error.message ?? "unknown"}`);
+  return body.result as { data: string }[];
 }
 
 const toBigInt = (hex: string) => (hex && hex !== "0x" ? BigInt(hex) : 0n);
@@ -70,11 +113,14 @@ Deno.serve(async (req) => {
 
   try {
     if (path === "/" || path === "/health") {
+      const chainId = config.rpcUrl ? Number.parseInt(await rpcRead(config.rpcUrl, "eth_chainId"), 16) : null;
       return json({
         status: "ok",
         configured: Boolean(config.rpcUrl && config.contractAddress),
         rpc_configured: Boolean(config.rpcUrl),
         contract: config.contractAddress,
+        chain_id: chainId,
+        network: chainId === 11155111 ? "sepolia" : chainId ? `chain-${chainId}` : null,
         read_only: true,
         write_capabilities: [],
       });
@@ -82,15 +128,26 @@ Deno.serve(async (req) => {
 
     if (path === "/deployer") {
       const { ethers } = await import("npm:ethers@6");
-      const k = Deno.env.get("DEPLOYER_PRIVATE_KEY")?.trim();
-      if (!k || !config.rpcUrl) return json({ configured: false });
-      if (!/^(0x)?[0-9a-fA-F]{64}$/.test(k)) {
-        return json({ configured: false, error: "DEPLOYER_PRIVATE_KEY is not a valid 32-byte hex wallet key" }, 400);
+      const address = Deno.env.get("LEVIATHAN_DEPLOYER_ADDRESS")?.trim() || "";
+      if (!config.rpcUrl || !ADDRESS_RE.test(address)) {
+        return json({
+          configured: false,
+          missing: [
+            ...(config.rpcUrl ? [] : ["EVM_RPC_URL"]),
+            ...(ADDRESS_RE.test(address) ? [] : ["LEVIATHAN_DEPLOYER_ADDRESS"]),
+          ],
+        });
       }
-      const address = new ethers.Wallet(k.startsWith("0x") ? k : `0x${k}`).address;
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const network = await provider.getNetwork();
       const bal = await provider.getBalance(address);
-      return json({ address, balance_eth: ethers.formatEther(bal), chain_id: Number((await provider.getNetwork()).chainId) });
+      return json({
+        configured: true,
+        address,
+        balance_eth: ethers.formatEther(bal),
+        chain_id: Number(network.chainId),
+        network: network.chainId === 11155111n ? "sepolia" : `chain-${network.chainId}`,
+      });
     }
 
     if (!config.rpcUrl || !config.contractAddress) {
@@ -121,9 +178,12 @@ Deno.serve(async (req) => {
         const data = selector("balanceOf(address)") + holder.slice(2).toLowerCase().padStart(64, "0");
         balanceWei = toBigInt(await ethCall(config.rpcUrl, config.contractAddress, data));
       }
+      const chainId = Number.parseInt(await rpcRead(config.rpcUrl, "eth_chainId"), 16);
       return json({
         configured: true,
         contract: config.contractAddress,
+        chain_id: chainId,
+        network: chainId === 11155111 ? "sepolia" : `chain-${chainId}`,
         symbol: "LVTH",
         decimals: 18,
         total_supply_wei: toBigInt(supplyHex).toString(),
@@ -134,6 +194,69 @@ Deno.serve(async (req) => {
         validator_count: Number(toBigInt(validatorCountHex)),
         holder: holder ?? null,
         balance_wei: balanceWei === null ? null : balanceWei.toString(),
+        read_only: true,
+      });
+    }
+
+    if (path === "/market") {
+      const window = Math.min(Math.max(Number(url.searchParams.get("window") ?? 7200), 1), 50_000);
+      const [ethReserveHex, lvthReserveHex, priceHex, ethVolumeHex, lvthVolumeHex, sharesHex] = await Promise.all([
+        ethCall(config.rpcUrl, config.contractAddress, selector("poolEthReserve()")),
+        ethCall(config.rpcUrl, config.contractAddress, selector("poolLvthReserve()")),
+        ethCall(config.rpcUrl, config.contractAddress, selector("spotPriceWeiPerLvth()")),
+        ethCall(config.rpcUrl, config.contractAddress, selector("cumulativeEthVolumeWei()")),
+        ethCall(config.rpcUrl, config.contractAddress, selector("cumulativeLvthVolumeWei()")),
+        ethCall(config.rpcUrl, config.contractAddress, selector("totalLiquidityShares()")),
+      ]);
+      const head = Number.parseInt(await rpcRead(config.rpcUrl, "eth_blockNumber"), 16);
+      const fromBlock = Math.max(0, head - window);
+      const swapLogs = await ethLogs(
+        config.rpcUrl,
+        config.contractAddress,
+        fromBlock,
+        head,
+        eventTopic(LEVIATHAN_EVENTS.Swap),
+      );
+
+      let recentEthVolume = 0n;
+      let recentLvthVolume = 0n;
+      let swapCount = 0;
+      for (const event of swapLogs) {
+        const data = event.data.replace(/^0x/, "");
+        if (data.length < 64 * 5) continue;
+        const word = (i: number) => BigInt("0x" + data.slice(i * 64, (i + 1) * 64));
+        const ethToLvth = word(0) !== 0n;
+        const amountIn = word(1);
+        const amountOut = word(2);
+        if (ethToLvth) {
+          recentEthVolume += amountIn;
+          recentLvthVolume += amountOut;
+        } else {
+          recentLvthVolume += amountIn;
+          recentEthVolume += amountOut;
+        }
+        swapCount++;
+      }
+
+      const chainId = Number.parseInt(await rpcRead(config.rpcUrl, "eth_chainId"), 16);
+      return json({
+        configured: true,
+        contract: config.contractAddress,
+        chain_id: chainId,
+        network: chainId === 11155111 ? "sepolia" : `chain-${chainId}`,
+        symbol: "LVTH",
+        quote_symbol: "ETH",
+        fee_bps: 30,
+        pool_eth_reserve_wei: toBigInt(ethReserveHex).toString(),
+        pool_lvth_reserve_wei: toBigInt(lvthReserveHex).toString(),
+        spot_price_wei_per_lvth: toBigInt(priceHex).toString(),
+        cumulative_eth_volume_wei: toBigInt(ethVolumeHex).toString(),
+        cumulative_lvth_volume_wei: toBigInt(lvthVolumeHex).toString(),
+        total_liquidity_shares: toBigInt(sharesHex).toString(),
+        recent_window_blocks: window,
+        recent_swap_count: swapCount,
+        recent_eth_volume_wei: recentEthVolume.toString(),
+        recent_lvth_volume_wei: recentLvthVolume.toString(),
         read_only: true,
       });
     }

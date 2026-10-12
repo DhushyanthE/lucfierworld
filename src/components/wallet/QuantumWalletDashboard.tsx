@@ -10,6 +10,7 @@ import { QuantumWalletManager } from './QuantumWalletManager';
 import { Wallet, Shield, Activity, Network, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/hooks/use-wallet';
 import { toast } from 'sonner';
+import { LeviathanLiveStatus } from '@/components/leviathan/LeviathanLiveStatus';
 
 export function QuantumWalletDashboard() {
   const { isConnected, walletAddress, quantumSecurity } = useWallet();
@@ -35,6 +36,8 @@ export function QuantumWalletDashboard() {
 
   return (
     <div className="space-y-6">
+      <LeviathanLiveStatus mode="wallet" holderAddress={walletAddress} />
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white flex items-center">
           <Wallet className="h-6 w-6 mr-2 text-purple-400" />

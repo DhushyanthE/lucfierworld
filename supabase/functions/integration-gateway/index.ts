@@ -60,7 +60,7 @@ Deno.serve(async req=>{
 
    user_id:user.id, correlation_id:cid, source:body.source, severity:finding.severity,
    recommendation:finding.recommendation, score:finding.score, payload_hash:finding.payload_hash,
-   audit_hash, previous_audit_hash:prev, review_engine:review.engine, review_yes:review.yes,
+   payload_sha3_256:finding.payload_sha3_256, audit_hash, previous_audit_hash:prev, review_engine:review.engine, review_yes:review.yes,
    review_total:review.votes.length, quorum_met:review.quorum_met,
    human_approval_required:true, executed:false, reasons:finding.reasons,
     signature_b64:finding.signature_b64, public_key_b64:finding.public_key_b64,
@@ -71,7 +71,7 @@ Deno.serve(async req=>{
  }
  return reply({
    envelope:{version:"qs-defense/1",correlation_id:cid,received_at:new Date().toISOString(),source:body.source},
-   pipeline:["authenticated-gateway","sentinel-triage","sha3-512","ml-dsa-87","policy-review","human-command-gate","durable-audit"],
+   pipeline:["authenticated-gateway","sentinel-triage","sha3-512-audit","sha3-256-signature","ml-dsa-87","policy-review","human-command-gate","durable-audit"],
    finding,review,audit:{id:persisted.id,previous_hash:prev,audit_hash,persistence:"supabase-postgres-rls-atomic",created_at:persisted.created_at},
    realtime:{table:"defense_audit_events",scope:"RLS owner subscription"},
    execution:{autonomous_action:false,human_approval_required:true,executed:false}
