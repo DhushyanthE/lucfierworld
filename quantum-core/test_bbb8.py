@@ -40,6 +40,9 @@ from bbb8_quantum import QBER_UPPER_LIMIT, joint_probabilities, simulate_channel
 from bbb8_service import FabricService, RequestConflictError
 
 
+TEST_MASTER = b"bbb8-test-keyvault-master-secret-v21-0001"
+
+
 def test_run_request_minimal():
     request = RunRequest(request_id="abc", observation=Observation(telemetry=[0.1]))
     assert request.quantum.pairs == 4096
@@ -179,6 +182,13 @@ def test_qber_upper_is_conservative():
     report = simulate_channel(4096, 7, 0.25, False)
     assert report.qber_upper >= report.qber
     assert 0.0 <= report.qber_upper <= 1.0
+
+
+def test_qber_report_is_explicitly_iid_only():
+    report = simulate_channel(4096, 7, 0.25, False)
+    assert report.iid_only is True
+    assert report.finite_key_secure is False
+    assert "not a composable finite-key" in report.note
 
 
 def test_joint_probabilities_reject_bad_basis():
@@ -436,6 +446,7 @@ def service(tmp_path):
     return FabricService(
         str(tmp_path / "ledger.sqlite3"),
         allow_classical_fallback=True,
+        keyvault_master=TEST_MASTER,
     )
 
 
@@ -456,6 +467,16 @@ def test_service_status_genesis(service):
     assert status.height == 0
     assert status.integrity is True
     assert len(status.cells) == 9
+
+
+def test_service_cells_table_contains_no_secret_key(service):
+    conn = sqlite3.connect(service.db_path)
+    try:
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(cells)")]
+    finally:
+        conn.close()
+    assert "secret_key" not in columns
+    assert columns == ["idx", "public_key", "algorithm"]
 
 
 def test_service_run_approve_advances_chain(service):
@@ -525,12 +546,20 @@ def test_service_ledger_pagination(service):
 
 def test_service_restart_preserves_head_and_signer_registry(tmp_path):
     path = str(tmp_path / "restart.sqlite3")
-    first = FabricService(path, allow_classical_fallback=True)
+    first = FabricService(
+        path,
+        allow_classical_fallback=True,
+        keyvault_master=TEST_MASTER,
+    )
     first.run(_request("restart-1"))
     head = first.head()
     keys = [cell.identity.public_key for cell in first.registry]
 
-    second = FabricService(path, allow_classical_fallback=True)
+    second = FabricService(
+        path,
+        allow_classical_fallback=True,
+        keyvault_master=TEST_MASTER,
+    )
     assert second.head() == head
     assert [cell.identity.public_key for cell in second.registry] == keys
     assert second.status().integrity is True
@@ -609,6 +638,7 @@ def test_service_fails_closed_without_pqc_unless_explicit_fallback(tmp_path):
     strict = FabricService(
         str(tmp_path / "strict.sqlite3"),
         allow_classical_fallback=False,
+        keyvault_master=TEST_MASTER,
     )
     response = strict.run(_request("strict-1"))
     if PQC_OK:
