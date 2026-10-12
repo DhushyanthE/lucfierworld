@@ -10,7 +10,7 @@ from bbb8_routes import router
 
 app = FastAPI(
     title="QuantumSynapse BBB8 Research Lab",
-    version="v20.1",
+    version="v21.0",
     description=(
         "Local research simulation: Bell/BBM92-style sampling, narrow QML "
         "decision policy, post-quantum signatures when pqcrypto is installed, "
@@ -25,7 +25,7 @@ def health():
     return {
         "status": "ok",
         "service": "bbb8",
-        "version": "v20.1",
+        "version": "v21.0",
         "boundary": "local research simulation",
     }
 
