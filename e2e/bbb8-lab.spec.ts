@@ -40,11 +40,23 @@ test.describe("BBB8 standalone operator lab", () => {
       ),
     );
 
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/v1/fabric/run") &&
+        response.request().method() === "POST",
+    );
     await page.getByRole("button", { name: "Run pipeline" }).click();
+    const apiResponse = await responsePromise;
+    expect(apiResponse.status()).toBe(200);
+
     const output = page.locator("#out");
     await expect(output).toContainText('"status": 200');
     await expect(output).toContainText('"outcome": "approve"');
     await expect(output).toContainText(requestId);
+    expect(pageErrors).toEqual([]);
   });
 
   test("intercept-resend fails the channel gate and cannot commit", async ({ request }) => {
