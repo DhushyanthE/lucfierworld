@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QuantumSynapse BBB8 Lab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; background:#0b1020; color:#e8eefc; }
+    textarea, pre { width:100%; box-sizing:border-box; background:#111a30; color:#dbeafe; border:1px solid #334155; border-radius:8px; padding:12px; }
+    button { padding:.65rem 1rem; margin:.3rem .3rem .3rem 0; border:0; border-radius:7px; cursor:pointer; }
+    .note { color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>QuantumSynapse BBB8 Research Lab</h1>
+  <p class="note">Local research simulation only. It does not operate physical QKD hardware, independent validators, or a real blockchain.</p>
+  <textarea id="req" rows="14">{
+  "request_id": "experiment-0001",
+  "quantum": {"pairs": 4096, "seed": 7, "sample_fraction": 0.25, "intercept_resend": false},
+  "observation": {"telemetry": [0.05, 0.10, 0.08], "declared_risk": 0.1},
+  "offline_cells": []
+}</textarea>
+  <div>
+    <button onclick="post('/v1/fabric/run', body())">Run pipeline</button>
+    <button onclick="post('/v1/fabric/status', {})">Status</button>
+    <button onclick="post('/v1/fabric/ledger', {after_height:-1, limit:20})">Ledger</button>
+    <a href="/docs"><button>OpenAPI</button></a>
+  </div>
+  <pre id="out">Ready.</pre>
+  <script>
+    const out = document.getElementById("out");
+    function body() { return JSON.parse(document.getElementById("req").value); }
+    async function post(path, payload) {
+      try {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        out.textContent = JSON.stringify({status: response.status, data}, null, 2);
+      } catch (error) {
+        out.textContent = String(error);
+      }
+    }
+  </script>
+</body>
+</html>
