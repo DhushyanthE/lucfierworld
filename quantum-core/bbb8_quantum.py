@@ -42,6 +42,13 @@ class ChannelReport:
     qber_upper: float
     passed: bool
     reason: str
+    iid_only: bool = True
+    finite_key_secure: bool = False
+    note: str = (
+        "IID simulation diagnostic only; not a composable finite-key security "
+        "calculation. Authentication, reconciliation, leakage accounting and "
+        "privacy amplification are not implemented."
+    )
 
     def to_dict(self) -> dict:
         return asdict(self)
