@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "quantum-core/**"
-      - "e2e/bbb8-lab.spec.ts"
+      - "tests/e2e/bbb8-lab.spec.ts"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.app.json"
@@ -12,7 +12,7 @@ on:
   pull_request:
     paths:
       - "quantum-core/**"
-      - "e2e/bbb8-lab.spec.ts"
+      - "tests/e2e/bbb8-lab.spec.ts"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.app.json"
