@@ -7,6 +7,8 @@ from bbb8_app import app
 from bbb8_routes import set_service_for_tests
 from bbb8_service import FabricService
 
+TEST_MASTER = b"bbb8-test-keyvault-master-secret-v21-0001"
+
 client = TestClient(app)
 
 
@@ -15,6 +17,7 @@ def isolated_service(tmp_path):
     service = FabricService(
         str(tmp_path / "gateway.sqlite3"),
         allow_classical_fallback=True,
+        keyvault_master=TEST_MASTER,
     )
     set_service_for_tests(service)
     yield service
