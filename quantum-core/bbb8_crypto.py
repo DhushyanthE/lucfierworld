@@ -99,16 +99,24 @@ def _pqc_dsa_keygen() -> tuple[bytes, bytes]:
 def _pqc_dsa_sign(secret_key: bytes, message: bytes) -> bytes:
     if _mldsa is None:
         raise RuntimeError("pqcrypto ML-DSA unavailable")
-    sk = _construct_key(_mldsa, "SecretKey", secret_key)
-    return _as_bytes(_mldsa.sign(sk, message))
+    try:
+        return _as_bytes(_mldsa.sign(secret_key, message))
+    except TypeError:
+        sk = _construct_key(_mldsa, "SecretKey", secret_key)
+        return _as_bytes(_mldsa.sign(sk, message))
 
 
 def _pqc_dsa_verify(public_key: bytes, message: bytes, signature: bytes) -> bool:
     if _mldsa is None:
         return False
-    pk = _construct_key(_mldsa, "PublicKey", public_key)
     try:
-        result = _mldsa.verify(pk, message, signature)
+        result = _mldsa.verify(public_key, message, signature)
+    except TypeError:
+        try:
+            pk = _construct_key(_mldsa, "PublicKey", public_key)
+            result = _mldsa.verify(pk, message, signature)
+        except Exception:
+            return False
     except Exception:
         return False
     return True if result is None else bool(result)
@@ -127,22 +135,28 @@ def _pqc_kem_keygen() -> tuple[bytes, bytes]:
 def _pqc_kem_encaps(public_key: bytes) -> tuple[bytes, bytes]:
     if _mlkem is None:
         raise RuntimeError("pqcrypto ML-KEM unavailable")
-    pk = _construct_key(_mlkem, "PublicKey", public_key)
     fn = getattr(_mlkem, "encaps", None) or getattr(_mlkem, "encrypt", None)
     if fn is None:
         raise RuntimeError("unsupported pqcrypto ML-KEM API")
-    ciphertext, shared = fn(pk)
+    try:
+        ciphertext, shared = fn(public_key)
+    except TypeError:
+        pk = _construct_key(_mlkem, "PublicKey", public_key)
+        ciphertext, shared = fn(pk)
     return _as_bytes(ciphertext), _as_bytes(shared)
 
 
 def _pqc_kem_decaps(secret_key: bytes, ciphertext: bytes) -> bytes:
     if _mlkem is None:
         raise RuntimeError("pqcrypto ML-KEM unavailable")
-    sk = _construct_key(_mlkem, "SecretKey", secret_key)
     fn = getattr(_mlkem, "decaps", None) or getattr(_mlkem, "decrypt", None)
     if fn is None:
         raise RuntimeError("unsupported pqcrypto ML-KEM API")
-    return _as_bytes(fn(sk, ciphertext))
+    try:
+        return _as_bytes(fn(secret_key, ciphertext))
+    except TypeError:
+        sk = _construct_key(_mlkem, "SecretKey", secret_key)
+        return _as_bytes(fn(sk, ciphertext))
 
 
 def new_identity() -> SigningIdentity:
