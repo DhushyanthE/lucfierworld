@@ -76,10 +76,10 @@ export function DAOGovernance() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user && proposal.isFromDb) {
       await supabase.from('dao_votes').insert({ user_id: user.id, proposal_id: proposal.id, vote });
-      const updateField = vote === 'for' ? 'votes_for' : 'votes_against';
-      await supabase.from('dao_proposals').update({
-        [updateField]: vote === 'for' ? proposal.votesFor + 1 : proposal.votesAgainst + 1,
-      }).eq('id', proposal.id);
+      const voteUpdate = vote === 'for'
+        ? { votes_for: proposal.votesFor + 1 }
+        : { votes_against: proposal.votesAgainst + 1 };
+      await supabase.from('dao_proposals').update(voteUpdate).eq('id', proposal.id);
     }
     toast({ title: 'Vote Cast ✅', description: `Voted ${vote} on "${proposal.title}"` });
     loadProposals();
