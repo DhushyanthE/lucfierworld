@@ -21,28 +21,59 @@
   "offline_cells": []
 }</textarea>
   <div>
-    <button onclick="post('/v1/fabric/run', body())">Run pipeline</button>
-    <button onclick="post('/v1/fabric/status', {})">Status</button>
-    <button onclick="post('/v1/fabric/ledger', {after_height:-1, limit:20})">Ledger</button>
-    <a href="/docs"><button>OpenAPI</button></a>
+    <button id="run-btn" type="button">Run pipeline</button>
+    <button id="status-btn" type="button">Status</button>
+    <button id="ledger-btn" type="button">Ledger</button>
+    <a href="/docs">OpenAPI</a>
   </div>
   <pre id="out">Ready.</pre>
   <script>
-    const out = document.getElementById("out");
-    function body() { return JSON.parse(document.getElementById("req").value); }
-    async function post(path, payload) {
+    const output = document.getElementById("out");
+    const requestInput = document.getElementById("req");
+
+    function showError(error) {
+      output.textContent = JSON.stringify({
+        error: error instanceof Error ? error.message : String(error)
+      }, null, 2);
+    }
+
+    function parseRequest() {
+      return JSON.parse(requestInput.value);
+    }
+
+    async function callApi(path, payload) {
+      output.textContent = "Running...";
       try {
         const response = await fetch(path, {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
         });
-        const data = await response.json();
-        out.textContent = JSON.stringify({status: response.status, data}, null, 2);
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          data = {error: "response was not valid JSON"};
+        }
+        output.textContent = JSON.stringify({status: response.status, data}, null, 2);
       } catch (error) {
-        out.textContent = String(error);
+        showError(error);
       }
     }
+
+    document.getElementById("run-btn").addEventListener("click", () => {
+      try {
+        void callApi("/v1/fabric/run", parseRequest());
+      } catch (error) {
+        showError(error);
+      }
+    });
+    document.getElementById("status-btn").addEventListener("click", () => {
+      void callApi("/v1/fabric/status", {});
+    });
+    document.getElementById("ledger-btn").addEventListener("click", () => {
+      void callApi("/v1/fabric/ledger", {after_height: -1, limit: 20});
+    });
   </script>
 </body>
 </html>
