@@ -59,7 +59,8 @@ Deno.serve(async req=>{
    persisted = await persistAuditEvent(client, {
 
    user_id:user.id, correlation_id:cid, source:body.source, severity:finding.severity,
-   recommendation:finding.recommendation, score:finding.score, payload_hash:finding.payload_hash,
+    recommendation:finding.recommendation, score:finding.score, payload_hash:finding.payload_hash,
+    payload_sha3_256:finding.payload_sha3_256,
    payload_sha3_256:finding.payload_sha3_256, audit_hash, previous_audit_hash:prev, review_engine:review.engine, review_yes:review.yes,
    review_total:review.votes.length, quorum_met:review.quorum_met,
    human_approval_required:true, executed:false, reasons:finding.reasons,

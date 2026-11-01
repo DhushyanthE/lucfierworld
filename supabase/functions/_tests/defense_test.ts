@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { analyzeTelemetry, auditHash, classify, recommendation, threatScore } from "../_shared/defense.ts";
+import { persistAuditEvent } from "../_shared/defense-audit.ts";
 import { mlDsa } from "../_shared/pqc.ts";
 
 const clean = {
@@ -34,6 +35,31 @@ Deno.test("finding always requires human approval and carries valid ML-DSA signa
   assertEquals(f.payload_sha3_256.length, 64);
   assertEquals(f.payload_hash.length, 128);
   assert(mlDsa.verify(f.public_key_b64, f.payload_sha3_256, f.signature_b64));
+});
+
+Deno.test("durable audit append stores the SHA3-256 digest with its ML-DSA signature", async () => {
+  const finding = analyzeTelemetry(clean, "2026-01-01T00:00:00.000Z");
+  let appended: Record<string, unknown> | null = null;
+  const client = {
+    rpc: async (_name: string, args: Record<string, unknown>) => {
+      appended = args;
+      return { data: { id: "audit-test" }, error: null };
+    },
+  };
+  await persistAuditEvent(client, {
+    correlation_id: "test-correlation", source: finding.source,
+    severity: finding.severity, recommendation: finding.recommendation,
+    score: finding.score, payload_hash: finding.payload_hash,
+    payload_sha3_256: finding.payload_sha3_256, audit_hash: "a".repeat(128),
+    previous_audit_hash: "0".repeat(128), review_engine: "test",
+    review_yes: 9, review_total: 9, quorum_met: true,
+    reasons: finding.reasons, signature_b64: finding.signature_b64,
+    public_key_b64: finding.public_key_b64,
+  });
+  assert(appended !== null);
+  assertEquals(appended.p_payload_sha3_256, finding.payload_sha3_256);
+  assertEquals(appended.p_signature_b64, finding.signature_b64);
+  assertEquals(appended.p_public_key_b64, finding.public_key_b64);
 });
 
 Deno.test("audit chain changes with previous head", () => {
