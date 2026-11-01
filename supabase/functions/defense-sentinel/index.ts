@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
       recommendation: finding.recommendation,
       score: finding.score,
       payload_hash: finding.payload_hash,
+      payload_sha3_256: finding.payload_sha3_256,
       audit_hash,
       previous_audit_hash: previous,
       review_engine: review.engine,
