@@ -21,7 +21,7 @@ import { SERVICE_URLS } from "@/config/env";
 import { LeviathanLiveStatus } from "@/components/leviathan/LeviathanLiveStatus";
 import { LeviathanSwapPanel } from "@/components/leviathan/LeviathanSwapPanel";
 import { SepoliaFaucetPanel } from "@/components/leviathan/SepoliaFaucetPanel";
-import leviathanCoin from "@/assets/leviathan-coin.png.asset.json";
+import leviathanCoin from "@/assets/leviathan-coin.png";
 
 /**
  * LeviathanCoin console — wallet, explorer, market and transfer views over the
