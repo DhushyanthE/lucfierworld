@@ -199,7 +199,7 @@ export default function Leviathan() {
       <header className="space-y-2">
         <div className="flex items-center gap-4">
           <img
-            src={leviathanCoin.url}
+            src={leviathanCoin}
             alt="Leviathan Coin"
             className="h-16 w-16 rounded-full border border-border shadow-md"
           />
