@@ -20,6 +20,8 @@ import {
 import { SERVICE_URLS } from "@/config/env";
 import { LeviathanLiveStatus } from "@/components/leviathan/LeviathanLiveStatus";
 import { LeviathanSwapPanel } from "@/components/leviathan/LeviathanSwapPanel";
+import { SepoliaFaucetPanel } from "@/components/leviathan/SepoliaFaucetPanel";
+import leviathanCoin from "@/assets/leviathan-coin.png";
 
 /**
  * LeviathanCoin console — wallet, explorer, market and transfer views over the
@@ -195,7 +197,14 @@ export default function Leviathan() {
   return (
     <main className="container mx-auto px-4 py-10 space-y-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold">LeviathanCoin (LVTH) Console</h1>
+        <div className="flex items-center gap-4">
+          <img
+            src={leviathanCoin}
+            alt="Leviathan Coin"
+            className="h-16 w-16 rounded-full border border-border shadow-md"
+          />
+          <h1 className="text-3xl font-bold">LeviathanCoin (LVTH) Console</h1>
+        </div>
         <p className="text-muted-foreground max-w-3xl">
           Wallet, explorer, market and transfer views backed by the deployed LeviathanCoin
           contract. Reads come from the contract; any transfer is signed by your own wallet —
@@ -255,6 +264,8 @@ export default function Leviathan() {
               </p>
             </CardContent>
           </Card>
+
+          <SepoliaFaucetPanel address={address} onRefresh={() => void load(address)} />
         </TabsContent>
 
         <TabsContent value="explorer">

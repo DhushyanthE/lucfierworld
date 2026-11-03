@@ -52,6 +52,7 @@ import QuantumFabric from './pages/QuantumFabric';
 import CellularBlockchain from './pages/CellularBlockchain';
 import Staking from './pages/Staking';
 import DefenseCommand from './pages/DefenseCommand';
+import SecurityTesting from './pages/SecurityTesting';
 import './App.css';
 
 function App() {
@@ -109,6 +110,7 @@ function App() {
             <Route path="/cells" element={<CellularBlockchain />} />
             <Route path="/staking" element={<Staking />} />
             <Route path="/defense" element={<DefenseCommand />} />
+            <Route path="/security-testing" element={<SecurityTesting />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
