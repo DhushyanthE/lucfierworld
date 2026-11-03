@@ -10,10 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Browser console for the OpenAI agent, which runs entirely in the
- * `openai-agent` edge function. The API key never reaches this file.
+ * `agent-openai` edge function. The API key never reaches this file.
  */
 
-const AGENT_FN = `${SERVICE_URLS.FUNCTIONS_BASE}/openai-agent`;
+const AGENT_FN = `${SERVICE_URLS.FUNCTIONS_BASE}/agent-openai`;
 
 type Msg = { role: "user" | "assistant"; content: string };
 
