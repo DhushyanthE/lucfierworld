@@ -32,14 +32,28 @@ class CryptoApiService {
   private useLiveData = true;
   private lastApiCallTime = 0;
   private minCallInterval = 5000; // 5 seconds between API calls
+  private liveDataBlockedUntil = 0; // skip doomed edge calls after auth failures
 
   // Fetch live data from CoinMarketCap via Edge Function
   private async fetchFromEdgeFunction(limit: number = 20): Promise<any> {
     try {
+      // Skip while the edge function requires a session or is temporarily busy
+      if (Date.now() < this.liveDataBlockedUntil) {
+        return null;
+      }
+
+      // No session yet: the edge function requires one, so don't send a doomed request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        this.liveDataBlockedUntil = Date.now() + 5 * 60 * 1000;
+        console.info('Live market data requires signing in — using demo data');
+        return null;
+      }
+
       // Rate limiting
+
       const now = Date.now();
       if (now - this.lastApiCallTime < this.minCallInterval) {
-        console.log('Rate limited, using cached/mock data');
         return null;
       }
       this.lastApiCallTime = now;
@@ -48,22 +62,36 @@ class CryptoApiService {
         body: { limit }
       });
 
+
       if (error) {
-        console.error('Edge function error:', error);
+        // Edge failures (401/403 session required, 503 runtime busy) are expected
+        // while signed out or during temporary load: degrade quietly to mock data.
+        const status = (error as any)?.context?.status ?? 0;
+        if (status === 401 || status === 403) {
+          this.liveDataBlockedUntil = Date.now() + 5 * 60 * 1000;
+          console.info('Live market data requires signing in — using demo data');
+        } else if (status >= 500) {
+          this.lastApiCallTime = 0; // allow a retry on the next poll
+          console.warn('Market data service is temporarily busy — using demo data');
+        } else {
+          console.warn('Market data unavailable — using demo data');
+        }
         return null;
       }
 
       if (data?.success) {
-        console.log('Fetched live crypto data:', data.data?.length, 'coins');
         return data;
       }
 
+
       return null;
-    } catch (error) {
-      console.error('Failed to fetch from edge function:', error);
+    } catch {
+      // Network/runtime hiccup: degrade quietly to cached/mock data
+      this.lastApiCallTime = 0; // allow a retry on the next poll
       return null;
     }
   }
+
 
   private getMockDataForEndpoint(endpoint: string) {
     // Mock data fallback

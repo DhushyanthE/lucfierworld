@@ -22,19 +22,17 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "text": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Text to echo back."
+              "type": "string"
             }
           },
           "required": [
             "text"
           ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -65,19 +63,17 @@
           "openWorldHint": true
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "coinId": {
-              "type": "string",
-              "minLength": 1,
-              "description": "CoinGecko coin id, e.g. 'bitcoin' or 'ethereum'."
+              "type": "string"
             }
           },
           "required": [
             "coinId"
           ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -91,18 +87,15 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "numBits": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 512,
               "default": 32,
-              "description": "How many bits to generate."
+              "type": "number"
             }
           },
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -116,23 +109,19 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "numBits": {
-              "type": "integer",
-              "minimum": 8,
-              "maximum": 2048,
               "default": 256,
-              "description": "Raw qubits exchanged."
+              "type": "number"
             },
             "simulateEavesdropper": {
-              "type": "boolean",
               "default": false,
-              "description": "Insert an intercept-resend Eve."
+              "type": "boolean"
             }
           },
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -146,25 +135,19 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "numQubits": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 6,
               "default": 2,
-              "description": "System size."
+              "type": "number"
             },
             "layers": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 3,
               "default": 2,
-              "description": "Ansatz depth."
+              "type": "number"
             }
           },
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -178,14 +161,12 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "numNodes": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 8,
               "default": 4,
-              "description": "Number of graph nodes."
+              "type": "number"
             },
             "edges": {
               "type": "array",
@@ -193,37 +174,27 @@
                 "type": "object",
                 "properties": {
                   "u": {
-                    "type": "integer",
-                    "minimum": 0
+                    "type": "number"
                   },
                   "v": {
-                    "type": "integer",
-                    "minimum": 0
+                    "type": "number"
                   }
                 },
                 "required": [
                   "u",
                   "v"
-                ],
-                "additionalProperties": false
-              },
-              "minItems": 1,
-              "maxItems": 28,
-              "description": "Edge list, node indices are 0-based."
+                ]
+              }
             },
             "depth": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 3,
               "default": 2,
-              "description": "QAOA depth p."
+              "type": "number"
             }
           },
           "required": [
             "edges"
           ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       },
@@ -237,18 +208,15 @@
           "openWorldHint": false
         },
         "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
             "blockWindow": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 20000,
               "default": 2000,
-              "description": "How many blocks back from the chain head to scan."
+              "type": "number"
             }
           },
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "additionalProperties": false
         },
         "outputSchema": null
       }
