@@ -69,6 +69,7 @@ async function runScheduledThreatScan(supabase: any, sessionId: string, ownerUse
       neutralizedCount++;
       
       await supabase.from('quantum_firewall_logs').insert({
+        user_id: ownerUserId,
         session_id: sessionId,
         event_type: 'threat_neutralized',
         severity: threat.severity,
@@ -86,6 +87,7 @@ async function runScheduledThreatScan(supabase: any, sessionId: string, ownerUse
 
   // Log scan completion
   await supabase.from('quantum_firewall_logs').insert({
+    user_id: ownerUserId,
     session_id: sessionId,
     event_type: 'scan_completed',
     success: true,
@@ -144,8 +146,9 @@ serve(async (req) => {
     const isAdmin = !!roleRow;
 
     const body = await req.json();
-    const { operation, sessionId } = body;
-    // Force userId to authenticated user (ignore client-supplied)
+    const { operation } = body;
+    // Session identifiers are generated server-side: a caller-chosen sessionId
+    // must never become the identity of scan records shared across users.
     const userId = authedUserId;
     console.log(`Quantum Firewall Scheduler operation: ${operation}`);
 
@@ -153,8 +156,8 @@ serve(async (req) => {
 
     switch (operation) {
       case 'run-scheduled-scan': {
-        const scanSessionId = sessionId || `scheduled-${crypto.randomUUID().slice(0, 8)}`;
-        const scanResult = await runScheduledThreatScan(supabase, scanSessionId);
+        const scanSessionId = `scheduled-${authedUserId.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`;
+        const scanResult = await runScheduledThreatScan(supabase, scanSessionId, authedUserId);
         
         // Send notification if threats detected
         if (userId && scanResult.criticalThreats > 0) {

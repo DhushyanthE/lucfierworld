@@ -98,9 +98,12 @@ serve(async (req) => {
 
     if (operation === 'mine') {
       const result = simulateQuantumMining(difficulty, quantumEnabled);
-      
+
+      // Firewall log rows are owned by the authenticated miner and use a
+      // server-generated session identifier.
       await supabase.from('quantum_firewall_logs').insert({
-        session_id: `mining-${Date.now()}`,
+        user_id: claims.claims.sub,
+        session_id: `mining-${claims.claims.sub.slice(0, 8)}-${Date.now()}`,
         event_type: 'crypto_mining',
         success: true,
         metrics: {
