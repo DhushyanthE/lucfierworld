@@ -49,14 +49,25 @@ class CryptoApiService {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
+        // Edge failures (401/403 session required, 503 runtime busy) are expected
+        // while signed out or during temporary load: degrade quietly to mock data.
+        const status = (error as any)?.context?.status ?? 0;
+        if (status === 401 || status === 403) {
+          this.liveDataBlockedUntil = Date.now() + 5 * 60 * 1000;
+          console.info('Live market data requires signing in — using demo data');
+        } else if (status >= 500) {
+          this.lastApiCallTime = 0; // allow a retry on the next poll
+          console.warn('Market data service is temporarily busy — using demo data');
+        } else {
+          console.warn('Market data unavailable — using demo data');
+        }
         return null;
       }
 
       if (data?.success) {
-        console.log('Fetched live crypto data:', data.data?.length, 'coins');
         return data;
       }
+
 
       return null;
     } catch (error) {
