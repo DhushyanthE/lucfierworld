@@ -42,7 +42,16 @@ class CryptoApiService {
         return null;
       }
 
+      // No session yet: the edge function requires one, so don't send a doomed request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        this.liveDataBlockedUntil = Date.now() + 5 * 60 * 1000;
+        console.info('Live market data requires signing in — using demo data');
+        return null;
+      }
+
       // Rate limiting
+
       const now = Date.now();
       if (now - this.lastApiCallTime < this.minCallInterval) {
         return null;
