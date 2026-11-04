@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { z } from "zod/v3";
+import { z } from "zod";
 
 /**
  * Read-only quantum tools for the agent layer (DEVELOPMENT.md §5f / agent/tools.py).

@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { z } from "zod/v3";
+import { z } from "zod";
 
 export default defineTool({
   name: "get_crypto_price",
