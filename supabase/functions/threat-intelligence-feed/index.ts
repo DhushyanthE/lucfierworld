@@ -147,7 +147,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json().catch(() => ({}));
-    const operation = body?.operation === 'fetch' ? 'fetch' : 'fetch';
+    const operation = 'fetch';
     console.log(`Threat intelligence feed operation: ${operation}`);
 
     if (operation === 'fetch') {
@@ -177,9 +177,10 @@ serve(async (req) => {
           autoApplied: e.confidence > 0.9,
         }));
 
-      // Log the fetch event
+      // Log the fetch event, owned by the requesting user with a server-generated session id
       await supabase.from('quantum_firewall_logs').insert({
-        session_id: `ti-feed-${Date.now()}`,
+        user_id: requesterId,
+        session_id: `ti-feed-${requesterId.slice(0, 8)}-${Date.now()}`,
         event_type: 'threat_intel_fetch',
         success: true,
         metrics: {
