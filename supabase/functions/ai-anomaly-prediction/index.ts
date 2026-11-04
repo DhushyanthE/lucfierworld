@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,10 +7,27 @@ serve(async (req) => {
   }
 
   try {
-    const { metrics, historicalData } = await req.json();
-    
+    // Only signed-in users may trigger metered AI gateway requests.
+    await requireAuth(req);
+
+    // Bounded body read; malformed or oversized requests are rejected.
+    const body = await readJson(req);
+    const { metrics, historicalData } = body ?? {};
+    if (metrics === undefined || metrics === null || typeof metrics !== 'object') {
+      return new Response(JSON.stringify({ error: 'metrics object is required', success: false }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (historicalData !== undefined && !Array.isArray(historicalData)) {
+      return new Response(JSON.stringify({ error: 'historicalData must be an array', success: false }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('AI Anomaly Prediction request received');
-    
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -141,9 +154,12 @@ Provide comprehensive anomaly prediction and analysis.`;
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
+    // Internal details stay in server logs; clients get a generic error.
     console.error('AI anomaly prediction error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
+    return new Response(JSON.stringify({
+      error: 'anomaly prediction failed',
       success: false
     }), {
       status: 500,

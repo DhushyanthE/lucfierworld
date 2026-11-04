@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 /**
  * Agentic AI with ANN Integration
@@ -227,7 +224,23 @@ serve(async (req) => {
   }
 
   try {
-    const { workflowType, input, iterations = 50 } = await req.json();
+    // Only signed-in users may trigger metered AI gateway requests.
+    await requireAuth(req);
+
+    const body = await readJson(req);
+    const { workflowType, input, iterations = 50 } = body ?? {};
+    if (!workflowType || typeof workflowType !== 'string' || workflowType.length > 64) {
+      return new Response(JSON.stringify({ success: false, error: 'workflowType is required (max 64 chars)' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!Number.isInteger(iterations) || iterations < 1 || iterations > 500) {
+      return new Response(JSON.stringify({ success: false, error: 'iterations must be an integer between 1 and 500' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -256,13 +269,16 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
+    // Internal details stay in server logs; clients get a generic error.
     console.error('Agentic AI Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: 'agentic workflow failed'
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
