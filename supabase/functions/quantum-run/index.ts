@@ -1,3 +1,4 @@
+import { requireAuth } from "../_shared/auth.ts";
 // Proxies an OpenQASM 2.0 circuit to the IBM Quantum Platform REST API.
 // Requires the IBM_QUANTUM_TOKEN secret (IBM Cloud IAM API key with a
 // Quantum service instance). We only submit the job here; the client polls
@@ -19,6 +20,13 @@ interface SubmitBody {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Only signed-in users may submit paid quantum jobs or poll job status.
+  try {
+    await requireAuth(req);
+  } catch (authResponse) {
+    return authResponse as Response;
+  }
 
   const token = Deno.env.get("IBM_QUANTUM_TOKEN");
   if (!token) {

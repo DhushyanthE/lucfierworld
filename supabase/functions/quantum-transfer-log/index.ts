@@ -72,6 +72,16 @@ serve(async (req) => {
         if (!transferData) return json({ success: false, error: 'transferData required' }, 400);
         // Force the authenticated user as the sender (do not trust client)
         const senderAddress = user.id;
+        // Receiver is stored and later exported to CSV: reject formula-like or
+        // control characters so a value can never be executed by a spreadsheet.
+        const receiverAddress = String(transferData.receiver_address ?? '');
+        if (
+          receiverAddress.length === 0 || receiverAddress.length > 128 ||
+          /^[=+@\-\t\r]/.test(receiverAddress) ||
+          /[=,;"'\r\n\t]/.test(receiverAddress) || /[\u0000-\u001f]/.test(receiverAddress)
+        ) {
+          return json({ success: false, error: 'Invalid receiver address' }, 400);
+        }
         const newSessionId = `QTS_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         const blockchainHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
@@ -80,7 +90,7 @@ serve(async (req) => {
           .insert({
             session_id: newSessionId,
             sender_address: senderAddress,
-            receiver_address: transferData.receiver_address,
+            receiver_address: receiverAddress,
             amount: transferData.amount,
             data_payload: transferData.data_payload || '',
             blockchain_hash: blockchainHash,
@@ -110,9 +120,34 @@ serve(async (req) => {
         if (existing.sender_address !== user.id) {
           return json({ success: false, error: 'Forbidden' }, 403);
         }
+        // Field allowlist with type checks: caller updateData is never passed
+        // through wholesale, so unapproved columns cannot be written.
+        const allowedFields: Record<string, 'string' | 'number' | 'array'> = {
+          transfer_status: 'string',
+          layers_passed: 'number',
+          security_score: 'number',
+          quantum_fidelity: 'number',
+          entanglement_pairs: 'number',
+          blockchain_hash: 'string',
+          layer_results: 'array',
+          completed_at: 'string',
+        };
+        const sanitizedUpdate: Record<string, unknown> = {};
+        for (const [key, kind] of Object.entries(allowedFields)) {
+          const value = (updateData as Record<string, unknown>)[key];
+          if (value === undefined || value === null) continue;
+          const ok =
+            (kind === 'string' && typeof value === 'string' && value.length <= 256) ||
+            (kind === 'number' && typeof value === 'number' && Number.isFinite(value)) ||
+            (kind === 'array' && Array.isArray(value));
+          if (ok) sanitizedUpdate[key] = value;
+        }
+        if (Object.keys(sanitizedUpdate).length === 0) {
+          return json({ success: false, error: 'No valid fields to update' }, 400);
+        }
         const { data, error } = await admin
           .from('quantum_transfer_history')
-          .update(updateData)
+          .update(sanitizedUpdate)
           .eq('session_id', sessionId)
           .select()
           .single();

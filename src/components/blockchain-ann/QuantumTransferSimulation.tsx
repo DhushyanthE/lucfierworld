@@ -77,10 +77,18 @@ export function QuantumTransferSimulation() {
     setStartTime(new Date());
     setEndTime(null);
 
+    // Reject formula-like receiver values before anything is stored or exported.
+    const receiver = config.receiver.trim();
+    if (!receiver || receiver.length > 128 || /^[=+\-@\t\r]/.test(receiver) || /[=,;"'\r\n\t\u0000-\u001f]/.test(receiver)) {
+      toast.error('Invalid receiver address');
+      setIsSimulating(false);
+      return;
+    }
+
     // Create transfer record in database
     const transferResult = await createTransfer({
       sender_address: config.sender,
-      receiver_address: config.receiver,
+      receiver_address: receiver,
       amount: parseFloat(config.amount),
       data_payload: config.dataPayload
     });

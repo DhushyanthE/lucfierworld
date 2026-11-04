@@ -98,9 +98,13 @@ serve(async (req) => {
 
     if (operation === 'mine') {
       const result = simulateQuantumMining(difficulty, quantumEnabled);
-      
+
+      // Firewall log rows are owned by the authenticated miner and use a
+      // server-generated session identifier.
+      const minerId = claims.claims.sub as string;
       await supabase.from('quantum_firewall_logs').insert({
-        session_id: `mining-${Date.now()}`,
+        user_id: minerId,
+        session_id: `mining-${minerId.slice(0, 8)}-${Date.now()}`,
         event_type: 'crypto_mining',
         success: true,
         metrics: {
@@ -111,16 +115,48 @@ serve(async (req) => {
         },
       });
 
+      // Mining records are written server-side from engine-computed values;
+      // callers cannot persist arbitrary reward or boost numbers.
+      await supabase.from('mining_history').insert({
+        user_id: minerId,
+        block_hash: result.blockHash,
+        nonce: result.nonce,
+        difficulty: result.difficulty,
+        reward: result.reward,
+        mining_time: result.miningTime,
+        hash_rate: result.hashRate,
+        energy_used: result.energyUsed,
+        quantum_boost: result.quantumBoost,
+        pool_size: 1,
+      });
+
       return new Response(JSON.stringify({ success: true, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (operation === 'pool-mine') {
+      const minerId = claims.claims.sub as string;
       const results: MiningResult[] = [];
       for (let i = 0; i < poolSize; i++) {
         results.push(simulateQuantumMining(difficulty, quantumEnabled));
       }
+
+      // Pool results are also recorded server-side with engine-computed values.
+      await supabase.from('mining_history').insert(
+        results.map((block) => ({
+          user_id: minerId,
+          block_hash: block.blockHash,
+          nonce: block.nonce,
+          difficulty: block.difficulty,
+          reward: block.reward,
+          mining_time: block.miningTime,
+          hash_rate: block.hashRate,
+          energy_used: block.energyUsed,
+          quantum_boost: block.quantumBoost,
+          pool_size: poolSize,
+        }))
+      );
 
       const poolStats = {
         totalBlocks: results.length,

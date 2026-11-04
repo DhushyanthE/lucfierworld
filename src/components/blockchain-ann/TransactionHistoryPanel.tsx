@@ -23,6 +23,13 @@ import { useQuantumTransferHistory, QuantumTransfer } from '@/hooks/useQuantumTr
 import { toast } from 'sonner';
 import { format, isAfter, isBefore, parseISO, startOfDay, endOfDay } from 'date-fns';
 
+// Neutralizes spreadsheet formula injection: any cell whose value starts with
+// =, +, -, @ or a tab is prefixed with a single quote so Excel treats it as text.
+const csvSafeCell = (cell: unknown): string => {
+  const value = String(cell ?? '');
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+};
+
 const STATUS_CONFIG = {
   pending: { color: 'bg-yellow-500', label: 'Pending', icon: Clock },
   in_progress: { color: 'bg-blue-500', label: 'In Progress', icon: Loader2 },
@@ -345,7 +352,7 @@ export function TransactionHistoryPanel() {
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${csvSafeCell(cell)}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -462,7 +469,7 @@ export function TransactionHistoryPanel() {
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${csvSafeCell(cell)}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

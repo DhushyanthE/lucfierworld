@@ -121,11 +121,33 @@ serve(async (req) => {
   }
 
   try {
+    // Only signed-in users may generate feed entries: the service-role client
+    // writes to the shared firewall log, so anonymous calls are rejected.
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "authentication required" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const authClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: userData, error: userErr } = await authClient.auth.getUser(authHeader.slice(7));
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ success: false, error: "invalid or expired session" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const requesterId = userData.user.id;
+
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { operation = 'fetch' } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const operation = 'fetch';
     console.log(`Threat intelligence feed operation: ${operation}`);
 
     if (operation === 'fetch') {
@@ -155,9 +177,10 @@ serve(async (req) => {
           autoApplied: e.confidence > 0.9,
         }));
 
-      // Log the fetch event
+      // Log the fetch event, owned by the requesting user with a server-generated session id
       await supabase.from('quantum_firewall_logs').insert({
-        session_id: `ti-feed-${Date.now()}`,
+        user_id: requesterId,
+        session_id: `ti-feed-${requesterId.slice(0, 8)}-${Date.now()}`,
         event_type: 'threat_intel_fetch',
         success: true,
         metrics: {

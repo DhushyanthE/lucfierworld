@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,10 +7,30 @@ serve(async (req) => {
   }
 
   try {
-    const { data: dataPoints, threshold = 0.85, quantumEnhanced = true } = await req.json();
-    
+    // Only signed-in users may consume the paid AI gateway.
+    await requireAuth(req);
+
+    const body = await readJson(req);
+    const dataPoints = body?.dataPoints;
+
+    // Strict validation: threshold must be a number in [0,1] so it can never
+    // carry caller-controlled text into the prompt; quantumEnhanced must be boolean.
+    const threshold = typeof body?.threshold === 'number' && Number.isFinite(body.threshold) && body.threshold >= 0 && body.threshold <= 1
+      ? body.threshold
+      : 0.85;
+    const quantumEnhanced = typeof body?.quantumEnhanced === 'boolean' ? body.quantumEnhanced : true;
+
     if (!dataPoints || !Array.isArray(dataPoints)) {
-      throw new Error('dataPoints array is required');
+      return new Response(JSON.stringify({ error: 'dataPoints array is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (dataPoints.length > 1000) {
+      return new Response(JSON.stringify({ error: 'dataPoints array is too large' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Processing anomaly detection for', dataPoints.length, 'data points');
@@ -25,7 +40,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // Quantum-enhanced anomaly detection using AI
+    // Fixed system prompt: caller input never enters the system message.
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -37,14 +52,19 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a quantum-enhanced anomaly detection system for blockchain-ANN networks. 
+            content: `You are a quantum-enhanced anomaly detection system for blockchain-ANN networks.
             Analyze data patterns and identify anomalies using advanced statistical methods and quantum-inspired algorithms.
-            Consider: temporal patterns, value distributions, blockchain consensus patterns, and neural network behavior.
-            Threshold for anomaly: ${threshold}. Quantum enhancement: ${quantumEnhanced ? 'enabled' : 'disabled'}.`
+            Consider: temporal patterns, value distributions, blockchain consensus patterns, and neural network behavior.`
           },
           {
             role: "user",
-            content: `Analyze these data points for anomalies: ${JSON.stringify(dataPoints.slice(0, 100))}`
+            // Validated numeric threshold and data points travel as data in the user turn.
+            content: JSON.stringify({
+              instruction: "Analyze these data points for anomalies.",
+              anomalyThreshold: threshold,
+              quantumEnhanced,
+              dataPoints: dataPoints.slice(0, 100)
+            })
           }
         ],
         tools: [
@@ -109,9 +129,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Anomaly detection error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
+    return new Response(JSON.stringify({
+      error: 'anomaly detection failed',
       success: false
     }), {
       status: 500,

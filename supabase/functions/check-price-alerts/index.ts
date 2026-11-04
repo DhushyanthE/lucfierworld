@@ -249,7 +249,8 @@ serve(async (req: Request) => {
             if (emailError) {
               console.error("Error sending email:", emailError);
             } else {
-              console.log("Email sent successfully to:", userEmail);
+              // Mask the recipient: server logs must not expose user emails.
+              console.log("Email sent successfully to:", userEmail ? `${userEmail.slice(0, 2)}***${userEmail.slice(userEmail.indexOf('@') > 0 ? userEmail.indexOf('@') : 3)}` : "(masked)");
               
               // Mark email as sent
               await supabase

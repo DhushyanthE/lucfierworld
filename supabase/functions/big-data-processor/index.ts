@@ -1,9 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_OPERATIONS = ['aggregate', 'transform', 'analyze', 'predict', 'classify', 'cluster'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,10 +9,16 @@ serve(async (req) => {
   }
 
   try {
-    const { operation, dataset, options = {} } = await req.json();
-    
-    if (!operation || !dataset) {
-      throw new Error('operation and dataset are required');
+    // Only signed-in users may consume the paid AI gateway.
+    await requireAuth(req);
+
+    const { operation, dataset, options = {} } = await readJson(req);
+
+    if (!operation || !ALLOWED_OPERATIONS.includes(operation) || !dataset) {
+      return new Response(JSON.stringify({ error: 'operation must be one of ' + ALLOWED_OPERATIONS.join(', ') + ' and dataset is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Processing big data operation:', operation);
@@ -35,7 +39,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a big data processing engine for blockchain-ANN systems. 
+            content: `You are a big data processing engine for blockchain-ANN systems.
             Process large-scale datasets efficiently using distributed computing patterns,
             blockchain verification, and neural network analysis. Support operations:
             aggregate, transform, analyze, predict, classify, cluster.`
@@ -101,10 +105,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Big data processing error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      success: false
+    return new Response(JSON.stringify({
+      error: 'big data processing failed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
