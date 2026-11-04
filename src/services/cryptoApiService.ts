@@ -76,11 +76,13 @@ class CryptoApiService {
 
 
       return null;
-    } catch (error) {
-      console.error('Failed to fetch from edge function:', error);
+    } catch {
+      // Network/runtime hiccup: degrade quietly to cached/mock data
+      this.lastApiCallTime = 0; // allow a retry on the next poll
       return null;
     }
   }
+
 
   private getMockDataForEndpoint(endpoint: string) {
     // Mock data fallback
