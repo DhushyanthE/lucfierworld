@@ -167,6 +167,13 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const detail = await res.text();
       console.error("openai model error", res.status, detail);
+      if (res.status === 429 || res.status === 402) {
+        return json({
+          error:
+            "Your OpenAI key has no credits left. Add credits at platform.openai.com/settings/organization/billing, then ask again.",
+          detail,
+        }, 502);
+      }
       return json({ error: `openai returned ${res.status}`, detail }, res.status);
     }
     let data = await res.json();
