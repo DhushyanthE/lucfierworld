@@ -75,7 +75,7 @@ export function useCryptoWebSocket(): UseCryptoWebSocketReturn {
     setIsConnecting(false);
   }, [clearTimers]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
