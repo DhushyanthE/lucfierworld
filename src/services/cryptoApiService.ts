@@ -32,14 +32,19 @@ class CryptoApiService {
   private useLiveData = true;
   private lastApiCallTime = 0;
   private minCallInterval = 5000; // 5 seconds between API calls
+  private liveDataBlockedUntil = 0; // skip doomed edge calls after auth failures
 
   // Fetch live data from CoinMarketCap via Edge Function
   private async fetchFromEdgeFunction(limit: number = 20): Promise<any> {
     try {
+      // Skip while the edge function requires a session or is temporarily busy
+      if (Date.now() < this.liveDataBlockedUntil) {
+        return null;
+      }
+
       // Rate limiting
       const now = Date.now();
       if (now - this.lastApiCallTime < this.minCallInterval) {
-        console.log('Rate limited, using cached/mock data');
         return null;
       }
       this.lastApiCallTime = now;
@@ -47,6 +52,7 @@ class CryptoApiService {
       const { data, error } = await supabase.functions.invoke('coinmarketcap-proxy', {
         body: { limit }
       });
+
 
       if (error) {
         // Edge failures (401/403 session required, 503 runtime busy) are expected
