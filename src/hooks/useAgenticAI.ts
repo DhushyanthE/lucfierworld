@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
 
 interface AgentState {
   id: string;
@@ -60,13 +62,20 @@ export function useAgenticAI() {
     setError(null);
 
     try {
+      // The backend requires a signed-in session, so send the real access token.
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error('You need to sign in to run the agentic workflow');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agentic-ai-ann`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ workflowType, input, iterations }),
         }
