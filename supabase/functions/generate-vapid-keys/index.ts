@@ -69,13 +69,14 @@
        });
      }
 
+     // Never log the private key: server logs are not part of the admin session.
      console.log("Generating VAPID keys...");
 
      const keys = await generateVapidKeys();
-     
+
      console.log("VAPID keys generated successfully");
      console.log("Public Key (add to VITE_VAPID_PUBLIC_KEY):", keys.publicKey);
-     console.log("Private Key (add to VAPID_PRIVATE_KEY secret):", keys.privateKey);
+     console.log("Private key generated; deliver it only through the API response and store it as a secret.");
      
      return new Response(
        JSON.stringify({
