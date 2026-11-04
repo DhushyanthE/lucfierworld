@@ -26,7 +26,9 @@
           "type": "object",
           "properties": {
             "text": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "description": "Text to echo back."
             }
           },
           "required": [
@@ -67,7 +69,9 @@
           "type": "object",
           "properties": {
             "coinId": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "description": "CoinGecko coin id, e.g. 'bitcoin' or 'ethereum'."
             }
           },
           "required": [
@@ -92,7 +96,10 @@
           "properties": {
             "numBits": {
               "default": 32,
-              "type": "number"
+              "description": "How many bits to generate.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 512
             }
           },
           "additionalProperties": false
@@ -114,10 +121,14 @@
           "properties": {
             "numBits": {
               "default": 256,
-              "type": "number"
+              "description": "Raw qubits exchanged.",
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 2048
             },
             "simulateEavesdropper": {
               "default": false,
+              "description": "Insert an intercept-resend Eve.",
               "type": "boolean"
             }
           },
@@ -140,11 +151,17 @@
           "properties": {
             "numQubits": {
               "default": 2,
-              "type": "number"
+              "description": "System size.",
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 6
             },
             "layers": {
               "default": 2,
-              "type": "number"
+              "description": "Ansatz depth.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
             }
           },
           "additionalProperties": false
@@ -166,29 +183,42 @@
           "properties": {
             "numNodes": {
               "default": 4,
-              "type": "number"
+              "description": "Number of graph nodes.",
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 8
             },
             "edges": {
+              "minItems": 1,
+              "maxItems": 28,
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
                   "u": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "v": {
-                    "type": "number"
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
                   "u",
                   "v"
                 ]
-              }
+              },
+              "description": "Edge list, node indices are 0-based."
             },
             "depth": {
               "default": 2,
-              "type": "number"
+              "description": "QAOA depth p.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
             }
           },
           "required": [
@@ -213,7 +243,10 @@
           "properties": {
             "blockWindow": {
               "default": 2000,
-              "type": "number"
+              "description": "How many blocks back from the chain head to scan.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20000
             }
           },
           "additionalProperties": false
