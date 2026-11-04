@@ -41,13 +41,20 @@ export function CryptoMiningPanel() {
   const mineBlock = async () => {
     setIsMining(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        toast({ title: 'Sign in required', description: 'Sign in to mine blocks', variant: 'destructive' });
+        setIsMining(false);
+        return;
+      }
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crypto-mining-engine`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ operation: 'mine', difficulty: 4, quantumEnabled }),
         }
@@ -70,13 +77,20 @@ export function CryptoMiningPanel() {
   const poolMine = async () => {
     setIsMining(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        toast({ title: 'Sign in required', description: 'Sign in to mine blocks', variant: 'destructive' });
+        setIsMining(false);
+        return;
+      }
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crypto-mining-engine`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ operation: 'pool-mine', difficulty: 4, quantumEnabled, poolSize: 5 }),
         }
