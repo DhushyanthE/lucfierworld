@@ -161,18 +161,22 @@ export function useQuantumFirewallRealtime() {
   // Trigger a scheduled scan
   const triggerScheduledScan = useCallback(async (userId?: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Sign in to run a scheduled scan');
+      }
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quantum-firewall-scheduler`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             operation: 'run-scheduled-scan',
             userId,
-            sessionId: `manual-${Date.now()}`,
           }),
         }
       );
@@ -192,13 +196,18 @@ export function useQuantumFirewallRealtime() {
   // Get threat analytics
   const getThreatAnalytics = useCallback(async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Sign in to view threat analytics');
+      }
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quantum-firewall-scheduler`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             operation: 'get-threat-analytics',
