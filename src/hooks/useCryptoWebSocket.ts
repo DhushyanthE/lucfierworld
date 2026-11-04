@@ -89,8 +89,17 @@ export function useCryptoWebSocket(): UseCryptoWebSocketReturn {
     setError(null);
 
     try {
+      // The stream is authenticated: attach the current session JWT to the
+      // WebSocket handshake, since browsers cannot set headers on WebSocket.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        setError('Sign in to stream live prices');
+        setIsConnecting(false);
+        return;
+      }
       console.log('Connecting to Crypto WebSocket:', WS_URL);
-      wsRef.current = new WebSocket(WS_URL);
+      wsRef.current = new WebSocket(`${WS_URL}?token=${encodeURIComponent(accessToken)}`);
 
       wsRef.current.onopen = () => {
         console.log('Crypto WebSocket connected');
