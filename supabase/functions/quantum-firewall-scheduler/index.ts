@@ -21,7 +21,7 @@ function generateQuantumSignature(): string {
 }
 
 // Scheduled threat scan function
-async function runScheduledThreatScan(supabase: any, sessionId: string) {
+async function runScheduledThreatScan(supabase: any, sessionId: string, ownerUserId: string) {
   console.log(`Running scheduled threat scan for session: ${sessionId}`);
   
   const threatTypes = ['malware', 'ddos', 'intrusion', 'phishing', 'ransomware', 'apt', 'zero-day'];
@@ -46,6 +46,7 @@ async function runScheduledThreatScan(supabase: any, sessionId: string) {
   // Log detected threats to database
   for (const threat of detectedThreats) {
     await supabase.from('quantum_firewall_logs').insert({
+      user_id: ownerUserId,
       session_id: sessionId,
       event_type: 'threat_detected',
       severity: threat.severity,
