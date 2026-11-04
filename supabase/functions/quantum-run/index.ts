@@ -1,3 +1,4 @@
+import { requireAuth } from "../_shared/auth.ts";
 // Proxies an OpenQASM 2.0 circuit to the IBM Quantum Platform REST API.
 // Requires the IBM_QUANTUM_TOKEN secret (IBM Cloud IAM API key with a
 // Quantum service instance). We only submit the job here; the client polls
