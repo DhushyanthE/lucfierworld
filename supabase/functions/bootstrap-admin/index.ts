@@ -20,6 +20,32 @@ serve(async (req) => {
   }
 
   try {
+    // Bootstrap requires an out-of-band secret the operator supplies at deploy
+    // time; a signed-in user alone must never be able to grant admin rights.
+    const bootstrapSecret = Deno.env.get("ADMIN_BOOTSTRAP_TOKEN");
+    if (!bootstrapSecret) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Admin bootstrap is disabled. Set the ADMIN_BOOTSTRAP_TOKEN secret to enable it.",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        }
+      );
+    }
+    const providedSecret = req.headers.get("x-bootstrap-token") ?? "";
+    if (providedSecret.length === 0 || providedSecret.length !== bootstrapSecret.length || providedSecret !== bootstrapSecret) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid bootstrap token." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        }
+      );
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""

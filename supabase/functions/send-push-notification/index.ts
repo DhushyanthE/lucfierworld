@@ -67,14 +67,20 @@
        );
      }
  
-     const { userId, title, body, url, icon } = await req.json();
-     
-     if (!userId || !title) {
+     // A caller may only send to their own subscription: userId is taken from
+     // the verified session, never from the request body.
+     const { title, body, url, icon } = await req.json();
+
+     if (!title || typeof title !== 'string' || title.length > 200) {
        return new Response(
-         JSON.stringify({ error: 'Missing required fields: userId, title' }),
+         JSON.stringify({ error: 'Missing required field: title (max 200 chars)' }),
          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
        );
      }
+     const safeBody = typeof body === 'string' && body.length <= 500 ? body : '';
+     const safeUrl = typeof url === 'string' && url.length <= 500 ? url : '/';
+     const safeIcon = typeof icon === 'string' && icon.length <= 500 ? icon : '/favicon.ico';
+     const userId: string = user.id;
  
      const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');

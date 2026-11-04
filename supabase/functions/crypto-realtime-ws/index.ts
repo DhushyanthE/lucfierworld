@@ -26,6 +26,26 @@ serve(async (req) => {
     return new Response("Expected WebSocket connection", { status: 400 });
   }
 
+  // Paid market data: only signed-in users may open the stream. The JWT is
+  // passed as a query parameter because browsers cannot set headers on WebSocket.
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token") ?? "";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !anonKey || !token) {
+    return new Response("authentication required", { status: 401 });
+  }
+  try {
+    const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+    });
+    if (!authRes.ok) {
+      return new Response("invalid or expired session", { status: 401 });
+    }
+  } catch {
+    return new Response("authentication failed", { status: 401 });
+  }
+
   const { socket, response } = Deno.upgradeWebSocket(req);
   
   let streamInterval: number | null = null;
