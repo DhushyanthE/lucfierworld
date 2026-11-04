@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -149,19 +151,28 @@ serve(async (req) => {
   }
 
   try {
-    const { operation, input, securityLevel } = await req.json();
+    // Only signed-in users may run the paid quantum analysis.
+    await requireAuth(req);
+
+    const { operation, input, securityLevel } = await readJson(req);
+    if (!operation || typeof operation !== 'string' || operation.length > 64) {
+      return new Response(JSON.stringify({ success: false, error: 'operation is required (max 64 chars)' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
+
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log(`🔮 Quantum Echoes Algorithm - Operation: ${operation}`);
-    console.log(`🔒 Security Level: ${securityLevel || 'standard'}`);
+    console.log(`Quantum Echoes Algorithm - Operation: ${operation}`);
+    console.log(`Security Level: ${typeof securityLevel === 'string' ? securityLevel.slice(0, 32) : 'standard'}`);
 
     const result = await executeQuantumEchoes(operation, input, LOVABLE_API_KEY);
 
-    console.log(`✅ Quantum Echo Transfer Complete - Integrity: ${(result.transferIntegrity * 100).toFixed(2)}%`);
+    console.log(`Quantum Echo Transfer Complete - Integrity: ${(result.transferIntegrity * 100).toFixed(2)}%`);
 
     return new Response(JSON.stringify({
       success: result.success,
@@ -175,10 +186,12 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Quantum Echoes Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: 'quantum echo analysis failed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

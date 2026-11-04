@@ -249,8 +249,9 @@ serve(async (req: Request) => {
             if (emailError) {
               console.error("Error sending email:", emailError);
             } else {
-              // Mask the recipient: server logs must not expose user emails.
-              console.log("Email sent successfully to:", userEmail ? `${userEmail.slice(0, 2)}***${userEmail.slice(userEmail.indexOf('@') > 0 ? userEmail.indexOf('@') : 3)}` : "(masked)");
+              // Recipient addresses are withheld from logs entirely: server logs
+              // must never expose user emails, even partially.
+              console.log("Price alert email delivered to the alert owner (address withheld from logs)");
               
               // Mark email as sent
               await supabase

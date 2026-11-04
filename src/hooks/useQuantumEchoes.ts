@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuantumEchoPattern {
   layerId: number;
@@ -42,13 +43,20 @@ export function useQuantumEchoes() {
     setError(null);
 
     try {
+      // A paid function: it requires the caller's real session token, which
+      // supabase.functions.invoke cannot set on this manual fetch.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Sign in to run quantum echo analysis');
+      }
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quantum-echoes-algorithm`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ operation, input, securityLevel }),
         }
