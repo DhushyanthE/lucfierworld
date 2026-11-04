@@ -20,6 +20,13 @@ interface SubmitBody {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Only signed-in users may submit paid quantum jobs or poll job status.
+  try {
+    await requireAuth(req);
+  } catch (authResponse) {
+    return authResponse as Response;
+  }
+
   const token = Deno.env.get("IBM_QUANTUM_TOKEN");
   if (!token) {
     return json({ error: "IBM_QUANTUM_TOKEN is not configured" }, 500);
