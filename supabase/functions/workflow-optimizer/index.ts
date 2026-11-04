@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const DEFAULT_GOALS = ['speed', 'accuracy', 'cost'];
+const MAX_GOALS = 8;
+const MAX_GOAL_LENGTH = 40;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,13 +11,33 @@ serve(async (req) => {
   }
 
   try {
-    const { workflow, optimizationGoals = ['speed', 'accuracy', 'cost'] } = await req.json();
-    
+    // Only signed-in users may consume the paid AI gateway.
+    await requireAuth(req);
+
+    const { workflow, optimizationGoals = DEFAULT_GOALS } = await readJson(req);
+
     if (!workflow) {
-      throw new Error('workflow configuration is required');
+      return new Response(JSON.stringify({ error: 'workflow configuration is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log('Optimizing workflow with goals:', optimizationGoals);
+    // Validation: goals must be short strings from the caller, but they travel as
+    // data in the user turn — never interpolated into the system prompt.
+    const goals = Array.isArray(optimizationGoals)
+      ? optimizationGoals
+          .filter((g: unknown) => typeof g === 'string' && g.length > 0 && g.length <= MAX_GOAL_LENGTH)
+          .slice(0, MAX_GOALS)
+      : DEFAULT_GOALS;
+    if (goals.length === 0) {
+      return new Response(JSON.stringify({ error: 'no valid optimization goals supplied' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('Optimizing workflow with', goals.length, 'goals');
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -35,14 +55,18 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an advanced off-chain workflow optimizer for blockchain-ANN systems. 
-            Optimize workflows by analyzing resource allocation, parallelization opportunities, 
-            quantum computing integration points, and blockchain verification strategies.
-            Goals: ${optimizationGoals.join(', ')}.`
+            // Fixed system prompt: caller goals are not interpolated here.
+            content: `You are an advanced off-chain workflow optimizer for blockchain-ANN systems.
+            Optimize workflows by analyzing resource allocation, parallelization opportunities,
+            quantum computing integration points, and blockchain verification strategies.`
           },
           {
             role: "user",
-            content: `Optimize this workflow: ${JSON.stringify(workflow)}`
+            content: JSON.stringify({
+              instruction: "Optimize this workflow according to the listed goals.",
+              goals,
+              workflow
+            })
           }
         ],
         tools: [
@@ -112,10 +136,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Workflow optimization error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      success: false
+    return new Response(JSON.stringify({
+      error: 'workflow optimization failed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,9 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, requireAuth, readJson, handleAuthError } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_OPERATIONS = ['analyze', 'variant', 'pattern', 'store', 'predict'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,15 +9,28 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      genomicData, 
-      operation = 'analyze', 
+    // Only signed-in users may consume the paid AI gateway.
+    await requireAuth(req);
+
+    const {
+      genomicData,
+      operation = 'analyze',
       blockchainStore = true,
-      quantumCircuits = true 
-    } = await req.json();
-    
+      quantumCircuits = true
+    } = await readJson(req);
+
     if (!genomicData) {
-      throw new Error('genomicData is required');
+      return new Response(JSON.stringify({ error: 'genomicData is required', success: false }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // Allowlisted operation: caller text can never steer the system prompt.
+    if (!ALLOWED_OPERATIONS.includes(operation)) {
+      return new Response(JSON.stringify({ error: 'unsupported operation', success: false }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Processing genomic data with operation:', operation);
@@ -40,6 +51,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
+            // Fixed system prompt with only server-controlled values.
             content: `You are a genomic data processor with blockchain-ANN integration and quantum computing capabilities.
             Process genomic sequences, identify patterns, predict variants, and store results on blockchain.
             Use quantum circuits for complex genomic pattern analysis. Operation: ${operation}.
@@ -128,9 +140,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Genomic processing error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
+    return new Response(JSON.stringify({
+      error: 'genomic processing failed',
       success: false
     }), {
       status: 500,
