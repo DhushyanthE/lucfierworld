@@ -7,6 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Server-side price catalog: the caller chooses a product, never a price.
+const PRODUCT_CATALOG: Record<string, { amount: number; currency: string; name: string }> = {
+  pro_access: { amount: 1999, currency: "usd", name: "Pro Access" },
+  enterprise_access: { amount: 99900, currency: "usd", name: "Enterprise Access" },
+};
+
+// Return URLs may only point at app origins we control.
+const ALLOWED_ORIGINS = [
+  "https://lucfierworld.lovable.app",
+  "https://id-preview--ce0f1d33-e51b-40ef-bec3-932163ebcacf.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -26,15 +40,20 @@ serve(async (req) => {
     const user = userData.user;
 
     const body = await req.json().catch(() => ({}));
-    const product: string = body.product ?? "pro_access";
-    const amount: number = Number.isFinite(body.amount) ? body.amount : 1999;
-    const currency: string = (body.currency || "usd").toLowerCase();
-    const name: string = body.name || "Pro Access";
-    const origin = req.headers.get("origin") || "http://localhost:5173";
+    const product: string = typeof body?.product === "string" && PRODUCT_CATALOG[body.product]
+      ? body.product
+      : "pro_access";
+    const price = PRODUCT_CATALOG[product];
+    // Amount, currency and name come exclusively from the server-side catalog.
+    const { amount, currency, name } = price;
+
+    // Only return to a known app origin.
+    const requestedOrigin = req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(requestedOrigin) ? requestedOrigin : ALLOWED_ORIGINS[0];
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-    // Reuse customer if we have one
+    // Reuse customer only from this user's own payment record.
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -42,7 +61,9 @@ serve(async (req) => {
     const { data: existing } = await admin
       .from("customer_status").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
     let customerId = existing?.stripe_customer_id ?? undefined;
-    if (!customerId && user.email) {
+    // Email-based customer reuse is only safe with a verified email address;
+    // otherwise a user could inherit someone else's Stripe customer record.
+    if (!customerId && user.email && user.email_confirmed_at) {
       const list = await stripe.customers.list({ email: user.email, limit: 1 });
       customerId = list.data[0]?.id;
     }

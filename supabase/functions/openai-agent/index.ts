@@ -159,9 +159,11 @@ Deno.serve(async (req) => {
   }
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
 
+  // Caller messages are all treated as user turns: a caller must never be able
+  // to fabricate prior assistant or system context in the conversation.
   const messages: Record<string, unknown>[] = [
     { role: "system", content: SYSTEM_PROMPT },
-    ...parsed.data.messages,
+    ...parsed.data.messages.map((m: { content: string }) => ({ role: "user", content: m.content })),
   ];
 
   try {
