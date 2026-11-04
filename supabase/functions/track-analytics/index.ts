@@ -198,14 +198,19 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingSession) {
-        await serviceClient
-          .from("analytics_sessions")
-          .update({
-            ended_at: new Date().toISOString(),
-            page_views: existingSession.page_views + 1,
-            exit_page: eventInput.page_url,
-          })
-          .eq("session_id", eventInput.session_id);
+        // Ownership check: a caller may only extend a session they own
+        // (matching user id) or an anonymous session while anonymous.
+        // undefined == null keeps anonymous-to-anonymous updates working.
+        if (existingSession.user_id == user?.id) {
+          await serviceClient
+            .from("analytics_sessions")
+            .update({
+              ended_at: new Date().toISOString(),
+              page_views: existingSession.page_views + 1,
+              exit_page: eventInput.page_url,
+            })
+            .eq("session_id", eventInput.session_id);
+        }
       } else {
         await serviceClient.from("analytics_sessions").insert({
           session_id: eventInput.session_id,
