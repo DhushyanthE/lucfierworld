@@ -200,9 +200,12 @@ serve(async (req) => {
   }
 
   try {
-    const { operation, input } = await req.json();
+    // Only signed-in users may consume the paid AI gateway.
+    await requireAuth(req);
+
+    const { operation, input } = await readJson(req);
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
+
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
@@ -223,10 +226,12 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = handleAuthError(error);
+    if (authResponse) return authResponse;
     console.error('Quantum Coin AGI Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: 'quantum coin AGI workflow failed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
