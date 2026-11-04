@@ -56,16 +56,8 @@ export function CryptoMiningPanel() {
       if (data.success) {
         setLastBlock(data.result);
         setTotalMined(prev => prev + data.result.reward);
-        // Persist to DB
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('mining_history').insert({
-            user_id: user.id, block_hash: data.result.blockHash, nonce: data.result.nonce,
-            difficulty: data.result.difficulty, reward: data.result.reward,
-            mining_time: data.result.miningTime, hash_rate: data.result.hashRate,
-            energy_used: data.result.energyUsed, quantum_boost: data.result.quantumBoost, pool_size: 1,
-          });
-        }
+        // The engine persists the mined block server-side with its own
+        // computed values; the client no longer writes reward records.
         toast({ title: 'Block Mined! ⛏️', description: `Reward: ${data.result.reward.toFixed(4)} QCoin | Hash Rate: ${(data.result.hashRate / 1e6).toFixed(2)} MH/s` });
       }
     } catch (error) {
@@ -93,17 +85,7 @@ export function CryptoMiningPanel() {
       if (data.success) {
         setPoolStats(data.poolStats);
         setTotalMined(prev => prev + data.poolStats.totalReward);
-        // Persist pool mining results to DB
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const inserts = data.poolStats.blocks.map((block: MiningResult) => ({
-            user_id: user.id, block_hash: block.blockHash, nonce: block.nonce,
-            difficulty: block.difficulty, reward: block.reward,
-            mining_time: block.miningTime, hash_rate: block.hashRate,
-            energy_used: block.energyUsed, quantum_boost: block.quantumBoost, pool_size: 5,
-          }));
-          await supabase.from('mining_history').insert(inserts);
-        }
+        // Pool results are persisted server-side by the engine.
         toast({ title: 'Pool Mining Complete', description: `${data.poolStats.totalBlocks} blocks mined, ${data.poolStats.totalReward.toFixed(2)} QCoin total` });
       }
     } catch (error) {
