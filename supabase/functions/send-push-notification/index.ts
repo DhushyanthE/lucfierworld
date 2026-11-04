@@ -117,12 +117,12 @@
      console.log(`Sending push notification to user ${userId}`);
  
      // Create notification payload
-     const payload = JSON.stringify({
-       title,
-       body: body || '',
-       url: url || '/',
-       icon: icon || '/favicon.ico'
-     });
+      const payload = JSON.stringify({
+        title,
+        body: safeBody,
+        url: safeUrl,
+        icon: safeIcon
+      });
  
      // Send push notification
      const endpoint = subscription.endpoint;
