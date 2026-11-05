@@ -93,6 +93,7 @@ function App() {
   return (
     <TranslationProvider initialLanguage="en">
       <WalletProvider>
+        <ConsentSocialReturn />
         <HashRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
