@@ -53,10 +53,42 @@ import CellularBlockchain from './pages/CellularBlockchain';
 import Staking from './pages/Staking';
 import DefenseCommand from './pages/DefenseCommand';
 import SecurityTesting from './pages/SecurityTesting';
+import OAuthConsent from './pages/OAuthConsent';
+import AuthCallback from './pages/AuthCallback';
+import { supabase } from '@/integrations/supabase/client';
+import { OAUTH_RETURN_STORAGE_KEY, oauthReturnPath } from '@/lib/oauth-return-path';
 import './App.css';
+
+// After a social (Google/Apple) sign-in started from the OAuth consent page,
+// the provider returns to the app origin; finish the pending consent redirect.
+function ConsentSocialReturn() {
+  useEffect(() => {
+    const check = async () => {
+      const pending = sessionStorage.getItem(OAUTH_RETURN_STORAGE_KEY);
+      if (!pending) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        sessionStorage.removeItem(OAUTH_RETURN_STORAGE_KEY);
+        window.location.assign(oauthReturnPath(pending));
+      }
+    };
+    check();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { check(); });
+    return () => subscription.unsubscribe();
+  }, []);
+  return null;
+}
 
 function App() {
   const [count, setCount] = useState(0); // Force rebuild
+
+  // Real-path routes that the hash router must not intercept.
+  if (window.location.pathname === '/.lovable/oauth/consent') {
+    return <OAuthConsent />;
+  }
+  if (window.location.pathname === '/auth/callback') {
+    return <AuthCallback />;
+  }
 
   return (
     <TranslationProvider initialLanguage="en">
