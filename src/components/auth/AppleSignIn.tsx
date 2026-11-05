@@ -2,17 +2,21 @@
  import { Button } from '@/components/ui/button';
  import { toast } from 'sonner';
  import { Loader2 } from 'lucide-react';
- import { lovable } from '@/integrations/lovable/index';
- 
- export function AppleSignIn() {
-   const [isLoading, setIsLoading] = useState(false);
- 
-   const handleAppleSignIn = async () => {
-     setIsLoading(true);
-     try {
-       const { error } = await lovable.auth.signInWithOAuth('apple', {
-         redirect_uri: window.location.origin,
-       });
+import { lovable } from '@/integrations/lovable/index';
+import { OAUTH_RETURN_STORAGE_KEY } from '@/lib/oauth-return-path';
+
+export function AppleSignIn({ returnTo }: { returnTo?: string }) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAppleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      if (returnTo && returnTo !== '/') {
+        sessionStorage.setItem(OAUTH_RETURN_STORAGE_KEY, returnTo);
+      }
+      const { error } = await lovable.auth.signInWithOAuth('apple', {
+        redirect_uri: window.location.origin,
+      });
  
        if (error) {
          toast.error(error.message || 'Failed to sign in with Apple');
