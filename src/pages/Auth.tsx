@@ -357,8 +357,8 @@ const Auth = () => {
                   </div>
                 </div>
                 
-                <GoogleSignIn />
-                <AppleSignIn />
+                <GoogleSignIn returnTo={returnTarget ?? undefined} />
+                <AppleSignIn returnTo={returnTarget ?? undefined} />
               </form>
             </TabsContent>
             
@@ -419,8 +419,8 @@ const Auth = () => {
                   </div>
                 </div>
                 
-                <GoogleSignIn />
-                <AppleSignIn />
+                <GoogleSignIn returnTo={returnTarget ?? undefined} />
+                <AppleSignIn returnTo={returnTarget ?? undefined} />
               </form>
             </TabsContent>
           </Tabs>
