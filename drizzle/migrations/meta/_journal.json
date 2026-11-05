@@ -57,6 +57,13 @@
       "when": 1793774664166,
       "tag": "0007_tighten_pings_and_mining_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793887684167,
+      "tag": "0008_restrict_avatars_listing",
+      "breakpoints": true
     }
   ]
 }

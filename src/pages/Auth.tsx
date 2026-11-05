@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,11 @@ import { Separator } from '@/components/ui/separator';
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  // Preserve an OAuth consent return path (validated same-origin URL) through
+  // every sign-in method on this page.
+  const nextParam = params.get('next');
+  const returnTarget = nextParam ? oauthReturnPath(nextParam) : null;
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
@@ -124,7 +130,11 @@ const Auth = () => {
 
       if (data.user) {
         toast.success('Login successful!');
-        navigate('/');
+        if (returnTarget && returnTarget !== '/') {
+          window.location.assign(returnTarget);
+        } else {
+          navigate('/');
+        }
       }
     } catch (error: any) {
       toast.error('An unexpected error occurred');
@@ -170,7 +180,9 @@ const Auth = () => {
         email: signupEmail,
         password: signupPassword,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: returnTarget && returnTarget !== '/'
+            ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTarget)}`
+            : `${window.location.origin}/`,
         },
       });
 
@@ -345,8 +357,8 @@ const Auth = () => {
                   </div>
                 </div>
                 
-                <GoogleSignIn />
-                <AppleSignIn />
+                <GoogleSignIn returnTo={returnTarget ?? undefined} />
+                <AppleSignIn returnTo={returnTarget ?? undefined} />
               </form>
             </TabsContent>
             
@@ -407,8 +419,8 @@ const Auth = () => {
                   </div>
                 </div>
                 
-                <GoogleSignIn />
-                <AppleSignIn />
+                <GoogleSignIn returnTo={returnTarget ?? undefined} />
+                <AppleSignIn returnTo={returnTarget ?? undefined} />
               </form>
             </TabsContent>
           </Tabs>

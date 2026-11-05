@@ -3,13 +3,17 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
+import { OAUTH_RETURN_STORAGE_KEY } from '@/lib/oauth-return-path';
 
-export function GoogleSignIn() {
+export function GoogleSignIn({ returnTo }: { returnTo?: string }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
+      if (returnTo && returnTo !== '/') {
+        sessionStorage.setItem(OAUTH_RETURN_STORAGE_KEY, returnTo);
+      }
       const { error } = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
       });
