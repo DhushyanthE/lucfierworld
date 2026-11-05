@@ -3,12 +3,16 @@
   "sdk_version": "3.4.0",
   "path": "/mcp",
   "auth": {
-    "type": "none"
+    "type": "oauth",
+    "issuer": "https://lttxaakpruqqgqdlwpki.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
       "name": "quantum-coin-mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "title": "Quantum Coin MCP"
     },
     "tools": [
