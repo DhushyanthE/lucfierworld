@@ -198,10 +198,11 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingSession) {
-        // Ownership check: a caller may only extend a session they own
-        // (matching user id) or an anonymous session while anonymous.
-        // undefined == null keeps anonymous-to-anonymous updates working.
-        if (existingSession.user_id == user?.id) {
+        // Do not let an unauthenticated caller update an anonymous session by
+        // supplying its session_id. Only an authenticated owner may extend an
+        // existing session; the ownership predicate is repeated in the update
+        // query so a stale read cannot broaden access.
+        if (user && existingSession.user_id === user.id) {
           await serviceClient
             .from("analytics_sessions")
             .update({
@@ -209,7 +210,8 @@ serve(async (req) => {
               page_views: existingSession.page_views + 1,
               exit_page: eventInput.page_url,
             })
-            .eq("session_id", eventInput.session_id);
+            .eq("session_id", eventInput.session_id)
+            .eq("user_id", user.id);
         }
       } else {
         await serviceClient.from("analytics_sessions").insert({
