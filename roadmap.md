@@ -12,3 +12,4 @@
 - [ ] Run a real OpenAI answer through `agent-openai` once the owner adds credits to their OpenAI billing (key currently returns `credit_balance_exhausted`; everything else verified).
 - [ ] Deploy LeviathanCoin on Sepolia once the wallet holds test ETH (wallet 0xDfcF4d79f3aE6C479AF3Ff85Bc159782fd36D677 re-checked 2026-11-03: 0 ETH); the exchange/swap functions already exist in the contract and `/market` + swap panel already read live price/volume — they go live automatically after deployment.
 - [ ] Lovable editor/project-creation incident is platform-side and cannot be repaired from this project.
+- [ ] Connect the user's ad account before preparing their first campaign; platform/account selection and provider setup remain to be confirmed.
