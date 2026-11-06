@@ -42,7 +42,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const savedWallet = localStorage.getItem('currentWallet');
     if (savedWallet === 'metamask' || savedWallet === 'walletconnect' || 
         savedWallet === 'phantom' || savedWallet === 'trustwallet') {
-      connectWallet(savedWallet as WalletType).catch(console.error);
+      (async () => {
+        try {
+          if (savedWallet === 'metamask' || savedWallet === 'trustwallet') {
+            // Silent check: never open a connect prompt on page load.
+            const accounts = window.ethereum
+              ? await window.ethereum.request({ method: 'eth_accounts' })
+              : [];
+            if (!Array.isArray(accounts) || accounts.length === 0) {
+              localStorage.removeItem('currentWallet');
+              return;
+            }
+          }
+          await connectWallet(savedWallet as WalletType);
+        } catch {
+          localStorage.removeItem('currentWallet');
+        }
+      })();
     }
   }, []);
 
